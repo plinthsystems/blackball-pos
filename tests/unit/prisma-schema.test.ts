@@ -9,8 +9,11 @@ describe("Prisma schema", () => {
     expect(schema).toContain("model Session");
     expect(schema).toContain("model Booking");
     expect(schema).toContain("model Invoice");
+    expect(schema).toContain("model Product");
+    expect(schema).toContain("model SessionItem");
     expect(schema).toContain("enum TableStatus");
     expect(schema).toContain("enum SessionStatus");
+    expect(schema).toContain("enum ProductCategory");
   });
 
   it("keeps mutable operational records versioned", () => {

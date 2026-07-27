@@ -6,6 +6,10 @@ describe("LiveTablePage", () => {
   it("renders table states and primary session actions", () => {
     render(
       <LiveTablePage
+        products={[
+          { id: "product_tea", name: "Tea", category: "CAFE", priceAmount: 20 },
+          { id: "product_water", name: "Water Bottle", category: "BEVERAGES", priceAmount: 20 }
+        ]}
         tables={[
           {
             id: "table_1",
@@ -26,6 +30,12 @@ describe("LiveTablePage", () => {
               startedAt: "2026-07-23T10:00:00.000Z",
               plannedEndAt: "2026-07-23T11:00:00.000Z",
               billEstimate: 450,
+              billSummary: {
+                tableAmount: 450,
+                categoryTotals: { CAFE: 80, CIGARETTES: 20, BEVERAGES: 40 },
+                itemTotal: 140,
+                grandTotal: 590
+              },
               assignedStaffName: "Aarav Manager"
             }
           }
@@ -37,14 +47,21 @@ describe("LiveTablePage", () => {
     expect(screen.getByText("P1")).toBeInTheDocument();
     expect(screen.getByText("S1")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start session for table P1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add items for table S1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "End session for table S1" })).toBeInTheDocument();
     expect(screen.getByText(/Started/)).toBeInTheDocument();
-    expect(screen.getByText("Current bill ₹450.00")).toBeInTheDocument();
+    expect(screen.getByText("Table")).toBeInTheDocument();
+    expect(screen.getByText("Cafe")).toBeInTheDocument();
+    expect(screen.getByText("Cigarettes")).toBeInTheDocument();
+    expect(screen.getByText("Beverages")).toBeInTheDocument();
+    expect(screen.getByText("Total")).toBeInTheDocument();
+    expect(screen.getByText("₹590.00")).toBeInTheDocument();
   });
 
   it("shows only useful table summary counts", () => {
     render(
       <LiveTablePage
+        products={[]}
         tables={[
           { id: "1", number: "P1", gameType: "POOL", status: "AVAILABLE", currentSession: null },
           { id: "2", number: "P2", gameType: "POOL", status: "RESERVED", currentSession: null },

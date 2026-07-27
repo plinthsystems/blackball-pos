@@ -20,12 +20,19 @@ export const endSessionSchema = z.object({
   sessionId: z.string().min(1)
 });
 
+export const addSessionItemSchema = z.object({
+  sessionId: z.string().min(1),
+  productId: z.string().min(1),
+  quantity: z.coerce.number().int().min(1).max(99)
+});
+
 export const tableStatusSchema = z.object({
   tableId: z.string().min(1),
-  status: z.enum(["AVAILABLE", "CLEANING", "MAINTENANCE", "BLOCKED"])
+  status: z.literal("AVAILABLE")
 });
 
 export type StartWalkInSessionInput = z.infer<typeof startWalkInSessionSchema>;
 export type ExtendSessionInput = z.infer<typeof extendSessionSchema>;
 export type EndSessionInput = z.infer<typeof endSessionSchema>;
+export type AddSessionItemInput = z.infer<typeof addSessionItemSchema>;
 export type TableStatusInput = z.infer<typeof tableStatusSchema>;

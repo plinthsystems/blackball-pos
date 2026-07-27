@@ -3,8 +3,9 @@ import { expect, test } from "@playwright/test";
 test("staff can view the live table board", async ({ page }) => {
   await page.goto("/live-tables");
   await expect(page.getByRole("heading", { name: "Live Tables" })).toBeVisible();
-  await expect(page.getByText("Pool").first()).toBeVisible();
-  await expect(page.getByText("Snooker").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pool Table 1" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Royal Snooker 1" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mini Snooker 1" })).toBeVisible();
 });
 
 test("table cards remain usable on tablet width", async ({ page }) => {

@@ -1,6 +1,7 @@
 import { prisma } from "@/server/db/prisma";
+import { summarizeSessionBill } from "@/server/domain/bill-summary";
 import { calculateBillableSeconds, calculateMinuteBasedTableCharge } from "@/server/domain/session-calculations";
-import type { LiveTableCardData } from "./types";
+import type { LiveTableCardData, ProductOption } from "./types";
 
 export async function getLiveTableBoard(businessId: string): Promise<LiveTableCardData[]> {
   const [tables, pricingRules] = await Promise.all([
@@ -12,7 +13,7 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
           where: { status: { in: ["ACTIVE", "PAUSED"] } },
           orderBy: { startedAt: "desc" },
           take: 1,
-          include: { customer: true, assignedEmployee: true }
+          include: { customer: true, assignedEmployee: true, items: true }
         }
       }
     }),
@@ -29,6 +30,10 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
     const elapsedSeconds = session ? calculateBillableSeconds({ startedAt: session.startedAt, endedAt: now, pauses: [] }) : 0;
     const hourlyRate = hourlyRateByTableType.get(`${table.gameType}:${table.pricingGroup}`) ?? 0;
     const currentCharge = calculateMinuteBasedTableCharge({ billableSeconds: elapsedSeconds, hourlyRate });
+    const billSummary = summarizeSessionBill({
+      tableAmount: currentCharge,
+      items: session?.items.map((item) => ({ category: item.category, lineTotalAmount: Number(item.lineTotalAmount) })) ?? []
+    });
     return {
       id: table.id,
       number: table.number,
@@ -42,9 +47,24 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
             startedAt: session.startedAt.toISOString(),
             plannedEndAt: session.plannedEndAt.toISOString(),
             billEstimate: Number(session.billableSecondsSnapshot) || currentCharge,
+            billSummary,
             assignedStaffName: session.assignedEmployee?.name ?? null
           }
         : null
     };
   });
+}
+
+export async function getProductOptions(businessId: string): Promise<ProductOption[]> {
+  const products = await prisma.product.findMany({
+    where: { businessId, active: true },
+    orderBy: [{ category: "asc" }, { name: "asc" }]
+  });
+
+  return products.map((product) => ({
+    id: product.id,
+    name: product.name,
+    category: product.category,
+    priceAmount: Number(product.priceAmount)
+  }));
 }

@@ -6,6 +6,7 @@ describe("session lifecycle integration", () => {
   it("seeded database has the real five table setup and pricing", async () => {
     const tables = await prisma.clubTable.findMany({ where: { businessId: "seed-business" } });
     const pricing = await prisma.tablePricing.findMany({ where: { businessId: "seed-business" } });
+    const products = await prisma.product.findMany({ where: { businessId: "seed-business", active: true } });
 
     expect(tables.map((table) => table.number).sort()).toEqual([
       "Mini Snooker 1",
@@ -19,6 +20,7 @@ describe("session lifecycle integration", () => {
       "royal:350",
       "standard:160"
     ]);
+    expect(new Set(products.map((product) => product.category))).toEqual(new Set(["CAFE", "CIGARETTES", "BEVERAGES"]));
   });
 
   it("uses an employee id that exists in the seeded database", async () => {
@@ -26,5 +28,6 @@ describe("session lifecycle integration", () => {
     const employee = await prisma.employee.findUnique({ where: { id: context.employeeId } });
 
     expect(employee?.email).toBe("owner@cueclub.example");
+    expect(context.permissions).toContain("sessions.add_items");
   });
 });

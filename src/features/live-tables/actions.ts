@@ -11,7 +11,13 @@ import { prismaSessionRepository } from "@/server/repositories/session-repositor
 import { prismaTableRepository } from "@/server/repositories/table-repository";
 import { SessionService } from "@/server/services/session-service";
 import { TableService } from "@/server/services/table-service";
-import { endSessionSchema, extendSessionSchema, startWalkInSessionSchema, tableStatusSchema } from "@/features/sessions/schemas";
+import {
+  addSessionItemSchema,
+  endSessionSchema,
+  extendSessionSchema,
+  startWalkInSessionSchema,
+  tableStatusSchema
+} from "@/features/sessions/schemas";
 
 type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 
@@ -79,6 +85,59 @@ export async function endSessionAction(input: unknown): Promise<ActionResult> {
     await services().sessions.endSession({ ...parsed, businessId: context.businessId, employeeId: context.employeeId, now: new Date() });
     revalidatePath("/live-tables");
     return { ok: true, message: "Session ended." };
+  } catch (error) {
+    return actionError(error);
+  }
+}
+
+export async function addSessionItemAction(input: unknown): Promise<ActionResult> {
+  try {
+    const context = await getCurrentEmployeeContext();
+    requirePermission(context, "sessions.add_items");
+    const parsed = addSessionItemSchema.parse(input);
+
+    await prisma.$transaction(async (tx) => {
+      const [session, product] = await Promise.all([
+        tx.session.findFirst({
+          where: {
+            id: parsed.sessionId,
+            businessId: context.businessId,
+            status: { in: ["ACTIVE", "PAUSED"] }
+          },
+          select: { id: true, businessId: true }
+        }),
+        tx.product.findFirst({
+          where: {
+            id: parsed.productId,
+            businessId: context.businessId,
+            active: true
+          },
+          select: { id: true, name: true, category: true, priceAmount: true }
+        })
+      ]);
+
+      if (!session || !product) {
+        throw new DomainError("SESSION_NOT_ACTIVE", "Active session or product was not found.");
+      }
+
+      const unitPrice = Number(product.priceAmount);
+      const lineTotal = Math.round(unitPrice * parsed.quantity * 100) / 100;
+      await tx.sessionItem.create({
+        data: {
+          businessId: context.businessId,
+          sessionId: session.id,
+          productId: product.id,
+          category: product.category,
+          nameSnapshot: product.name,
+          unitPriceAmount: product.priceAmount,
+          quantity: parsed.quantity,
+          lineTotalAmount: lineTotal
+        }
+      });
+    });
+
+    revalidatePath("/live-tables");
+    return { ok: true, message: "Item added to bill." };
   } catch (error) {
     return actionError(error);
   }

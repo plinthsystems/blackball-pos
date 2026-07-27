@@ -1,4 +1,4 @@
-import { GameType, PrismaClient } from "@prisma/client";
+import { GameType, PrismaClient, ProductCategory } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -10,6 +10,7 @@ const permissionKeys = [
   "sessions.resume",
   "sessions.extend",
   "sessions.end",
+  "sessions.add_items",
   "settings.update"
 ];
 
@@ -19,6 +20,17 @@ const desiredTables = [
   { number: "Mini Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "mini" },
   { number: "Mini Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "mini" },
   { number: "Pool Table 1", gameType: GameType.POOL, pricingGroup: "standard" }
+];
+
+const menuProducts = [
+  { name: "Tea", category: ProductCategory.CAFE, priceAmount: "20.00" },
+  { name: "Coffee", category: ProductCategory.CAFE, priceAmount: "40.00" },
+  { name: "Sandwich", category: ProductCategory.CAFE, priceAmount: "80.00" },
+  { name: "Classic Cigarette", category: ProductCategory.CIGARETTES, priceAmount: "20.00" },
+  { name: "Gold Flake Cigarette", category: ProductCategory.CIGARETTES, priceAmount: "20.00" },
+  { name: "Water Bottle", category: ProductCategory.BEVERAGES, priceAmount: "20.00" },
+  { name: "Cold Drink", category: ProductCategory.BEVERAGES, priceAmount: "40.00" },
+  { name: "Energy Drink", category: ProductCategory.BEVERAGES, priceAmount: "120.00" }
 ];
 
 async function main() {
@@ -31,7 +43,7 @@ async function main() {
     },
     create: {
       id: "seed-business",
-	      name: "Pool & Snooker Cafe",
+      name: "Pool & Snooker Cafe",
       phone: "+91 90000 00000",
       email: "operations@cueclub.example",
       settings: {
@@ -61,10 +73,10 @@ async function main() {
 
   const owner = await prisma.employee.upsert({
     where: { email: "owner@cueclub.example" },
-	    update: { businessId: business.id, name: "Cafe Manager", active: true },
+    update: { businessId: business.id, name: "Cafe Manager", active: true },
     create: {
       businessId: business.id,
-	      name: "Cafe Manager",
+      name: "Cafe Manager",
       email: "owner@cueclub.example",
       roles: { create: { roleId: ownerRole.id } }
     }
@@ -111,11 +123,13 @@ async function main() {
 
   await prisma.payment.deleteMany({ where: { businessId: business.id } });
   await prisma.invoice.deleteMany({ where: { businessId: business.id } });
+  await prisma.sessionItem.deleteMany({ where: { businessId: business.id } });
   await prisma.sessionExtension.deleteMany({ where: { session: { businessId: business.id } } });
   await prisma.sessionPause.deleteMany({ where: { session: { businessId: business.id } } });
   await prisma.session.deleteMany({ where: { businessId: business.id } });
   await prisma.booking.deleteMany({ where: { businessId: business.id } });
   await prisma.auditLog.deleteMany({ where: { businessId: business.id } });
+  await prisma.product.deleteMany({ where: { businessId: business.id } });
   await prisma.clubTable.deleteMany({
     where: {
       businessId: business.id,
@@ -128,6 +142,15 @@ async function main() {
       where: { businessId_number: { businessId: business.id, number: table.number } },
       update: { gameType: table.gameType, status: "AVAILABLE", pricingGroup: table.pricingGroup },
       create: { businessId: business.id, number: table.number, gameType: table.gameType, pricingGroup: table.pricingGroup }
+    });
+  }
+
+  for (const product of menuProducts) {
+    await prisma.product.create({
+      data: {
+        businessId: business.id,
+        ...product
+      }
     });
   }
 

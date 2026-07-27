@@ -23,6 +23,7 @@ export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContex
       "sessions.resume",
       "sessions.extend",
       "sessions.end",
+      "sessions.add_items",
       "settings.update"
     ]
   };

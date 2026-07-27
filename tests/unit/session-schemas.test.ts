@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extendSessionSchema, startWalkInSessionSchema } from "@/features/sessions/schemas";
+import { addSessionItemSchema, extendSessionSchema, startWalkInSessionSchema } from "@/features/sessions/schemas";
 
 describe("session schemas", () => {
   it("accepts a 30 minute walk-in session", () => {
@@ -20,5 +20,15 @@ describe("session schemas", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("accepts adding menu items to an active session", () => {
+    const result = addSessionItemSchema.safeParse({
+      sessionId: "session_1",
+      productId: "product_1",
+      quantity: 2
+    });
+
+    expect(result.success).toBe(true);
   });
 });
