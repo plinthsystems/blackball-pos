@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { startWalkInSessionAction } from "@/features/live-tables/actions";
@@ -21,6 +22,7 @@ export function StartWalkInDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const {
@@ -38,6 +40,7 @@ export function StartWalkInDialog({
       setMessage(result.message);
       if (result.ok) {
         onOpenChange(false);
+        router.refresh();
       }
     });
   }

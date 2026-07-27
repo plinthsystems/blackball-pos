@@ -1,3 +1,5 @@
+import { prisma } from "@/server/db/prisma";
+
 export type CurrentEmployeeContext = {
   businessId: string;
   employeeId: string;
@@ -5,9 +7,14 @@ export type CurrentEmployeeContext = {
 };
 
 export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContext> {
+  const employee = await prisma.employee.findUnique({
+    where: { email: "owner@cueclub.example" },
+    select: { id: true, businessId: true }
+  });
+
   return {
-    businessId: "seed-business",
-    employeeId: "seed-employee",
+    businessId: employee?.businessId ?? "seed-business",
+    employeeId: employee?.id ?? "seed-employee",
     permissions: [
       "tables.read",
       "tables.update_status",

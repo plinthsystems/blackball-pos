@@ -11,7 +11,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background text-neutral-900">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-outline bg-surface lg:block">
         <div className="border-b border-outline px-5 py-4">
-          <p className="text-sm font-semibold">Cue Club Admin</p>
+          <p className="text-sm font-semibold">Pool & Snooker Cafe</p>
           <p className="text-xs text-neutral-500">Operations</p>
         </div>
         <nav className="p-3" aria-label="Admin navigation">
@@ -33,7 +33,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-20 border-b border-outline bg-surface px-4 py-3 lg:px-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold">Cue Club</p>
+              <p className="text-sm font-semibold">Pool & Snooker Cafe</p>
               <p className="text-xs text-neutral-500">Today&apos;s table operations</p>
             </div>
             <div className="text-sm text-neutral-600">Manager</div>

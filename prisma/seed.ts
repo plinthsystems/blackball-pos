@@ -13,13 +13,25 @@ const permissionKeys = [
   "settings.update"
 ];
 
+const desiredTables = [
+  { number: "King Snooker 1", gameType: GameType.SNOOKER },
+  { number: "King Snooker 2", gameType: GameType.SNOOKER },
+  { number: "Medium Snooker 1", gameType: GameType.SNOOKER },
+  { number: "Medium Snooker 2", gameType: GameType.SNOOKER },
+  { number: "Pool Table 1", gameType: GameType.POOL }
+];
+
 async function main() {
   const business = await prisma.business.upsert({
     where: { id: "seed-business" },
-    update: {},
+    update: {
+      name: "Pool & Snooker Cafe",
+      phone: "+91 90000 00000",
+      email: "operations@cueclub.example"
+    },
     create: {
       id: "seed-business",
-      name: "Cue Club",
+	      name: "Pool & Snooker Cafe",
       phone: "+91 90000 00000",
       email: "operations@cueclub.example",
       settings: {
@@ -49,10 +61,10 @@ async function main() {
 
   const owner = await prisma.employee.upsert({
     where: { email: "owner@cueclub.example" },
-    update: { businessId: business.id, name: "Aarav Manager", active: true },
+	    update: { businessId: business.id, name: "Cafe Manager", active: true },
     create: {
       businessId: business.id,
-      name: "Aarav Manager",
+	      name: "Cafe Manager",
       email: "owner@cueclub.example",
       roles: { create: { roleId: ownerRole.id } }
     }
@@ -97,19 +109,25 @@ async function main() {
     });
   }
 
-  for (let number = 1; number <= 8; number += 1) {
-    await prisma.clubTable.upsert({
-      where: { businessId_number: { businessId: business.id, number: `P${number}` } },
-      update: {},
-      create: { businessId: business.id, number: `P${number}`, gameType: GameType.POOL }
-    });
-  }
+  await prisma.payment.deleteMany({ where: { businessId: business.id } });
+  await prisma.invoice.deleteMany({ where: { businessId: business.id } });
+  await prisma.sessionExtension.deleteMany({ where: { session: { businessId: business.id } } });
+  await prisma.sessionPause.deleteMany({ where: { session: { businessId: business.id } } });
+  await prisma.session.deleteMany({ where: { businessId: business.id } });
+  await prisma.booking.deleteMany({ where: { businessId: business.id } });
+  await prisma.auditLog.deleteMany({ where: { businessId: business.id } });
+  await prisma.clubTable.deleteMany({
+    where: {
+      businessId: business.id,
+      number: { notIn: desiredTables.map((table) => table.number) }
+    }
+  });
 
-  for (let number = 1; number <= 4; number += 1) {
+  for (const table of desiredTables) {
     await prisma.clubTable.upsert({
-      where: { businessId_number: { businessId: business.id, number: `S${number}` } },
-      update: {},
-      create: { businessId: business.id, number: `S${number}`, gameType: GameType.SNOOKER }
+      where: { businessId_number: { businessId: business.id, number: table.number } },
+      update: { gameType: table.gameType, status: "AVAILABLE", pricingGroup: "standard" },
+      create: { businessId: business.id, number: table.number, gameType: table.gameType }
     });
   }
 
