@@ -160,7 +160,7 @@ export class SessionService {
         pauses: []
       });
       await this.sessions.end({ businessId: input.businessId, sessionId: input.sessionId, actualEndAt: input.now, billableSeconds, tx });
-      await this.tables.updateStatus({ businessId: input.businessId, tableId: session.tableId, status: "CLEANING", tx });
+      await this.tables.updateStatus({ businessId: input.businessId, tableId: session.tableId, status: "AVAILABLE", tx });
       await this.auditLogs.record({
         businessId: input.businessId,
         employeeId: input.employeeId,

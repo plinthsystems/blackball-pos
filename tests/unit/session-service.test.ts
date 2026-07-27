@@ -33,4 +33,24 @@ describe("SessionService", () => {
       code: "EXTENSION_CONFLICT"
     } satisfies Partial<DomainError>);
   });
+
+  it("ends a session by making the table available again", async () => {
+    const { service, store } = createSessionServiceForTests();
+    const started = await service.startWalkInSession({
+      businessId: "business_1",
+      employeeId: "employee_1",
+      tableId: "table_available",
+      durationMinutes: 60,
+      now: new Date("2026-07-23T10:00:00.000Z")
+    });
+
+    await service.endSession({
+      businessId: "business_1",
+      employeeId: "employee_1",
+      sessionId: started.sessionId,
+      now: new Date("2026-07-23T10:30:00.000Z")
+    });
+
+    expect(store.tables.get("table_available")?.status).toBe("AVAILABLE");
+  });
 });

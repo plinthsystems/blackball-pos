@@ -20,7 +20,8 @@ describe("session lifecycle integration", () => {
       "royal:350",
       "standard:160"
     ]);
-    expect(new Set(products.map((product) => product.category))).toEqual(new Set(["CAFE", "CIGARETTES", "BEVERAGES"]));
+    expect(new Set(products.map((product) => product.category))).toEqual(new Set(["FOOD", "CIGARETTES", "BEVERAGES"]));
+    expect(products.map((product) => product.name)).toContain("Water Bottle");
   });
 
   it("uses an employee id that exists in the seeded database", async () => {

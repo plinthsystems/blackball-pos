@@ -24,6 +24,8 @@ export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContex
       "sessions.extend",
       "sessions.end",
       "sessions.add_items",
+      "bills.manage",
+      "products.manage",
       "settings.update"
     ]
   };

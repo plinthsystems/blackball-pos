@@ -1,7 +1,7 @@
 export type LiveTableStatus = "AVAILABLE" | "RESERVED" | "OCCUPIED" | "CLEANING" | "MAINTENANCE" | "BLOCKED";
 export type LiveTableGameType = "POOL" | "SNOOKER";
 export type LiveSessionStatus = "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
-export type ProductCategory = "CAFE" | "CIGARETTES" | "BEVERAGES";
+export type ProductCategory = "FOOD" | "CAFE" | "CIGARETTES" | "BEVERAGES";
 
 export type ProductOption = {
   id: string;
@@ -12,9 +12,27 @@ export type ProductOption = {
 
 export type LiveBillSummary = {
   tableAmount: number;
-  categoryTotals: Record<ProductCategory, number>;
+  categoryTotals: Record<"FOOD" | "CIGARETTES" | "BEVERAGES", number>;
   itemTotal: number;
   grandTotal: number;
+};
+
+export type BillLineItem = {
+  id: string;
+  name: string;
+  category: ProductCategory;
+  quantity: number;
+  unitPriceAmount: number;
+  lineTotalAmount: number;
+};
+
+export type LiveBillData = {
+  id: string;
+  label: string;
+  openedAt: string;
+  closedAt: string | null;
+  summary: LiveBillSummary;
+  items: BillLineItem[];
 };
 
 export type LiveTableCardData = {
@@ -28,8 +46,15 @@ export type LiveTableCardData = {
     customerName: string | null;
     startedAt: string;
     plannedEndAt: string;
+    elapsedSeconds: number;
     billEstimate: number;
     billSummary: LiveBillSummary;
+    currentBill: LiveBillData | null;
     assignedStaffName: string | null;
   };
+  recentBill: LiveBillData | null;
+};
+
+export type CounterBillData = LiveBillData & {
+  label: string;
 };

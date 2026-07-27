@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addSessionItemAction } from "@/features/live-tables/actions";
+import { addBillItemAction } from "@/features/live-tables/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, textInputProps } from "@/components/ui/field";
@@ -11,21 +11,22 @@ import { formatMoney } from "@/lib/money";
 import type { ProductCategory, ProductOption } from "@/features/live-tables/types";
 
 const categoryLabels: Record<ProductCategory, string> = {
-  CAFE: "Cafe",
+  FOOD: "Food",
+  CAFE: "Food",
   CIGARETTES: "Cigarettes",
   BEVERAGES: "Beverages"
 };
 
-const categoryOrder: ProductCategory[] = ["CAFE", "CIGARETTES", "BEVERAGES"];
+const categoryOrder: ProductCategory[] = ["FOOD", "CIGARETTES", "BEVERAGES"];
 
 export function AddSessionItemDialog({
-  sessionId,
+  billId,
   tableNumber,
   products,
   open,
   onOpenChange
 }: {
-  sessionId: string;
+  billId: string;
   tableNumber: string;
   products: ProductOption[];
   open: boolean;
@@ -42,7 +43,7 @@ export function AddSessionItemDialog({
 
   function addItem() {
     startTransition(async () => {
-      const result = await addSessionItemAction({ sessionId, productId, quantity });
+      const result = await addBillItemAction({ billId, productId, quantity });
       setMessage(result.message);
       if (result.ok) {
         onOpenChange(false);

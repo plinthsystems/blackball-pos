@@ -11,9 +11,19 @@ describe("Prisma schema", () => {
     expect(schema).toContain("model Invoice");
     expect(schema).toContain("model Product");
     expect(schema).toContain("model SessionItem");
+    expect(schema).toContain("model Bill");
+    expect(schema).toContain("model BillItem");
+    expect(schema).toContain("enum BillKind");
+    expect(schema).toContain("enum BillStatus");
     expect(schema).toContain("enum TableStatus");
     expect(schema).toContain("enum SessionStatus");
     expect(schema).toContain("enum ProductCategory");
+  });
+
+  it("stores product price snapshots on bill items", () => {
+    expect(schema).toMatch(/model BillItem[\s\S]*nameSnapshot\s+String/);
+    expect(schema).toMatch(/model BillItem[\s\S]*unitPriceAmount\s+Decimal\s+@db\.Decimal\(12, 2\)/);
+    expect(schema).toMatch(/model BillItem[\s\S]*lineTotalAmount\s+Decimal\s+@db\.Decimal\(12, 2\)/);
   });
 
   it("keeps mutable operational records versioned", () => {

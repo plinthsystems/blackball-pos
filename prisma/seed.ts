@@ -11,6 +11,8 @@ const permissionKeys = [
   "sessions.extend",
   "sessions.end",
   "sessions.add_items",
+  "bills.manage",
+  "products.manage",
   "settings.update"
 ];
 
@@ -23,9 +25,9 @@ const desiredTables = [
 ];
 
 const menuProducts = [
-  { name: "Tea", category: ProductCategory.CAFE, priceAmount: "20.00" },
-  { name: "Coffee", category: ProductCategory.CAFE, priceAmount: "40.00" },
-  { name: "Sandwich", category: ProductCategory.CAFE, priceAmount: "80.00" },
+  { name: "Tea", category: ProductCategory.FOOD, priceAmount: "20.00" },
+  { name: "Coffee", category: ProductCategory.FOOD, priceAmount: "40.00" },
+  { name: "Sandwich", category: ProductCategory.FOOD, priceAmount: "80.00" },
   { name: "Classic Cigarette", category: ProductCategory.CIGARETTES, priceAmount: "20.00" },
   { name: "Gold Flake Cigarette", category: ProductCategory.CIGARETTES, priceAmount: "20.00" },
   { name: "Water Bottle", category: ProductCategory.BEVERAGES, priceAmount: "20.00" },
@@ -123,6 +125,8 @@ async function main() {
 
   await prisma.payment.deleteMany({ where: { businessId: business.id } });
   await prisma.invoice.deleteMany({ where: { businessId: business.id } });
+  await prisma.billItem.deleteMany({ where: { businessId: business.id } });
+  await prisma.bill.deleteMany({ where: { businessId: business.id } });
   await prisma.sessionItem.deleteMany({ where: { businessId: business.id } });
   await prisma.sessionExtension.deleteMany({ where: { session: { businessId: business.id } } });
   await prisma.sessionPause.deleteMany({ where: { session: { businessId: business.id } } });

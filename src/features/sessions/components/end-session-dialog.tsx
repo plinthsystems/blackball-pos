@@ -44,7 +44,7 @@ export function EndSessionDialog({
           </div>
         </div>
       </Dialog>
-      <Snackbar message={message} tone={message === "Session ended." ? "success" : "danger"} />
+      <Snackbar message={message} tone={message?.startsWith("Session ended.") ? "success" : "danger"} />
     </>
   );
 }

@@ -20,10 +20,33 @@ export const endSessionSchema = z.object({
   sessionId: z.string().min(1)
 });
 
-export const addSessionItemSchema = z.object({
-  sessionId: z.string().min(1),
+export const addBillItemSchema = z.object({
+  billId: z.string().min(1),
   productId: z.string().min(1),
   quantity: z.coerce.number().int().min(1).max(99)
+});
+
+export const removeBillItemSchema = z.object({
+  billItemId: z.string().min(1)
+});
+
+export const closeCounterBillSchema = z.object({
+  billId: z.string().min(1)
+});
+
+export const closeBillAndContinueSessionSchema = z.object({
+  sessionId: z.string().min(1)
+});
+
+export const startCounterBillSchema = z.object({
+  label: z.string().trim().max(120).optional().or(z.literal(""))
+});
+
+export const productFormSchema = z.object({
+  id: z.string().min(1).optional(),
+  name: z.string().trim().min(1).max(120),
+  category: z.enum(["FOOD", "CIGARETTES", "BEVERAGES"]),
+  priceAmount: z.coerce.number().min(0).max(999999)
 });
 
 export const tableStatusSchema = z.object({
@@ -34,5 +57,5 @@ export const tableStatusSchema = z.object({
 export type StartWalkInSessionInput = z.infer<typeof startWalkInSessionSchema>;
 export type ExtendSessionInput = z.infer<typeof extendSessionSchema>;
 export type EndSessionInput = z.infer<typeof endSessionSchema>;
-export type AddSessionItemInput = z.infer<typeof addSessionItemSchema>;
+export type AddBillItemInput = z.infer<typeof addBillItemSchema>;
 export type TableStatusInput = z.infer<typeof tableStatusSchema>;
