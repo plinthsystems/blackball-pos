@@ -39,19 +39,25 @@ describe("LiveTablePage", () => {
     expect(screen.getByRole("button", { name: "End session for table S1" })).toBeInTheDocument();
   });
 
-  it("shows status counts without relying on color alone", () => {
+  it("shows only useful table summary counts", () => {
     render(
       <LiveTablePage
         tables={[
           { id: "1", number: "P1", gameType: "POOL", status: "AVAILABLE", currentSession: null },
-          { id: "2", number: "P2", gameType: "POOL", status: "CLEANING", currentSession: null },
-          { id: "3", number: "S1", gameType: "SNOOKER", status: "MAINTENANCE", currentSession: null }
+          { id: "2", number: "P2", gameType: "POOL", status: "RESERVED", currentSession: null },
+          { id: "3", number: "S1", gameType: "SNOOKER", status: "OCCUPIED", currentSession: null },
+          { id: "4", number: "S2", gameType: "SNOOKER", status: "CLEANING", currentSession: null },
+          { id: "5", number: "S3", gameType: "SNOOKER", status: "MAINTENANCE", currentSession: null }
         ]}
       />
     );
 
-    expect(screen.getByText("Available")).toBeInTheDocument();
-    expect(screen.getByText("Cleaning")).toBeInTheDocument();
-    expect(screen.getByText("Maintenance")).toBeInTheDocument();
+    const counts = screen.getByLabelText("Table status counts");
+    expect(counts).toHaveTextContent("Available");
+    expect(counts).toHaveTextContent("Reserved");
+    expect(counts).toHaveTextContent("Occupied");
+    expect(counts).not.toHaveTextContent("Cleaning");
+    expect(counts).not.toHaveTextContent("Maintenance");
+    expect(counts).not.toHaveTextContent("Blocked");
   });
 });
