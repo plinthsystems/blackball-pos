@@ -23,6 +23,7 @@ describe("LiveTablePage", () => {
               id: "session_1",
               status: "ACTIVE",
               customerName: "Riya Shah",
+              startedAt: "2026-07-23T10:00:00.000Z",
               plannedEndAt: "2026-07-23T11:00:00.000Z",
               billEstimate: 450,
               assignedStaffName: "Aarav Manager"
@@ -37,6 +38,8 @@ describe("LiveTablePage", () => {
     expect(screen.getByText("S1")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start session for table P1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "End session for table S1" })).toBeInTheDocument();
+    expect(screen.getByText(/Started/)).toBeInTheDocument();
+    expect(screen.getByText("Current bill ₹450.00")).toBeInTheDocument();
   });
 
   it("shows only useful table summary counts", () => {

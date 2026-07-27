@@ -11,6 +11,7 @@ export type LiveTableCardData = {
     id: string;
     status: LiveSessionStatus;
     customerName: string | null;
+    startedAt: string;
     plannedEndAt: string;
     billEstimate: number;
     assignedStaffName: string | null;

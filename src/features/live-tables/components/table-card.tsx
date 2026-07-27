@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { formatClockTime } from "@/lib/time";
 import type { LiveTableCardData, LiveTableStatus } from "../types";
 import { TableStatusMenu } from "./table-status-menu";
 import { StartWalkInDialog } from "@/features/sessions/components/start-walk-in-dialog";
@@ -47,7 +48,8 @@ export function TableCard({ table }: { table: LiveTableCardData }) {
         {session ? (
           <div className="space-y-1">
             <p className="break-words font-medium">{session.customerName ?? "Walk-in customer"}</p>
-            <p>Ends {new Date(session.plannedEndAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>
+            <p>Started {formatClockTime(new Date(session.startedAt))}</p>
+            <p>Ends {formatClockTime(new Date(session.plannedEndAt))}</p>
             <p>Current bill {formatMoney(session.billEstimate)}</p>
             <p className="break-words">Staff {session.assignedStaffName ?? "Unassigned"}</p>
           </div>
