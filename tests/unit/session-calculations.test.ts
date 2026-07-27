@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateBillableSeconds, calculateTableCharge } from "@/server/domain/session-calculations";
+import { calculateBillableSeconds, calculateMinuteBasedTableCharge, calculateTableCharge } from "@/server/domain/session-calculations";
 
 describe("session calculations", () => {
   it("calculates billable seconds from server timestamps minus completed pauses", () => {
@@ -25,5 +25,14 @@ describe("session calculations", () => {
     });
 
     expect(amount).toBe(700);
+  });
+
+  it("prices table play by actual minutes from an hourly rate", () => {
+    const amount = calculateMinuteBasedTableCharge({
+      billableSeconds: 15 * 60,
+      hourlyRate: 350
+    });
+
+    expect(amount).toBe(87.5);
   });
 });

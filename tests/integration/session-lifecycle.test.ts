@@ -8,13 +8,17 @@ describe("session lifecycle integration", () => {
     const pricing = await prisma.tablePricing.findMany({ where: { businessId: "seed-business" } });
 
     expect(tables.map((table) => table.number).sort()).toEqual([
-      "King Snooker 1",
-      "King Snooker 2",
-      "Medium Snooker 1",
-      "Medium Snooker 2",
-      "Pool Table 1"
+      "Mini Snooker 1",
+      "Mini Snooker 2",
+      "Pool Table 1",
+      "Royal Snooker 1",
+      "Royal Snooker 2"
     ]);
-    expect(pricing.length).toBe(4);
+    expect(pricing.map((rule) => `${rule.pricingGroup}:${Number(rule.priceAmount)}`).sort()).toEqual([
+      "mini:330",
+      "royal:350",
+      "standard:160"
+    ]);
   });
 
   it("uses an employee id that exists in the seeded database", async () => {

@@ -14,11 +14,11 @@ const permissionKeys = [
 ];
 
 const desiredTables = [
-  { number: "King Snooker 1", gameType: GameType.SNOOKER },
-  { number: "King Snooker 2", gameType: GameType.SNOOKER },
-  { number: "Medium Snooker 1", gameType: GameType.SNOOKER },
-  { number: "Medium Snooker 2", gameType: GameType.SNOOKER },
-  { number: "Pool Table 1", gameType: GameType.POOL }
+  { number: "Royal Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "royal" },
+  { number: "Royal Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "royal" },
+  { number: "Mini Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "mini" },
+  { number: "Mini Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "mini" },
+  { number: "Pool Table 1", gameType: GameType.POOL, pricingGroup: "standard" }
 ];
 
 async function main() {
@@ -88,24 +88,24 @@ async function main() {
   );
 
   const pricing = [
-    { gameType: GameType.POOL, durationMinutes: 30, priceAmount: "250.00" },
-    { gameType: GameType.POOL, durationMinutes: 60, priceAmount: "450.00" },
-    { gameType: GameType.SNOOKER, durationMinutes: 30, priceAmount: "350.00" },
-    { gameType: GameType.SNOOKER, durationMinutes: 60, priceAmount: "650.00" }
+    { gameType: GameType.SNOOKER, pricingGroup: "royal", durationMinutes: 60, priceAmount: "350.00" },
+    { gameType: GameType.SNOOKER, pricingGroup: "mini", durationMinutes: 60, priceAmount: "330.00" },
+    { gameType: GameType.POOL, pricingGroup: "standard", durationMinutes: 60, priceAmount: "160.00" }
   ];
 
+  await prisma.tablePricing.deleteMany({ where: { businessId: business.id } });
   for (const rule of pricing) {
     await prisma.tablePricing.upsert({
       where: {
         businessId_gameType_pricingGroup_durationMinutes: {
           businessId: business.id,
           gameType: rule.gameType,
-          pricingGroup: "standard",
+          pricingGroup: rule.pricingGroup,
           durationMinutes: rule.durationMinutes
         }
       },
       update: { priceAmount: rule.priceAmount },
-      create: { businessId: business.id, pricingGroup: "standard", ...rule }
+      create: { businessId: business.id, ...rule }
     });
   }
 
@@ -126,8 +126,8 @@ async function main() {
   for (const table of desiredTables) {
     await prisma.clubTable.upsert({
       where: { businessId_number: { businessId: business.id, number: table.number } },
-      update: { gameType: table.gameType, status: "AVAILABLE", pricingGroup: "standard" },
-      create: { businessId: business.id, number: table.number, gameType: table.gameType }
+      update: { gameType: table.gameType, status: "AVAILABLE", pricingGroup: table.pricingGroup },
+      create: { businessId: business.id, number: table.number, gameType: table.gameType, pricingGroup: table.pricingGroup }
     });
   }
 

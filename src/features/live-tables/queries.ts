@@ -1,4 +1,5 @@
 import { prisma } from "@/server/db/prisma";
+import { calculateBillableSeconds, calculateMinuteBasedTableCharge } from "@/server/domain/session-calculations";
 import type { LiveTableCardData } from "./types";
 
 export async function getLiveTableBoard(businessId: string): Promise<LiveTableCardData[]> {
@@ -15,17 +16,19 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
         }
       }
     }),
-    prisma.tablePricing.findMany({ where: { businessId, pricingGroup: "standard" } })
+    prisma.tablePricing.findMany({ where: { businessId, durationMinutes: 60 } })
   ]);
 
-  const priceByGameAndDuration = new Map(
-    pricingRules.map((rule) => [`${rule.gameType}:${rule.durationMinutes}`, Number(rule.priceAmount)])
+  const hourlyRateByTableType = new Map(
+    pricingRules.map((rule) => [`${rule.gameType}:${rule.pricingGroup}`, Number(rule.priceAmount)])
   );
+  const now = new Date();
 
   return tables.map((table) => {
     const session = table.sessions[0];
-    const plannedMinutes = session ? Math.round((session.plannedEndAt.getTime() - session.startedAt.getTime()) / 60_000) : 0;
-    const plannedCharge = priceByGameAndDuration.get(`${table.gameType}:${plannedMinutes}`) ?? Number(session?.billableSecondsSnapshot ?? 0);
+    const elapsedSeconds = session ? calculateBillableSeconds({ startedAt: session.startedAt, endedAt: now, pauses: [] }) : 0;
+    const hourlyRate = hourlyRateByTableType.get(`${table.gameType}:${table.pricingGroup}`) ?? 0;
+    const currentCharge = calculateMinuteBasedTableCharge({ billableSeconds: elapsedSeconds, hourlyRate });
     return {
       id: table.id,
       number: table.number,
@@ -38,7 +41,7 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
             customerName: session.customer?.name ?? null,
             startedAt: session.startedAt.toISOString(),
             plannedEndAt: session.plannedEndAt.toISOString(),
-            billEstimate: Number(session.billableSecondsSnapshot) || plannedCharge,
+            billEstimate: Number(session.billableSecondsSnapshot) || currentCharge,
             assignedStaffName: session.assignedEmployee?.name ?? null
           }
         : null

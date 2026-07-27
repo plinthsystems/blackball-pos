@@ -31,3 +31,11 @@ export function calculateTableCharge(input: {
 
   return fullHours * input.fullHourAmount + halfHourBlocks * input.halfHourAmount;
 }
+
+export function calculateMinuteBasedTableCharge(input: {
+  billableSeconds: number;
+  hourlyRate: number;
+}) {
+  const billableMinutes = Math.ceil(Math.max(0, input.billableSeconds) / 60);
+  return Math.round(((billableMinutes * input.hourlyRate) / 60) * 100) / 100;
+}
