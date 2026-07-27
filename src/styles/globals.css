@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --app-background: #f8fafd;
+  --app-surface: #ffffff;
+  --app-text: #202124;
+  --app-muted: #5f6368;
+  --app-outline: #dadce0;
+  --app-primary: #1a73e8;
+}
+
+html {
+  background: var(--app-background);
+}
+
+body {
+  margin: 0;
+  background: var(--app-background);
+  color: var(--app-text);
+  font-family: Inter, Roboto, Arial, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: 2px;
+}
+
+.material-symbols-outlined {
+  direction: ltr;
+  display: inline-block;
+  font-family: "Material Symbols Outlined";
+  font-feature-settings: "liga";
+  font-size: 20px;
+  font-style: normal;
+  font-weight: normal;
+  letter-spacing: normal;
+  line-height: 1;
+  overflow-wrap: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+}
