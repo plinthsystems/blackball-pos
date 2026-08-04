@@ -41,6 +41,7 @@ export type LiveTableCardData = {
   gameType: LiveTableGameType;
   status: LiveTableStatus;
   hourlyRate: number;
+  ps5MemberRates?: Record<1 | 2 | 3 | 4, number>;
   currentSession: null | {
     id: string;
     status: LiveSessionStatus;
@@ -48,6 +49,8 @@ export type LiveTableCardData = {
     startedAt: string;
     plannedEndAt: string;
     elapsedSeconds: number;
+    ps5MemberCount: number | null;
+    hourlyRateSnapshot: number;
     billEstimate: number;
     billSummary: LiveBillSummary;
     currentBill: LiveBillData | null;

@@ -6,6 +6,7 @@ export const startWalkInSessionSchema = z.object({
     invalid_type_error: "Choose a duration.",
     required_error: "Choose a duration."
   }),
+  ps5MemberCount: z.coerce.number().int().min(1).max(4).optional(),
   customerName: z.string().trim().min(1).max(120).optional().or(z.literal("")),
   customerPhone: z.string().trim().min(7).max(20).optional().or(z.literal("")),
   assignedEmployeeId: z.string().min(1).optional()

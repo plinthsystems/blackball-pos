@@ -10,7 +10,7 @@ type RateRule = {
 };
 
 export function mapRateSettings(rules: RateRule[]): RateSetting[] {
-  const order = ["Royal Snooker", "Mini Snooker", "Pool", "PS5"];
+  const order = ["Royal Snooker", "Mini Snooker", "Pool", "PS5 · 1 player", "PS5 · 2 players", "PS5 · 3 players", "PS5 · 4 players"];
   return rules
     .filter((rule) => rule.durationMinutes === 60)
     .map((rule) => ({
@@ -32,7 +32,9 @@ export async function getRateSettings(businessId: string): Promise<RateSetting[]
 
 function rateLabel(gameType: "POOL" | "SNOOKER" | "PS5", pricingGroup: string): RateSetting["label"] {
   if (gameType === "PS5") {
-    return "PS5";
+    const parsedMemberCount = Number(pricingGroup.replace("players-", ""));
+    const memberCount = [1, 2, 3, 4].includes(parsedMemberCount) ? parsedMemberCount : 1;
+    return `PS5 · ${memberCount} ${memberCount === 1 ? "player" : "players"}` as RateSetting["label"];
   }
   if (gameType === "POOL") {
     return "Pool";

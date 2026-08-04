@@ -8,6 +8,8 @@ export type CreateSessionInput = {
   tableId: string;
   customerId?: string | null;
   assignedEmployeeId?: string | null;
+  ps5MemberCount?: number | null;
+  hourlyRateSnapshot: number;
   startedAt: Date;
   plannedEndAt: Date;
   tx: TransactionClient;
@@ -49,6 +51,8 @@ export const prismaSessionRepository: SessionRepository = {
         customerId: input.customerId ?? null,
         assignedEmployeeId: input.assignedEmployeeId ?? input.employeeId,
         createdByEmployeeId: input.employeeId,
+        ps5MemberCount: input.ps5MemberCount ?? null,
+        hourlyRateSnapshot: input.hourlyRateSnapshot,
         startedAt: input.startedAt,
         plannedEndAt: input.plannedEndAt
       },
@@ -60,18 +64,20 @@ export const prismaSessionRepository: SessionRepository = {
 
   async findActiveByTable({ businessId, tableId, tx }) {
     const client = tx as typeof prisma;
-    return client.session.findFirst({
+    const session = await client.session.findFirst({
       where: { businessId, tableId, status: { in: ["ACTIVE", "PAUSED"] } },
-      select: { id: true, businessId: true, tableId: true, status: true, startedAt: true, plannedEndAt: true }
+      select: { id: true, businessId: true, tableId: true, status: true, startedAt: true, plannedEndAt: true, ps5MemberCount: true, hourlyRateSnapshot: true }
     });
+    return session ? mapSessionRecord(session) : null;
   },
 
   async findByIdForUpdate({ businessId, sessionId, tx }) {
     const client = tx as typeof prisma;
-    return client.session.findFirst({
+    const session = await client.session.findFirst({
       where: { id: sessionId, businessId },
-      select: { id: true, businessId: true, tableId: true, status: true, startedAt: true, plannedEndAt: true }
+      select: { id: true, businessId: true, tableId: true, status: true, startedAt: true, plannedEndAt: true, ps5MemberCount: true, hourlyRateSnapshot: true }
     });
+    return session ? mapSessionRecord(session) : null;
   },
 
   async findConflicts({ businessId, tableId, startsAt, endsAt, tx }) {
@@ -138,3 +144,19 @@ export const prismaSessionRepository: SessionRepository = {
     });
   }
 };
+
+function mapSessionRecord(session: {
+  id: string;
+  businessId: string;
+  tableId: string;
+  status: SessionStatus;
+  startedAt: Date;
+  plannedEndAt: Date;
+  ps5MemberCount: number | null;
+  hourlyRateSnapshot: unknown;
+}): SessionRecord {
+  return {
+    ...session,
+    hourlyRateSnapshot: Number(session.hourlyRateSnapshot)
+  };
+}

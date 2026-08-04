@@ -91,14 +91,14 @@ export function MenuSettingsPage({ products, branding = fallbackBranding }: { pr
     <section className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Food/Menu</h1>
-        <p className="mt-1 text-sm text-neutral-600">Manage Food, Cigarettes, and Beverages. Price changes affect only new bill items.</p>
+        <p className="mt-1 text-sm text-slate-400">Manage Food, Cigarettes, and Beverages. Price changes affect only new bill items.</p>
       </div>
 
-      <div className="space-y-4 rounded-material border border-outline bg-surface p-4 shadow-sm">
+      <div className="space-y-4 rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">Branding</h2>
-            <p className="mt-1 text-sm text-neutral-600">Customize the tenant name, initials, and club colors.</p>
+            <h2 className="text-lg font-black text-white">Branding</h2>
+            <p className="mt-1 text-sm text-slate-400">Customize the tenant name, initials, and club colors.</p>
           </div>
           <div
             className="flex h-12 w-12 items-center justify-center rounded-full border text-sm font-bold text-white"
@@ -122,7 +122,7 @@ export function MenuSettingsPage({ products, branding = fallbackBranding }: { pr
           </Field>
           <Field label="Brand color">
             <input
-              className="h-10 w-full rounded-material border border-outline bg-surface px-2"
+              className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-2"
               type="color"
               value={brandColor}
               onChange={(event) => setBrandColor(event.target.value)}
@@ -130,7 +130,7 @@ export function MenuSettingsPage({ products, branding = fallbackBranding }: { pr
           </Field>
           <Field label="Accent color">
             <input
-              className="h-10 w-full rounded-material border border-outline bg-surface px-2"
+              className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-2"
               type="color"
               value={accentColor}
               onChange={(event) => setAccentColor(event.target.value)}
@@ -144,13 +144,13 @@ export function MenuSettingsPage({ products, branding = fallbackBranding }: { pr
         </div>
       </div>
 
-      <div className="grid gap-3 rounded-material border border-outline bg-surface p-4 shadow-sm md:grid-cols-[1fr_180px_140px_auto]">
+      <div className="grid gap-3 rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material md:grid-cols-[1fr_180px_140px_auto]">
         <Field label="Item name">
           <input {...textInputProps()} value={name} onChange={(event) => setName(event.target.value)} />
         </Field>
         <Field label="Category">
           <select
-            className="h-10 w-full rounded-material border border-outline bg-surface px-3 text-sm text-neutral-900"
+            className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-3 text-sm text-slate-100"
             value={category}
             onChange={(event) => setCategory(event.target.value as Exclude<ProductCategory, "CAFE">)}
           >
@@ -167,8 +167,8 @@ export function MenuSettingsPage({ products, branding = fallbackBranding }: { pr
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-material border border-outline bg-surface shadow-sm">
-        <div className="grid grid-cols-[1fr_130px_130px_180px] gap-3 border-b border-outline px-4 py-3 text-xs font-semibold uppercase text-neutral-500">
+      <div className="overflow-hidden rounded-material border border-lime-300/15 bg-slate-950/80 shadow-material">
+        <div className="grid grid-cols-[1fr_130px_130px_180px] gap-3 border-b border-lime-300/15 px-4 py-3 text-xs font-bold uppercase text-slate-400">
           <span>Item</span>
           <span>Category</span>
           <span>Price</span>
@@ -197,7 +197,7 @@ function ProductRow({
   const [price, setPrice] = useState(product.priceAmount);
 
   return (
-    <div className="grid grid-cols-[1fr_130px_130px_180px] items-center gap-3 border-b border-outline px-4 py-3 text-sm last:border-b-0">
+    <div className="grid grid-cols-[1fr_130px_130px_180px] items-center gap-3 border-b border-lime-300/10 px-4 py-3 text-sm text-slate-200 last:border-b-0">
       <strong>{product.name}</strong>
       <span>{categoryLabels[product.category]}</span>
       <input

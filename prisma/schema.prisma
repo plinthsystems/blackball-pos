@@ -246,6 +246,8 @@ model Session {
   plannedEndAt        DateTime
   actualEndAt         DateTime?
   pausedAt            DateTime?
+  ps5MemberCount      Int?
+  hourlyRateSnapshot  Decimal            @default(0) @db.Decimal(12, 2)
   billableSecondsSnapshot Int            @default(0)
   version             Int                @default(1)
   createdAt           DateTime           @default(now())

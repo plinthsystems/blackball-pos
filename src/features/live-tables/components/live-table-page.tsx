@@ -32,15 +32,15 @@ export function LiveTablePage({
         <StartCounterBillDialog />
       </div>
       <section className="grid gap-3 md:grid-cols-4" aria-label="Live floor summary">
-        <SummaryTile label="Active" value={activeCount} />
-        <SummaryTile label="Available" value={availableCount} />
-        <SummaryTile label="Counter bills" value={counterBills.length} />
-        <SummaryTile label="Stations" value={tables.length} />
+        <SummaryTile label="Active" value={activeCount} tone="lime" />
+        <SummaryTile label="Available" value={availableCount} tone="cyan" />
+        <SummaryTile label="Counter bills" value={counterBills.length} tone="amber" />
+        <SummaryTile label="Stations" value={tables.length} tone="slate" />
       </section>
       <StationSection title="Snooker & Pool" tables={tableStations} products={products} />
       <StationSection title="PS5" tables={ps5Stations} products={products} />
       {counterBills.length > 0 ? (
-        <section className="rounded-material border border-outline bg-surface p-4 shadow-sm">
+        <section className="rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material">
           <h2 className="text-lg font-semibold">Counter bills</h2>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {counterBills.map((bill) => (
@@ -53,20 +53,27 @@ export function LiveTablePage({
   );
 }
 
-function SummaryTile({ label, value }: { label: string; value: number }) {
+function SummaryTile({ label, value, tone }: { label: string; value: number; tone: "lime" | "cyan" | "amber" | "slate" }) {
+  const toneClass = {
+    lime: "text-lime-300",
+    cyan: "text-cyan-300",
+    amber: "text-amber-300",
+    slate: "text-slate-100"
+  }[tone];
+
   return (
-    <div className="rounded-material border border-outline bg-surface p-4 shadow-sm">
-      <p className="text-sm text-neutral-500">{label}</p>
-      <strong className="mt-1 block text-2xl">{value}</strong>
+    <div className="rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material">
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{label}</p>
+      <strong className={`mt-1 block font-mono text-3xl font-black ${toneClass}`}>{value}</strong>
     </div>
   );
 }
 
 function StationSection({ title, tables, products }: { title: string; tables: LiveTableCardData[]; products: ProductOption[] }) {
   return (
-    <section className="overflow-hidden rounded-material border border-outline bg-surface shadow-sm">
-      <div className="border-b border-outline px-4 py-3">
-        <h2 className="text-lg font-semibold">{title}</h2>
+    <section className="overflow-hidden rounded-material border border-lime-300/15 bg-slate-950/70 shadow-material">
+      <div className="border-b border-lime-300/15 px-4 py-3">
+        <h2 className="text-lg font-black uppercase tracking-normal text-white">{title}</h2>
       </div>
       <TableGrid tables={tables} products={products} />
     </section>
@@ -78,7 +85,7 @@ function CounterBillCard({ bill, products }: { bill: CounterBillData; products: 
   const [itemsOpen, setItemsOpen] = useState(false);
 
   return (
-    <div className="rounded-material border border-outline p-3">
+    <div className="rounded-material border border-slate-700 bg-slate-900/80 p-3 text-slate-100">
       <div className="flex justify-between gap-3">
         <strong>{bill.label}</strong>
         <strong>{formatMoney(bill.summary.grandTotal)}</strong>
@@ -92,7 +99,7 @@ function CounterBillCard({ bill, products }: { bill: CounterBillData; products: 
             </div>
           ))}
         </div>
-      ) : <p className="mt-2 text-sm text-neutral-500">No items yet</p>}
+      ) : <p className="mt-2 text-sm text-slate-400">No items yet</p>}
       <div className="mt-3 flex gap-2">
         <Button type="button" className="h-9 px-3" onClick={() => setItemsOpen(true)}>Add items</Button>
         <Button

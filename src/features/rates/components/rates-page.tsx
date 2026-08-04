@@ -22,10 +22,10 @@ export function RatesPage({ rates }: { rates: RateSetting[] }) {
   return (
     <section className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Hourly Rates</h1>
+        <h1 className="text-2xl font-black uppercase tracking-normal text-white">Hourly Rates</h1>
       </div>
-      <div className="overflow-hidden rounded-material border border-outline bg-surface shadow-sm">
-        <div className="grid gap-3 border-b border-outline px-4 py-3 text-xs font-semibold uppercase text-neutral-500 md:grid-cols-[1fr_180px_160px]">
+      <div className="overflow-hidden rounded-material border border-lime-300/15 bg-slate-950/80 shadow-material">
+        <div className="grid gap-3 border-b border-lime-300/15 px-4 py-3 text-xs font-bold uppercase text-slate-400 md:grid-cols-[1fr_180px_160px]">
           <span>Station type</span>
           <span>Hourly rate</span>
           <span>Actions</span>
@@ -51,10 +51,10 @@ function RateRow({
   const [hourlyRate, setHourlyRate] = useState(rate.hourlyRate);
 
   return (
-    <div className="grid gap-3 border-b border-outline px-4 py-3 text-sm last:border-b-0 md:grid-cols-[1fr_180px_160px] md:items-center">
+    <div className="grid gap-3 border-b border-lime-300/10 px-4 py-3 text-sm text-slate-200 last:border-b-0 md:grid-cols-[1fr_180px_160px] md:items-center">
       <div>
         <strong>{rate.label}</strong>
-        <p className="text-xs text-neutral-500">{formatMoney(rate.hourlyRate)}/hr current</p>
+        <p className="text-xs text-slate-400">{formatMoney(rate.hourlyRate)}/hr current</p>
       </div>
       <input
         {...textInputProps()}

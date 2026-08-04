@@ -53,12 +53,37 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
     const context = await getCurrentEmployeeContext();
     requirePermission(context, "sessions.start");
     const parsed = startWalkInSessionSchema.parse(input);
+    const table = await prisma.clubTable.findFirst({
+      where: { id: parsed.tableId, businessId: context.businessId },
+      select: { gameType: true, pricingGroup: true }
+    });
+    if (!table) {
+      throw new DomainError("TABLE_NOT_AVAILABLE", "This table is not available for a new session.");
+    }
+    const ps5MemberCount = table.gameType === "PS5" ? parsed.ps5MemberCount ?? 1 : null;
+    const pricingGroup = table.gameType === "PS5" ? ps5PricingGroup(ps5MemberCount ?? 1) : table.pricingGroup;
+    const pricing = await prisma.tablePricing.findUnique({
+      where: {
+        businessId_gameType_pricingGroup_durationMinutes: {
+          businessId: context.businessId,
+          gameType: table.gameType,
+          pricingGroup,
+          durationMinutes: 60
+        }
+      },
+      select: { priceAmount: true }
+    });
+    if (!pricing) {
+      throw new DomainError("PRICING_NOT_FOUND", "Hourly rate was not found for this station.");
+    }
 
     const session = await services().sessions.startWalkInSession({
       businessId: context.businessId,
       employeeId: context.employeeId,
       tableId: parsed.tableId,
       durationMinutes: parsed.durationMinutes,
+      ps5MemberCount,
+      hourlyRateSnapshot: Number(pricing.priceAmount),
       assignedEmployeeId: parsed.assignedEmployeeId ?? context.employeeId,
       now: new Date()
     });
@@ -115,7 +140,7 @@ export async function endSessionAction(input: unknown): Promise<ActionResult> {
       });
 
       const closedTotal = openBill
-        ? await closeBill(tx, context.businessId, openBill, session.table.gameType, session.table.pricingGroup, now)
+        ? await closeBill(tx, openBill, Number(session.hourlyRateSnapshot), now)
         : 0;
       return closedTotal;
     });
@@ -231,14 +256,14 @@ export async function closeBillAndContinueSessionAction(input: unknown): Promise
     await prisma.$transaction(async (tx) => {
       const session = await tx.session.findFirst({
         where: { id: parsed.sessionId, businessId: context.businessId, status: { in: ["ACTIVE", "PAUSED"] } },
-        include: { table: true, bills: { where: { status: "OPEN" }, orderBy: { openedAt: "desc" }, include: { items: true }, take: 1 } }
+        include: { bills: { where: { status: "OPEN" }, orderBy: { openedAt: "desc" }, include: { items: true }, take: 1 } }
       });
       const openBill = session?.bills[0];
       if (!session || !openBill) {
         throw new DomainError("SESSION_NOT_ACTIVE", "Open session bill was not found.");
       }
 
-      await closeBill(tx, context.businessId, openBill, session.table.gameType, session.table.pricingGroup, now);
+      await closeBill(tx, openBill, Number(session.hourlyRateSnapshot), now);
       const billCount = await tx.bill.count({ where: { businessId: context.businessId, sessionId: session.id } });
       await tx.bill.create({
         data: {
@@ -325,32 +350,19 @@ export async function updateTableStatusAction(input: unknown): Promise<ActionRes
 
 async function closeBill(
   tx: Prisma.TransactionClient,
-  businessId: string,
   bill: {
     id: string;
     kind: "SESSION" | "COUNTER";
     openedAt: Date;
     items: Array<{ lineTotalAmount: unknown }>;
   },
-  gameType: "POOL" | "SNOOKER" | "PS5",
-  pricingGroup: string,
+  hourlyRate: number,
   closedAt: Date
 ) {
   const itemTotal = roundMoney(bill.items.reduce((total, item) => total + Number(item.lineTotalAmount), 0));
-  const pricing = await tx.tablePricing.findUnique({
-    where: {
-      businessId_gameType_pricingGroup_durationMinutes: {
-        businessId,
-        gameType,
-        pricingGroup,
-        durationMinutes: 60
-      }
-    },
-    select: { priceAmount: true }
-  });
   const tableAmount =
     bill.kind === "SESSION"
-      ? calculateBillSegmentTableAmount({ startedAt: bill.openedAt, endedAt: closedAt, hourlyRate: Number(pricing?.priceAmount ?? 0) })
+      ? calculateBillSegmentTableAmount({ startedAt: bill.openedAt, endedAt: closedAt, hourlyRate })
       : 0;
   const total = roundMoney(itemTotal + tableAmount);
   await tx.bill.update({
@@ -364,6 +376,10 @@ async function closeBill(
     }
   });
   return total;
+}
+
+function ps5PricingGroup(memberCount: number) {
+  return `players-${memberCount}`;
 }
 
 function roundMoney(amount: number) {

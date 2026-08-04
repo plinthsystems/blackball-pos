@@ -19,7 +19,10 @@ describe("session lifecycle integration", () => {
     ]);
     expect(pricing.map((rule) => `${rule.gameType}:${rule.pricingGroup}:${Number(rule.priceAmount)}`).sort()).toEqual([
       "POOL:standard:160",
-      "PS5:standard:200",
+      "PS5:players-1:100",
+      "PS5:players-2:150",
+      "PS5:players-3:200",
+      "PS5:players-4:250",
       "SNOOKER:mini:330",
       "SNOOKER:royal:350"
     ]);

@@ -46,6 +46,8 @@ describe("LiveTablePage", () => {
               startedAt: "2026-07-23T10:00:00.000Z",
               plannedEndAt: "2026-07-23T11:00:00.000Z",
               elapsedSeconds: 900,
+              ps5MemberCount: null,
+              hourlyRateSnapshot: 350,
               billEstimate: 450,
               billSummary: {
                 tableAmount: 450,
@@ -102,7 +104,9 @@ describe("LiveTablePage", () => {
     expect(screen.getByRole("button", { name: "End session for station S1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close bill and continue station S1" })).toBeInTheDocument();
     expect(screen.getByText(/Started/)).toBeInTheDocument();
-    expect(screen.getByText("Elapsed 15m 00s")).toBeInTheDocument();
+    expect(screen.getByText("15:00")).toBeInTheDocument();
+    expect(screen.getByText("Elapsed")).toBeInTheDocument();
+    expect(screen.getByText("Playing now")).toBeInTheDocument();
     expect(screen.getByText("Station")).toBeInTheDocument();
     expect(screen.getByText("Food")).toBeInTheDocument();
     expect(screen.getByText("Cigarettes")).toBeInTheDocument();
@@ -112,6 +116,48 @@ describe("LiveTablePage", () => {
     expect(screen.getByText("Water Bottle x2")).toBeInTheDocument();
     expect(screen.getByText("Last total ₹120.00")).toBeInTheDocument();
     expect(screen.getAllByText("₹590.00").length).toBeGreaterThan(0);
+  });
+
+  it("renders PS5 member pricing in the gaming-style occupied card", () => {
+    render(
+      <LiveTablePage
+        counterBills={[]}
+        products={[]}
+        tables={[
+          {
+            id: "ps5_1",
+            number: "PS5 1",
+            gameType: "PS5",
+            status: "OCCUPIED",
+            hourlyRate: 250,
+            currentSession: {
+              id: "session_ps5",
+              status: "ACTIVE",
+              customerName: null,
+              startedAt: "2026-07-23T10:00:00.000Z",
+              plannedEndAt: "2026-07-23T11:00:00.000Z",
+              elapsedSeconds: 1500,
+              ps5MemberCount: 4,
+              hourlyRateSnapshot: 250,
+              billEstimate: 104.17,
+              billSummary: {
+                tableAmount: 104.17,
+                categoryTotals: { FOOD: 0, CIGARETTES: 0, BEVERAGES: 0 },
+                itemTotal: 0,
+                grandTotal: 104.17
+              },
+              currentBill: null,
+              assignedStaffName: "Aarav Manager"
+            },
+            recentBill: null
+          }
+        ]}
+      />
+    );
+
+    expect(screen.getByText("4 members · ₹250.00/hr")).toBeInTheDocument();
+    expect(screen.getByText("25:00")).toBeInTheDocument();
+    expect(screen.getByText("Live total")).toBeInTheDocument();
   });
 
   it("shows only useful table summary counts", () => {

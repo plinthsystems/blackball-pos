@@ -40,6 +40,11 @@ describe("Prisma schema", () => {
     expect(schema).toMatch(/model Employee[\s\S]*@@unique\(\[businessId, email\]\)/);
   });
 
+  it("stores session billing snapshots for member-based PS5 pricing", () => {
+    expect(schema).toMatch(/model Session[\s\S]*ps5MemberCount\s+Int\?/);
+    expect(schema).toMatch(/model Session[\s\S]*hourlyRateSnapshot\s+Decimal\s+@default\(0\)\s+@db\.Decimal\(12, 2\)/);
+  });
+
   it("keeps mutable operational records versioned", () => {
     expect(schema).toMatch(/model ClubTable[\s\S]*version\s+Int\s+@default\(1\)/);
     expect(schema).toMatch(/model Session[\s\S]*version\s+Int\s+@default\(1\)/);

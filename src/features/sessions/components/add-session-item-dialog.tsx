@@ -57,12 +57,12 @@ export function AddSessionItemDialog({
     <>
       <Dialog open={open} title={`Add items to ${tableNumber}`} onOpenChange={onOpenChange}>
         {products.length === 0 ? (
-          <p className="text-sm text-neutral-600">No menu products are active yet.</p>
+          <p className="text-sm text-slate-400">No menu products are active yet.</p>
         ) : (
           <div className="space-y-4">
             <Field label="Item">
               <select
-                className="h-10 w-full rounded-material border border-outline bg-surface px-3 text-sm text-neutral-900"
+                className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-3 text-sm text-slate-100"
                 value={productId}
                 onChange={(event) => setProductId(event.target.value)}
               >
@@ -94,8 +94,8 @@ export function AddSessionItemDialog({
                 onChange={(event) => setQuantity(Number(event.target.value))}
               />
             </Field>
-            <div className="flex items-center justify-between rounded-material border border-outline px-3 py-2 text-sm">
-              <span className="text-neutral-600">Line total</span>
+            <div className="flex items-center justify-between rounded-material border border-lime-300/20 bg-slate-900 px-3 py-2 text-sm">
+              <span className="text-slate-400">Line total</span>
               <strong>{formatMoney(previewTotal)}</strong>
             </div>
             <div className="flex justify-end gap-2">
