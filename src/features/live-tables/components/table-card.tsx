@@ -65,7 +65,7 @@ export function TableCard({ table, products }: { table: LiveTableCardData; produ
           <h2 className="text-lg font-semibold">{table.number}</h2>
           <p className="text-sm text-neutral-500">{stationRateLabel}</p>
         </div>
-        <Badge tone={statusTone[table.status]}>Status: {statusLabel[table.status]}</Badge>
+        <Badge tone={statusTone[table.status]}>{statusLabel[table.status]}</Badge>
       </div>
       <div className="mt-4 min-h-24 text-sm text-neutral-700">
         {session ? (
@@ -109,7 +109,6 @@ export function TableCard({ table, products }: { table: LiveTableCardData; produ
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-neutral-500">No active session</p>
             {table.recentBill ? <p className="font-medium text-neutral-800">Last total {formatMoney(table.recentBill.summary.grandTotal)}</p> : null}
           </div>
         )}

@@ -10,20 +10,19 @@ const navItems = [
 
 export function AdminShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-background text-neutral-900">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-outline bg-surface lg:block">
-        <div className="border-b border-outline px-5 py-4">
-          <p className="text-sm font-semibold">Pool & Snooker Cafe</p>
-          <p className="text-xs text-neutral-500">Operations</p>
+    <div className="min-h-screen bg-background text-charcoal">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-emerald-950/20 bg-charcoal text-white lg:block">
+        <div className="border-b border-white/10 px-5 py-4">
+          <BrandMark />
         </div>
         <nav className="p-3" aria-label="Admin navigation">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="flex h-10 items-center gap-3 rounded-material px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+              className="flex h-10 items-center gap-3 rounded-material px-3 text-sm font-medium text-neutral-200 hover:bg-white/10 hover:text-white"
             >
-              <span className="material-symbols-outlined text-[20px]" aria-hidden="true">
+              <span className="material-symbols-outlined text-[20px] text-brass" aria-hidden="true">
                 {item.icon}
               </span>
               {item.label}
@@ -32,16 +31,27 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </nav>
       </aside>
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 border-b border-outline bg-surface px-4 py-3 lg:px-6">
+        <header className="sticky top-0 z-20 border-b border-outline bg-surface/95 px-4 py-3 lg:px-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold">Pool & Snooker Cafe</p>
-              <p className="text-xs text-neutral-500">Dashboard, live floor, rates, and Food/Menu</p>
-            </div>
+            <BrandMark compact />
             <div className="text-sm text-neutral-600">Manager</div>
           </div>
         </header>
         <main className="px-4 py-5 lg:px-6">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+function BrandMark({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-brass/40 bg-felt text-sm font-bold text-white shadow-sm">
+        BB
+      </div>
+      <div>
+        <p className={compact ? "text-sm font-semibold text-charcoal" : "text-sm font-semibold text-white"}>BlackBall POS</p>
+        {!compact ? <p className="text-xs text-neutral-300">Pool & Snooker Cafe</p> : null}
       </div>
     </div>
   );

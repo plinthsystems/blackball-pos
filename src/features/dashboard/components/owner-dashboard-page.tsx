@@ -15,7 +15,6 @@ export function OwnerDashboardPage({ data }: { data: OwnerDashboardData }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Owner Dashboard</h1>
-          <p className="mt-1 text-sm text-neutral-600">Today&apos;s revenue and station utilization.</p>
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
@@ -29,7 +28,10 @@ export function OwnerDashboardPage({ data }: { data: OwnerDashboardData }) {
           <div className="mt-3 space-y-2">
             {revenueRows.map((row) => (
               <div key={row.label} className="flex justify-between gap-3 border-b border-outline py-2 last:border-b-0">
-                <span>{row.label}</span>
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-brass" aria-hidden="true" />
+                  {row.label}
+                </span>
                 <strong>{formatMoney(row.value)}</strong>
               </div>
             ))}

@@ -20,6 +20,8 @@ describe("RatesPage", () => {
     expect(screen.getByText("Mini Snooker")).toBeInTheDocument();
     expect(screen.getByText("Pool")).toBeInTheDocument();
     expect(screen.getByText("PS5")).toBeInTheDocument();
+    expect(screen.queryByText("Rate for Royal Snooker")).not.toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "Rate for Royal Snooker" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Update rate" })).toHaveLength(4);
   });
 });

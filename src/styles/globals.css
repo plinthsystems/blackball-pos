@@ -4,12 +4,12 @@
 
 :root {
   color-scheme: light;
-  --app-background: #f8fafd;
+  --app-background: #f4f6f2;
   --app-surface: #ffffff;
-  --app-text: #202124;
-  --app-muted: #5f6368;
-  --app-outline: #dadce0;
-  --app-primary: #1a73e8;
+  --app-text: #17211c;
+  --app-muted: #5d665f;
+  --app-outline: #d8ded6;
+  --app-primary: #12613d;
 }
 
 html {

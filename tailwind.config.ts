@@ -5,13 +5,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: "#1a73e8",
+        primary: "#12613d",
         surface: "#ffffff",
-        background: "#f8fafd",
-        outline: "#dadce0",
-        success: "#188038",
-        warning: "#f9ab00",
-        danger: "#d93025"
+        background: "#f4f6f2",
+        outline: "#d8ded6",
+        success: "#12613d",
+        warning: "#b98922",
+        danger: "#b42318",
+        brass: "#b98922",
+        charcoal: "#17211c",
+        felt: "#12613d"
       },
       borderRadius: {
         material: "8px"

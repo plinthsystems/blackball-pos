@@ -92,6 +92,8 @@ describe("LiveTablePage", () => {
     expect(screen.getByText("P1")).toBeInTheDocument();
     expect(screen.getByText("S1")).toBeInTheDocument();
     expect(screen.getByText("PS5 1")).toBeInTheDocument();
+    expect(screen.queryByText(/Status:/)).not.toBeInTheDocument();
+    expect(screen.queryByText("No active session")).not.toBeInTheDocument();
     expect(screen.getByText(/₹200\.00\/hr/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start session for station P1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start session for station PS5 1" })).toBeInTheDocument();

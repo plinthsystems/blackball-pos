@@ -32,9 +32,9 @@ export function LiveTablePage({
         <StartCounterBillDialog />
       </div>
       <section className="grid gap-3 md:grid-cols-4" aria-label="Live floor summary">
-        <SummaryTile label="Active sessions" value={activeCount} />
-        <SummaryTile label="Available stations" value={availableCount} />
-        <SummaryTile label="Open counter bills" value={counterBills.length} />
+        <SummaryTile label="Active" value={activeCount} />
+        <SummaryTile label="Available" value={availableCount} />
+        <SummaryTile label="Counter bills" value={counterBills.length} />
         <SummaryTile label="Stations" value={tables.length} />
       </section>
       <StationSection title="Snooker & Pool" tables={tableStations} products={products} />
