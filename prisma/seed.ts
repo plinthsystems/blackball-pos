@@ -3,6 +3,7 @@ import { GameType, PrismaClient, ProductCategory } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const permissionKeys = [
+  "dashboard.read",
   "tables.read",
   "tables.update_status",
   "sessions.start",
@@ -13,7 +14,20 @@ const permissionKeys = [
   "sessions.add_items",
   "bills.manage",
   "products.manage",
+  "rates.manage",
   "settings.update"
+];
+
+const storeUserPermissionKeys = [
+  "tables.read",
+  "tables.update_status",
+  "sessions.start",
+  "sessions.pause",
+  "sessions.resume",
+  "sessions.extend",
+  "sessions.end",
+  "sessions.add_items",
+  "bills.manage"
 ];
 
 const desiredTables = [
@@ -41,21 +55,48 @@ async function main() {
   const business = await prisma.business.upsert({
     where: { id: "seed-business" },
     update: {
+      slug: "seed-business",
       name: "Pool & Snooker Cafe",
       phone: "+91 90000 00000",
       email: "operations@cueclub.example"
     },
     create: {
       id: "seed-business",
+      slug: "seed-business",
       name: "Pool & Snooker Cafe",
       phone: "+91 90000 00000",
       email: "operations@cueclub.example",
       settings: {
         create: {
+          appName: "Black Ball",
+          logoInitials: "BB",
+          brandColor: "#12613d",
+          accentColor: "#b98922",
           taxRateBasisPoints: 1800,
           bookingBufferMinutes: 10
         }
       }
+    }
+  });
+
+  await prisma.businessSettings.upsert({
+    where: { businessId: business.id },
+    update: {
+      appName: "Black Ball",
+      logoInitials: "BB",
+      brandColor: "#12613d",
+      accentColor: "#b98922",
+      taxRateBasisPoints: 1800,
+      bookingBufferMinutes: 10
+    },
+    create: {
+      businessId: business.id,
+      appName: "Black Ball",
+      logoInitials: "BB",
+      brandColor: "#12613d",
+      accentColor: "#b98922",
+      taxRateBasisPoints: 1800,
+      bookingBufferMinutes: 10
     }
   });
 
@@ -75,14 +116,33 @@ async function main() {
     create: { businessId: business.id, name: "Owner", description: "Full operational access" }
   });
 
+  const storeUserRole = await prisma.role.upsert({
+    where: { businessId_name: { businessId: business.id, name: "Store User" } },
+    update: {},
+    create: { businessId: business.id, name: "Store User", description: "Live floor and billing access" }
+  });
+
   const owner = await prisma.employee.upsert({
-    where: { email: "owner@cueclub.example" },
-    update: { businessId: business.id, name: "Cafe Manager", active: true },
+    where: { businessId_email: { businessId: business.id, email: "owner@cueclub.example" } },
+    update: { name: "Cafe Manager", accountType: "MANAGER", active: true },
     create: {
       businessId: business.id,
       name: "Cafe Manager",
       email: "owner@cueclub.example",
+      accountType: "MANAGER",
       roles: { create: { roleId: ownerRole.id } }
+    }
+  });
+
+  const storeUser = await prisma.employee.upsert({
+    where: { businessId_email: { businessId: business.id, email: "staff@cueclub.example" } },
+    update: { name: "Floor Staff", accountType: "STORE_USER", active: true },
+    create: {
+      businessId: business.id,
+      name: "Floor Staff",
+      email: "staff@cueclub.example",
+      accountType: "STORE_USER",
+      roles: { create: { roleId: storeUserRole.id } }
     }
   });
 
@@ -92,6 +152,12 @@ async function main() {
     create: { employeeId: owner.id, roleId: ownerRole.id }
   });
 
+  await prisma.employeeRole.upsert({
+    where: { employeeId_roleId: { employeeId: storeUser.id, roleId: storeUserRole.id } },
+    update: {},
+    create: { employeeId: storeUser.id, roleId: storeUserRole.id }
+  });
+
   const permissions = await prisma.permission.findMany({ where: { key: { in: permissionKeys } } });
   await Promise.all(
     permissions.map((permission) =>
@@ -99,6 +165,17 @@ async function main() {
         where: { roleId_permissionId: { roleId: ownerRole.id, permissionId: permission.id } },
         update: {},
         create: { roleId: ownerRole.id, permissionId: permission.id }
+      })
+    )
+  );
+
+  const storePermissions = await prisma.permission.findMany({ where: { key: { in: storeUserPermissionKeys } } });
+  await Promise.all(
+    storePermissions.map((permission) =>
+      prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: storeUserRole.id, permissionId: permission.id } },
+        update: {},
+        create: { roleId: storeUserRole.id, permissionId: permission.id }
       })
     )
   );

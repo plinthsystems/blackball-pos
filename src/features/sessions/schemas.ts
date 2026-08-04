@@ -54,6 +54,13 @@ export const rateFormSchema = z.object({
   hourlyRate: z.coerce.number().min(0).max(999999)
 });
 
+export const brandingFormSchema = z.object({
+  appName: z.string().trim().min(1).max(80),
+  logoInitials: z.string().trim().min(1).max(4).transform((value) => value.toUpperCase()),
+  brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/)
+});
+
 export const tableStatusSchema = z.object({
   tableId: z.string().min(1),
   status: z.literal("AVAILABLE")

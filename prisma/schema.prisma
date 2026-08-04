@@ -79,8 +79,14 @@ enum BillStatus {
   CANCELLED
 }
 
+enum AccountType {
+  STORE_USER
+  MANAGER
+}
+
 model Business {
   id           String             @id @default(cuid())
+  slug         String             @unique
   name         String
   phone        String?
   email        String?
@@ -106,6 +112,10 @@ model Business {
 model BusinessSettings {
   id                   String   @id @default(cuid())
   businessId           String   @unique
+  appName              String   @default("Black Ball")
+  logoInitials         String   @default("BB")
+  brandColor           String   @default("#12613d")
+  accentColor          String   @default("#b98922")
   gstNumber            String?
   taxRateBasisPoints   Int      @default(1800)
   bookingBufferMinutes Int      @default(10)
@@ -118,8 +128,9 @@ model Employee {
   id               String    @id @default(cuid())
   businessId       String
   name             String
-  email            String    @unique
+  email            String
   phone            String?
+  accountType      AccountType @default(STORE_USER)
   active           Boolean   @default(true)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
@@ -128,6 +139,8 @@ model Employee {
   assignedSessions Session[] @relation("AssignedEmployee")
   createdSessions  Session[] @relation("CreatedByEmployee")
   auditLogs        AuditLog[]
+
+  @@unique([businessId, email])
 }
 
 model Role {

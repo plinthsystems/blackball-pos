@@ -1,22 +1,54 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { AccountType, TenantBranding } from "@/server/auth/current-employee";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "monitoring" },
-  { href: "/live-tables", label: "Live Floor", icon: "grid_view" },
-  { href: "/settings", label: "Food/Menu", icon: "restaurant" },
-  { href: "/rates", label: "Rates", icon: "currency_rupee" }
+  { href: "/dashboard", label: "Dashboard", icon: "monitoring", permission: "dashboard.read" },
+  { href: "/live-tables", label: "Live Floor", icon: "grid_view", permission: "tables.read" },
+  { href: "/settings", label: "Food/Menu", icon: "restaurant", permission: "products.manage" },
+  { href: "/rates", label: "Rates", icon: "currency_rupee", permission: "rates.manage" }
 ];
 
-export function AdminShell({ children }: { children: ReactNode }) {
+type ShellAccount = {
+  name: string;
+  accountType: AccountType;
+  permissions: string[];
+};
+
+const fallbackBranding: TenantBranding = {
+  appName: "Black Ball",
+  logoInitials: "BB",
+  businessName: "Pool & Snooker Cafe",
+  brandColor: "#12613d",
+  accentColor: "#b98922"
+};
+
+const fallbackAccount: ShellAccount = {
+  name: "Manager",
+  accountType: "MANAGER",
+  permissions: ["dashboard.read", "tables.read", "products.manage", "rates.manage"]
+};
+
+export function AdminShell({
+  children,
+  tenantBranding = fallbackBranding,
+  account = fallbackAccount
+}: {
+  children: ReactNode;
+  tenantBranding?: TenantBranding;
+  account?: ShellAccount;
+}) {
+  const visibleNavItems = navItems.filter((item) => account.permissions.includes(item.permission));
+  const accountLabel = account.accountType === "MANAGER" ? account.name : "Store User";
+
   return (
     <div className="min-h-screen bg-background text-charcoal">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-emerald-950/20 bg-charcoal text-white lg:block">
         <div className="border-b border-white/10 px-5 py-4">
-          <BrandMark />
+          <BrandMark branding={tenantBranding} />
         </div>
         <nav className="p-3" aria-label="Admin navigation">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -33,8 +65,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <div className="lg:pl-64">
         <header className="sticky top-0 z-20 border-b border-outline bg-surface/95 px-4 py-3 lg:px-6">
           <div className="flex items-center justify-between">
-            <BrandMark compact />
-            <div className="text-sm text-neutral-600">Manager</div>
+            <BrandMark branding={tenantBranding} compact />
+            <div className="text-sm text-neutral-600">{accountLabel}</div>
           </div>
         </header>
         <main className="px-4 py-5 lg:px-6">{children}</main>
@@ -43,15 +75,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
   );
 }
 
-function BrandMark({ compact = false }: { compact?: boolean }) {
+function BrandMark({ branding, compact = false }: { branding: TenantBranding; compact?: boolean }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-brass/40 bg-felt text-sm font-bold text-white shadow-sm">
-        BB
+      <div
+        className="flex h-10 w-10 items-center justify-center rounded-full border text-sm font-bold text-white shadow-sm"
+        style={{ backgroundColor: branding.brandColor, borderColor: branding.accentColor }}
+      >
+        {branding.logoInitials}
       </div>
       <div>
-        <p className={compact ? "text-sm font-semibold text-charcoal" : "text-sm font-semibold text-white"}>BlackBall POS</p>
-        {!compact ? <p className="text-xs text-neutral-300">Pool & Snooker Cafe</p> : null}
+        <p className={compact ? "text-sm font-semibold text-charcoal" : "text-sm font-semibold text-white"}>{branding.appName}</p>
+        {!compact ? <p className="text-xs text-neutral-300">{branding.businessName}</p> : null}
       </div>
     </div>
   );

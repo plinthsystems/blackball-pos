@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Field, textInputProps } from "@/components/ui/field";
 import { Snackbar } from "@/components/ui/snackbar";
 import { formatMoney } from "@/lib/money";
-import { createOrUpdateProductAction, deactivateProductAction } from "./actions";
+import { createOrUpdateProductAction, deactivateProductAction, updateBrandingAction } from "./actions";
 import type { ProductCategory } from "@/features/live-tables/types";
 
 export type SettingsProduct = {
@@ -14,6 +14,13 @@ export type SettingsProduct = {
   category: ProductCategory;
   priceAmount: number;
   active: boolean;
+};
+
+export type SettingsBranding = {
+  appName: string;
+  logoInitials: string;
+  brandColor: string;
+  accentColor: string;
 };
 
 const categoryLabels: Record<ProductCategory, string> = {
@@ -25,10 +32,21 @@ const categoryLabels: Record<ProductCategory, string> = {
 
 const editableCategories: Array<Exclude<ProductCategory, "CAFE">> = ["FOOD", "CIGARETTES", "BEVERAGES"];
 
-export function MenuSettingsPage({ products }: { products: SettingsProduct[] }) {
+const fallbackBranding: SettingsBranding = {
+  appName: "Black Ball",
+  logoInitials: "BB",
+  brandColor: "#12613d",
+  accentColor: "#b98922"
+};
+
+export function MenuSettingsPage({ products, branding = fallbackBranding }: { products: SettingsProduct[]; branding?: SettingsBranding }) {
   const [name, setName] = useState("");
   const [category, setCategory] = useState<Exclude<ProductCategory, "CAFE">>("FOOD");
   const [priceAmount, setPriceAmount] = useState(0);
+  const [appName, setAppName] = useState(branding.appName);
+  const [logoInitials, setLogoInitials] = useState(branding.logoInitials);
+  const [brandColor, setBrandColor] = useState(branding.brandColor);
+  const [accentColor, setAccentColor] = useState(branding.accentColor);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -62,11 +80,68 @@ export function MenuSettingsPage({ products }: { products: SettingsProduct[] }) 
     });
   }
 
+  function saveBranding() {
+    startTransition(async () => {
+      const result = await updateBrandingAction({ appName, logoInitials, brandColor, accentColor });
+      setMessage(result.message);
+    });
+  }
+
   return (
     <section className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Food/Menu</h1>
         <p className="mt-1 text-sm text-neutral-600">Manage Food, Cigarettes, and Beverages. Price changes affect only new bill items.</p>
+      </div>
+
+      <div className="space-y-4 rounded-material border border-outline bg-surface p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Branding</h2>
+            <p className="mt-1 text-sm text-neutral-600">Customize the tenant name, initials, and club colors.</p>
+          </div>
+          <div
+            className="flex h-12 w-12 items-center justify-center rounded-full border text-sm font-bold text-white"
+            style={{ backgroundColor: brandColor, borderColor: accentColor }}
+            aria-hidden="true"
+          >
+            {logoInitials || "BB"}
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-[1fr_110px_140px_140px_auto]">
+          <Field label="Application name">
+            <input {...textInputProps()} value={appName} onChange={(event) => setAppName(event.target.value)} />
+          </Field>
+          <Field label="Logo initials">
+            <input
+              {...textInputProps()}
+              value={logoInitials}
+              maxLength={4}
+              onChange={(event) => setLogoInitials(event.target.value.toUpperCase())}
+            />
+          </Field>
+          <Field label="Brand color">
+            <input
+              className="h-10 w-full rounded-material border border-outline bg-surface px-2"
+              type="color"
+              value={brandColor}
+              onChange={(event) => setBrandColor(event.target.value)}
+            />
+          </Field>
+          <Field label="Accent color">
+            <input
+              className="h-10 w-full rounded-material border border-outline bg-surface px-2"
+              type="color"
+              value={accentColor}
+              onChange={(event) => setAccentColor(event.target.value)}
+            />
+          </Field>
+          <div className="flex items-end">
+            <Button type="button" variant="primary" disabled={isPending || !appName.trim() || !logoInitials.trim()} onClick={saveBranding}>
+              Save branding
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-3 rounded-material border border-outline bg-surface p-4 shadow-sm md:grid-cols-[1fr_180px_140px_auto]">

@@ -11,7 +11,7 @@ type ActionResult = { ok: true; message: string } | { ok: false; message: string
 export async function updateHourlyRateAction(input: unknown): Promise<ActionResult> {
   try {
     const context = await getCurrentEmployeeContext();
-    requirePermission(context, "settings.update");
+    requirePermission(context, "rates.manage");
     const parsed = rateFormSchema.parse(input);
     await prisma.tablePricing.update({
       where: { id: parsed.id, businessId: context.businessId },
