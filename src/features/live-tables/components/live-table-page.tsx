@@ -20,15 +20,25 @@ export function LiveTablePage({
   products: ProductOption[];
   counterBills: CounterBillData[];
 }) {
+  const tableStations = tables.filter((table) => table.gameType !== "PS5");
+  const ps5Stations = tables.filter((table) => table.gameType === "PS5");
+  const activeCount = tables.filter((table) => table.status === "OCCUPIED").length;
+  const availableCount = tables.filter((table) => table.status === "AVAILABLE").length;
+
   return (
-    <div className="space-y-4">
-      <section className="overflow-hidden rounded-material border border-outline bg-surface shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline px-4 py-3">
-          <TableBoardToolbar tables={tables} />
-          <StartCounterBillDialog />
-        </div>
-        <TableGrid tables={tables} products={products} />
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <TableBoardToolbar tables={tables} />
+        <StartCounterBillDialog />
+      </div>
+      <section className="grid gap-3 md:grid-cols-4" aria-label="Live floor summary">
+        <SummaryTile label="Active sessions" value={activeCount} />
+        <SummaryTile label="Available stations" value={availableCount} />
+        <SummaryTile label="Open counter bills" value={counterBills.length} />
+        <SummaryTile label="Stations" value={tables.length} />
       </section>
+      <StationSection title="Snooker & Pool" tables={tableStations} products={products} />
+      <StationSection title="PS5" tables={ps5Stations} products={products} />
       {counterBills.length > 0 ? (
         <section className="rounded-material border border-outline bg-surface p-4 shadow-sm">
           <h2 className="text-lg font-semibold">Counter bills</h2>
@@ -40,6 +50,26 @@ export function LiveTablePage({
         </section>
       ) : null}
     </div>
+  );
+}
+
+function SummaryTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-material border border-outline bg-surface p-4 shadow-sm">
+      <p className="text-sm text-neutral-500">{label}</p>
+      <strong className="mt-1 block text-2xl">{value}</strong>
+    </div>
+  );
+}
+
+function StationSection({ title, tables, products }: { title: string; tables: LiveTableCardData[]; products: ProductOption[] }) {
+  return (
+    <section className="overflow-hidden rounded-material border border-outline bg-surface shadow-sm">
+      <div className="border-b border-outline px-4 py-3">
+        <h2 className="text-lg font-semibold">{title}</h2>
+      </div>
+      <TableGrid tables={tables} products={products} />
+    </section>
   );
 }
 

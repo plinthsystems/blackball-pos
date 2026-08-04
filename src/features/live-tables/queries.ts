@@ -59,6 +59,7 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
       number: table.number,
       gameType: table.gameType,
       status: table.status,
+      hourlyRate,
       currentSession: session
         ? {
             id: session.id,

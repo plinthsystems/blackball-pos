@@ -17,6 +17,7 @@ describe("LiveTablePage", () => {
             number: "P1",
             gameType: "POOL",
             status: "AVAILABLE",
+            hourlyRate: 160,
             currentSession: null,
             recentBill: {
               id: "bill_recent",
@@ -37,6 +38,7 @@ describe("LiveTablePage", () => {
             number: "S1",
             gameType: "SNOOKER",
             status: "OCCUPIED",
+            hourlyRate: 350,
             currentSession: {
               id: "session_1",
               status: "ACTIVE",
@@ -70,22 +72,36 @@ describe("LiveTablePage", () => {
               assignedStaffName: "Aarav Manager"
             },
             recentBill: null
+          },
+          {
+            id: "ps5_1",
+            number: "PS5 1",
+            gameType: "PS5",
+            status: "AVAILABLE",
+            hourlyRate: 200,
+            currentSession: null,
+            recentBill: null
           }
         ]}
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Live Tables" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Live Floor" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Snooker & Pool" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "PS5" })).toBeInTheDocument();
     expect(screen.getByText("P1")).toBeInTheDocument();
     expect(screen.getByText("S1")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start session for table P1" })).toBeInTheDocument();
+    expect(screen.getByText("PS5 1")).toBeInTheDocument();
+    expect(screen.getByText(/₹200\.00\/hr/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start session for station P1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start session for station PS5 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start counter bill" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add items for table S1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "End session for table S1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Close bill and continue table S1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add items for station S1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "End session for station S1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close bill and continue station S1" })).toBeInTheDocument();
     expect(screen.getByText(/Started/)).toBeInTheDocument();
     expect(screen.getByText("Elapsed 15m 00s")).toBeInTheDocument();
-    expect(screen.getByText("Table")).toBeInTheDocument();
+    expect(screen.getByText("Station")).toBeInTheDocument();
     expect(screen.getByText("Food")).toBeInTheDocument();
     expect(screen.getByText("Cigarettes")).toBeInTheDocument();
     expect(screen.getByText("Beverages")).toBeInTheDocument();
@@ -102,11 +118,11 @@ describe("LiveTablePage", () => {
         counterBills={[]}
         products={[]}
         tables={[
-          { id: "1", number: "P1", gameType: "POOL", status: "AVAILABLE", currentSession: null, recentBill: null },
-          { id: "2", number: "P2", gameType: "POOL", status: "RESERVED", currentSession: null, recentBill: null },
-          { id: "3", number: "S1", gameType: "SNOOKER", status: "OCCUPIED", currentSession: null, recentBill: null },
-          { id: "4", number: "S2", gameType: "SNOOKER", status: "CLEANING", currentSession: null, recentBill: null },
-          { id: "5", number: "S3", gameType: "SNOOKER", status: "MAINTENANCE", currentSession: null, recentBill: null }
+          { id: "1", number: "P1", gameType: "POOL", status: "AVAILABLE", hourlyRate: 160, currentSession: null, recentBill: null },
+          { id: "2", number: "P2", gameType: "POOL", status: "RESERVED", hourlyRate: 160, currentSession: null, recentBill: null },
+          { id: "3", number: "S1", gameType: "SNOOKER", status: "OCCUPIED", hourlyRate: 350, currentSession: null, recentBill: null },
+          { id: "4", number: "S2", gameType: "SNOOKER", status: "CLEANING", hourlyRate: 350, currentSession: null, recentBill: null },
+          { id: "5", number: "S3", gameType: "SNOOKER", status: "MAINTENANCE", hourlyRate: 350, currentSession: null, recentBill: null }
         ]}
       />
     );

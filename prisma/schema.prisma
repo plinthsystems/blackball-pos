@@ -10,6 +10,7 @@ datasource db {
 enum GameType {
   POOL
   SNOOKER
+  PS5
 }
 
 enum TableStatus {

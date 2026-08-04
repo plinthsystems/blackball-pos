@@ -49,6 +49,11 @@ export const productFormSchema = z.object({
   priceAmount: z.coerce.number().min(0).max(999999)
 });
 
+export const rateFormSchema = z.object({
+  id: z.string().min(1),
+  hourlyRate: z.coerce.number().min(0).max(999999)
+});
+
 export const tableStatusSchema = z.object({
   tableId: z.string().min(1),
   status: z.literal("AVAILABLE")

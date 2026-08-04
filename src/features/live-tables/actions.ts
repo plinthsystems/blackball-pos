@@ -332,7 +332,7 @@ async function closeBill(
     openedAt: Date;
     items: Array<{ lineTotalAmount: unknown }>;
   },
-  gameType: "POOL" | "SNOOKER",
+  gameType: "POOL" | "SNOOKER" | "PS5",
   pricingGroup: string,
   closedAt: Date
 ) {

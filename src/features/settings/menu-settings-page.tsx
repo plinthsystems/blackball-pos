@@ -65,7 +65,7 @@ export function MenuSettingsPage({ products }: { products: SettingsProduct[] }) 
   return (
     <section className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Menu Settings</h1>
+        <h1 className="text-2xl font-semibold">Food/Menu</h1>
         <p className="mt-1 text-sm text-neutral-600">Manage Food, Cigarettes, and Beverages. Price changes affect only new bill items.</p>
       </div>
 

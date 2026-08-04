@@ -13,7 +13,8 @@ describe("MenuSettingsPage", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Menu Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Food/Menu" })).toBeInTheDocument();
+    expect(screen.getByText("Manage Food, Cigarettes, and Beverages. Price changes affect only new bill items.")).toBeInTheDocument();
     expect(screen.getByText("Water Bottle")).toBeInTheDocument();
     expect(screen.getAllByText("Food").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Add item" })).toBeInTheDocument();

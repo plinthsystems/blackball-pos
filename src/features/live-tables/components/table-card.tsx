@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 import { formatClockTime } from "@/lib/time";
-import type { LiveTableCardData, LiveTableStatus, ProductCategory, ProductOption } from "../types";
+import type { LiveTableCardData, LiveTableGameType, LiveTableStatus, ProductCategory, ProductOption } from "../types";
 import { TableStatusMenu } from "./table-status-menu";
 import { StartWalkInDialog } from "@/features/sessions/components/start-walk-in-dialog";
 import { ExtendSessionDialog } from "@/features/sessions/components/extend-session-dialog";
@@ -42,6 +42,12 @@ const billCategoryLabels: Record<ProductCategory, string> = {
 
 const billCategories: Array<"FOOD" | "CIGARETTES" | "BEVERAGES"> = ["FOOD", "CIGARETTES", "BEVERAGES"];
 
+const gameTypeLabel: Record<LiveTableGameType, string> = {
+  POOL: "Pool",
+  SNOOKER: "Snooker",
+  PS5: "PS5"
+};
+
 export function TableCard({ table, products }: { table: LiveTableCardData; products: ProductOption[] }) {
   const router = useRouter();
   const [startOpen, setStartOpen] = useState(false);
@@ -50,13 +56,14 @@ export function TableCard({ table, products }: { table: LiveTableCardData; produ
   const [endOpen, setEndOpen] = useState(false);
   const session = table.status === "OCCUPIED" ? table.currentSession : null;
   const bill = session?.currentBill ?? null;
+  const stationRateLabel = `${gameTypeLabel[table.gameType]} · ${formatMoney(table.hourlyRate)}/hr`;
 
   return (
     <article className={`rounded-material border p-4 shadow-sm ${session ? "border-primary/30 bg-blue-50/40" : "border-outline bg-surface"}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">{table.number}</h2>
-          <p className="text-sm text-neutral-500">{table.gameType === "POOL" ? "Pool" : "Snooker"}</p>
+          <p className="text-sm text-neutral-500">{stationRateLabel}</p>
         </div>
         <Badge tone={statusTone[table.status]}>Status: {statusLabel[table.status]}</Badge>
       </div>
@@ -73,7 +80,7 @@ export function TableCard({ table, products }: { table: LiveTableCardData; produ
                 <strong>{formatMoney(session.billSummary.grandTotal)}</strong>
               </div>
               <div className="flex justify-between gap-3">
-                <span>Table</span>
+                <span>Station</span>
                 <strong>{formatMoney(session.billSummary.tableAmount)}</strong>
               </div>
               {billCategories.map((category) => (
@@ -110,12 +117,12 @@ export function TableCard({ table, products }: { table: LiveTableCardData; produ
       <div className="mt-4 flex flex-wrap gap-2">
         {session ? (
           <>
-            <Button className="h-9 px-3" aria-label={`Add items for table ${table.number}`} onClick={() => setItemsOpen(true)}>
+            <Button className="h-9 px-3" aria-label={`Add items for station ${table.number}`} onClick={() => setItemsOpen(true)}>
               Add items
             </Button>
             <Button
               className="h-9 px-3"
-              aria-label={`Close bill and continue table ${table.number}`}
+              aria-label={`Close bill and continue station ${table.number}`}
               onClick={async () => {
                 await closeBillAndContinueSessionAction({ sessionId: session.id });
                 router.refresh();
@@ -123,13 +130,13 @@ export function TableCard({ table, products }: { table: LiveTableCardData; produ
             >
               Close bill
             </Button>
-            <Button variant="primary" className="h-9 px-3" aria-label={`End session for table ${table.number}`} onClick={() => setEndOpen(true)}>
+            <Button variant="primary" className="h-9 px-3" aria-label={`End session for station ${table.number}`} onClick={() => setEndOpen(true)}>
               End
             </Button>
             <Button className="h-9 px-3" onClick={() => setExtendOpen(true)}>Extend</Button>
           </>
         ) : table.status === "AVAILABLE" ? (
-          <Button variant="primary" className="h-9 px-3" aria-label={`Start session for table ${table.number}`} onClick={() => setStartOpen(true)}>
+          <Button variant="primary" className="h-9 px-3" aria-label={`Start session for station ${table.number}`} onClick={() => setStartOpen(true)}>
             Start
           </Button>
         ) : null}

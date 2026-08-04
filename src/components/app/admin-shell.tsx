@@ -2,8 +2,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 const navItems = [
-  { href: "/live-tables", label: "Live Tables", icon: "grid_view" },
-  { href: "/settings", label: "Settings", icon: "settings" }
+  { href: "/dashboard", label: "Dashboard", icon: "monitoring" },
+  { href: "/live-tables", label: "Live Floor", icon: "grid_view" },
+  { href: "/settings", label: "Food/Menu", icon: "restaurant" },
+  { href: "/rates", label: "Rates", icon: "currency_rupee" }
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
@@ -34,7 +36,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold">Pool & Snooker Cafe</p>
-              <p className="text-xs text-neutral-500">Today&apos;s table operations</p>
+              <p className="text-xs text-neutral-500">Dashboard, live floor, rates, and Food/Menu</p>
             </div>
             <div className="text-sm text-neutral-600">Manager</div>
           </div>

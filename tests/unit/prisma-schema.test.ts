@@ -26,6 +26,10 @@ describe("Prisma schema", () => {
     expect(schema).toMatch(/model BillItem[\s\S]*lineTotalAmount\s+Decimal\s+@db\.Decimal\(12, 2\)/);
   });
 
+  it("models PS5 as a rentable station type", () => {
+    expect(schema).toMatch(/enum GameType\s+\{[\s\S]*POOL[\s\S]*SNOOKER[\s\S]*PS5[\s\S]*\}/);
+  });
+
   it("keeps mutable operational records versioned", () => {
     expect(schema).toMatch(/model ClubTable[\s\S]*version\s+Int\s+@default\(1\)/);
     expect(schema).toMatch(/model Session[\s\S]*version\s+Int\s+@default\(1\)/);
