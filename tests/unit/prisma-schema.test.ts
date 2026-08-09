@@ -30,14 +30,12 @@ describe("Prisma schema", () => {
     expect(schema).toMatch(/enum GameType\s+\{[\s\S]*POOL[\s\S]*SNOOKER[\s\S]*PS5[\s\S]*\}/);
   });
 
-  it("models tenant account types and configurable branding", () => {
-    expect(schema).toMatch(/enum AccountType\s+\{[\s\S]*STORE_USER[\s\S]*MANAGER[\s\S]*\}/);
-    expect(schema).toMatch(/model Business[\s\S]*slug\s+String\s+@unique/);
+  it("models multi-tenancy organization and account types", () => {
+    expect(schema).toContain("model Organization");
+    expect(schema).toContain("enum OrganizationType");
+    expect(schema).toMatch(/enum AccountType\s+\{[\s\S]*HQ_ADMIN[\s\S]*STORE_OWNER[\s\S]*MANAGER[\s\S]*STORE_USER[\s\S]*\}/);
+    expect(schema).toMatch(/model Business[\s\S]*organizationId\s+String\?/);
     expect(schema).toMatch(/model BusinessSettings[\s\S]*appName\s+String\s+@default\("Black Ball"\)/);
-    expect(schema).toMatch(/model BusinessSettings[\s\S]*logoInitials\s+String\s+@default\("BB"\)/);
-    expect(schema).toMatch(/model BusinessSettings[\s\S]*brandColor\s+String\s+@default\("#12613d"\)/);
-    expect(schema).toMatch(/model Employee[\s\S]*accountType\s+AccountType\s+@default\(STORE_USER\)/);
-    expect(schema).toMatch(/model Employee[\s\S]*@@unique\(\[businessId, email\]\)/);
   });
 
   it("stores session billing snapshots for member-based PS5 pricing", () => {

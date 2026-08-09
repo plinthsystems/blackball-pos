@@ -14,11 +14,13 @@ import { closeCounterBillAction } from "../actions";
 export function LiveTablePage({
   tables,
   products,
-  counterBills
+  counterBills,
+  isHqAdmin = false
 }: {
   tables: LiveTableCardData[];
   products: ProductOption[];
   counterBills: CounterBillData[];
+  isHqAdmin?: boolean;
 }) {
   const tableStations = tables.filter((table) => table.gameType !== "PS5");
   const ps5Stations = tables.filter((table) => table.gameType === "PS5");
@@ -27,9 +29,19 @@ export function LiveTablePage({
 
   return (
     <div className="space-y-5">
+      {isHqAdmin && (
+        <div className="rounded-material border border-amber-500/40 bg-amber-500/10 p-3 text-xs font-bold text-amber-300 flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px]">corporate_fare</span>
+            <span>👑 Read-Only HQ Executive Oversight View (Franchise HQ Directors can monitor live floor status across outlets).</span>
+          </div>
+          <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] uppercase">Read-Only</span>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <TableBoardToolbar tables={tables} />
-        <StartCounterBillDialog />
+        {!isHqAdmin && <StartCounterBillDialog />}
       </div>
       <section className="grid gap-3 md:grid-cols-4" aria-label="Live floor summary">
         <SummaryTile label="Active" value={activeCount} tone="lime" />
@@ -37,14 +49,14 @@ export function LiveTablePage({
         <SummaryTile label="Counter bills" value={counterBills.length} tone="amber" />
         <SummaryTile label="Stations" value={tables.length} tone="slate" />
       </section>
-      <StationSection title="Snooker & Pool" tables={tableStations} products={products} />
-      <StationSection title="PS5" tables={ps5Stations} products={products} />
+      <StationSection title="Snooker & Pool" tables={tableStations} products={products} isHqAdmin={isHqAdmin} />
+      <StationSection title="PS5" tables={ps5Stations} products={products} isHqAdmin={isHqAdmin} />
       {counterBills.length > 0 ? (
         <section className="rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material">
           <h2 className="text-lg font-semibold">Counter bills</h2>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {counterBills.map((bill) => (
-              <CounterBillCard key={bill.id} bill={bill} products={products} />
+              <CounterBillCard key={bill.id} bill={bill} products={products} isHqAdmin={isHqAdmin} />
             ))}
           </div>
         </section>
@@ -69,18 +81,18 @@ function SummaryTile({ label, value, tone }: { label: string; value: number; ton
   );
 }
 
-function StationSection({ title, tables, products }: { title: string; tables: LiveTableCardData[]; products: ProductOption[] }) {
+function StationSection({ title, tables, products, isHqAdmin }: { title: string; tables: LiveTableCardData[]; products: ProductOption[]; isHqAdmin?: boolean }) {
   return (
     <section className="overflow-hidden rounded-material border border-lime-300/15 bg-slate-950/70 shadow-material">
       <div className="border-b border-lime-300/15 px-4 py-3">
         <h2 className="text-lg font-black uppercase tracking-normal text-white">{title}</h2>
       </div>
-      <TableGrid tables={tables} products={products} />
+      <TableGrid tables={tables} products={products} isHqAdmin={isHqAdmin} />
     </section>
   );
 }
 
-function CounterBillCard({ bill, products }: { bill: CounterBillData; products: ProductOption[] }) {
+function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData; products: ProductOption[]; isHqAdmin?: boolean }) {
   const router = useRouter();
   const [itemsOpen, setItemsOpen] = useState(false);
 
@@ -100,20 +112,24 @@ function CounterBillCard({ bill, products }: { bill: CounterBillData; products: 
           ))}
         </div>
       ) : <p className="mt-2 text-sm text-slate-400">No items yet</p>}
-      <div className="mt-3 flex gap-2">
-        <Button type="button" className="h-9 px-3" onClick={() => setItemsOpen(true)}>Add items</Button>
-        <Button
-          type="button"
-          variant="primary"
-          className="h-9 px-3"
-          onClick={async () => {
-            await closeCounterBillAction({ billId: bill.id });
-            router.refresh();
-          }}
-        >
-          Close bill
-        </Button>
-      </div>
+      {!isHqAdmin ? (
+        <div className="mt-3 flex gap-2">
+          <Button type="button" className="h-9 px-3" onClick={() => setItemsOpen(true)}>Add items</Button>
+          <Button
+            type="button"
+            variant="primary"
+            className="h-9 px-3"
+            onClick={async () => {
+              await closeCounterBillAction({ billId: bill.id });
+              router.refresh();
+            }}
+          >
+            Close bill
+          </Button>
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-amber-300 font-semibold">Read-Only HQ Oversight Mode</p>
+      )}
       <AddSessionItemDialog billId={bill.id} tableNumber={bill.label} products={products} open={itemsOpen} onOpenChange={setItemsOpen} />
     </div>
   );

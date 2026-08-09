@@ -48,7 +48,7 @@ const gameTypeLabel: Record<LiveTableGameType, string> = {
   PS5: "PS5"
 };
 
-export function TableCard({ table, products }: { table: LiveTableCardData; products: ProductOption[] }) {
+export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCardData; products: ProductOption[]; isHqAdmin?: boolean }) {
   const router = useRouter();
   const [startOpen, setStartOpen] = useState(false);
   const [itemsOpen, setItemsOpen] = useState(false);
@@ -136,34 +136,41 @@ export function TableCard({ table, products }: { table: LiveTableCardData; produ
           </div>
         )}
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {session ? (
-          <>
-            <Button className="h-9 px-3" aria-label={`Add items for station ${table.number}`} onClick={() => setItemsOpen(true)}>
-              Add items
+      {!isHqAdmin ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {session ? (
+            <>
+              <Button className="h-9 px-3" aria-label={`Add items for station ${table.number}`} onClick={() => setItemsOpen(true)}>
+                Add items
+              </Button>
+              <Button
+                className="h-9 px-3"
+                aria-label={`Close bill and continue station ${table.number}`}
+                onClick={async () => {
+                  await closeBillAndContinueSessionAction({ sessionId: session.id });
+                  router.refresh();
+                }}
+              >
+                Close bill
+              </Button>
+              <Button variant="primary" className="h-9 px-3" aria-label={`End session for station ${table.number}`} onClick={() => setEndOpen(true)}>
+                End
+              </Button>
+              <Button className="h-9 px-3" onClick={() => setExtendOpen(true)}>Extend</Button>
+            </>
+          ) : table.status === "AVAILABLE" ? (
+            <Button variant="primary" className="h-9 px-3" aria-label={`Start session for station ${table.number}`} onClick={() => setStartOpen(true)}>
+              Start
             </Button>
-            <Button
-              className="h-9 px-3"
-              aria-label={`Close bill and continue station ${table.number}`}
-              onClick={async () => {
-                await closeBillAndContinueSessionAction({ sessionId: session.id });
-                router.refresh();
-              }}
-            >
-              Close bill
-            </Button>
-            <Button variant="primary" className="h-9 px-3" aria-label={`End session for station ${table.number}`} onClick={() => setEndOpen(true)}>
-              End
-            </Button>
-            <Button className="h-9 px-3" onClick={() => setExtendOpen(true)}>Extend</Button>
-          </>
-        ) : table.status === "AVAILABLE" ? (
-          <Button variant="primary" className="h-9 px-3" aria-label={`Start session for station ${table.number}`} onClick={() => setStartOpen(true)}>
-            Start
-          </Button>
-        ) : null}
-        <TableStatusMenu table={table} />
-      </div>
+          ) : null}
+          <TableStatusMenu table={table} />
+        </div>
+      ) : (
+        <div className="mt-4 pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-amber-300 font-semibold">
+          <span>👑 Read-Only HQ Oversight</span>
+          <span className="text-[10px] text-slate-400 font-normal">Counter actions disabled for HQ</span>
+        </div>
+      )}
       <StartWalkInDialog
         tableId={table.id}
         tableNumber={table.number}

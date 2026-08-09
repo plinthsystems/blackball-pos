@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { AccountType, TenantBranding } from "@/server/auth/current-employee";
+import type { AccountType, OrganizationContext, TenantBranding } from "@/server/auth/current-employee";
+import { StoreSwitcher } from "./store-switcher";
 
 const navItems = [
+  { href: "/hq/dashboard", label: "Franchise HQ", icon: "corporate_fare", permission: "hq.dashboard.read" },
   { href: "/dashboard", label: "Dashboard", icon: "monitoring", permission: "dashboard.read" },
   { href: "/live-tables", label: "Live Floor", icon: "grid_view", permission: "tables.read" },
   { href: "/settings", label: "Food/Menu", icon: "restaurant", permission: "products.manage" },
@@ -11,6 +15,7 @@ const navItems = [
 
 type ShellAccount = {
   name: string;
+  email?: string;
   accountType: AccountType;
   permissions: string[];
 };
@@ -25,6 +30,7 @@ const fallbackBranding: TenantBranding = {
 
 const fallbackAccount: ShellAccount = {
   name: "Manager",
+  email: "manager@example.com",
   accountType: "MANAGER",
   permissions: ["dashboard.read", "tables.read", "products.manage", "rates.manage"]
 };
@@ -32,14 +38,24 @@ const fallbackAccount: ShellAccount = {
 export function AdminShell({
   children,
   tenantBranding = fallbackBranding,
-  account = fallbackAccount
+  account = fallbackAccount,
+  businessId = "seed-business",
+  organization
 }: {
   children: ReactNode;
   tenantBranding?: TenantBranding;
   account?: ShellAccount;
+  businessId?: string;
+  organization?: OrganizationContext;
 }) {
   const visibleNavItems = navItems.filter((item) => account.permissions.includes(item.permission));
-  const accountLabel = account.accountType === "MANAGER" ? account.name : "Store User";
+  const accountLabelMap: Record<AccountType, string> = {
+    HQ_ADMIN: "Franchise HQ Director",
+    STORE_OWNER: "Store Owner",
+    MANAGER: "Store Manager",
+    STORE_USER: "Store User"
+  };
+  const accountLabel = accountLabelMap[account.accountType] ?? "Store User";
 
   return (
     <div className="min-h-screen bg-background text-charcoal">
@@ -66,7 +82,30 @@ export function AdminShell({
         <header className="sticky top-0 z-20 border-b border-lime-300/15 bg-slate-950/85 px-4 py-3 backdrop-blur lg:px-6">
           <div className="flex items-center justify-between">
             <BrandMark branding={tenantBranding} compact />
-            <div className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase text-cyan-100">{accountLabel}</div>
+            <div className="flex items-center gap-3">
+              {organization && organization.businesses.length > 0 && (
+                <StoreSwitcher
+                  currentBusinessId={businessId}
+                  organizationName={organization.name}
+                  organizationType={organization.type}
+                  stores={organization.businesses}
+                />
+              )}
+              <div className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase text-cyan-100">
+                {accountLabel}
+              </div>
+              <button
+                onClick={async () => {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                  window.location.href = "/login";
+                }}
+                title="Sign Out"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-300 hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-300 transition"
+              >
+                <span className="material-symbols-outlined text-[16px]">logout</span>
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            </div>
           </div>
         </header>
         <main className="px-4 py-5 lg:px-6">{children}</main>

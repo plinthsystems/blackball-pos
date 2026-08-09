@@ -36,15 +36,17 @@ describe("buildCurrentEmployeeContext", () => {
       businessId: "business_1",
       employeeId: "emp_1",
       employeeName: "Ravi Manager",
+      employeeEmail: "ravi@example.com",
       accountType: "MANAGER",
-      permissions: ["tables.read", "rates.manage"],
+      permissions: ["tables.read", "rates.manage", "dashboard.read", "products.manage", "settings.update"],
       tenantBranding: {
         appName: "Cue City POS",
         logoInitials: "CC",
         businessName: "Cue City Sports",
         brandColor: "#14532d",
         accentColor: "#b98922"
-      }
+      },
+      organization: undefined
     });
   });
 });
