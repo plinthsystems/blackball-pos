@@ -18,6 +18,8 @@ export type SessionRecord = {
   status: SessionStatus;
   startedAt: Date;
   plannedEndAt: Date;
+  ps5MemberCount: number | null;
+  hourlyRateSnapshot: number;
 };
 
 export type ConflictRecord = {

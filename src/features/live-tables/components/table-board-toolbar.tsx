@@ -23,16 +23,16 @@ export function TableBoardToolbar({ tables }: { tables: LiveTableCardData[] }) {
   );
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline bg-surface px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold">Live Tables</h1>
-        <p className="text-sm text-neutral-500">Real-time operational view for staff</p>
+        <h1 className="text-2xl font-black uppercase tracking-normal text-white">Live Floor</h1>
+        <p className="text-sm font-semibold text-lime-100/60">Real-time operational view for staff</p>
       </div>
       <div className="flex flex-wrap gap-2" aria-label="Table status counts">
         {visibleSummaryStatuses.map((status) => (
-          <span key={status} className="inline-flex gap-1 rounded-full border border-outline px-3 py-1 text-xs text-neutral-700">
+          <span key={status} className="inline-flex gap-1 rounded-full border border-lime-300/20 bg-slate-950/80 px-3 py-1 text-xs font-bold text-slate-200">
             <span>{labels[status]}</span>
-            <strong>{counts[status]}</strong>
+            <strong className="text-lime-300">{counts[status]}</strong>
           </span>
         ))}
       </div>

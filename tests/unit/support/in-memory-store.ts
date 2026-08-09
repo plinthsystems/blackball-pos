@@ -25,7 +25,9 @@ export function createStore(): InMemoryStore {
         tableId: "table_occupied",
         status: "ACTIVE",
         startedAt: new Date("2026-07-23T10:00:00.000Z"),
-        plannedEndAt: new Date("2026-07-23T11:00:00.000Z")
+        plannedEndAt: new Date("2026-07-23T11:00:00.000Z"),
+        ps5MemberCount: null,
+        hourlyRateSnapshot: 350
       }
     ]
   ]);
@@ -82,7 +84,14 @@ export function createHarnessRepositories(store: InMemoryStore) {
       }
     },
     sessions: {
-      async createWalkInSession(input: { tableId: string; businessId: string; startedAt: Date; plannedEndAt: Date }) {
+      async createWalkInSession(input: {
+        tableId: string;
+        businessId: string;
+        startedAt: Date;
+        plannedEndAt: Date;
+        ps5MemberCount?: number | null;
+        hourlyRateSnapshot: number;
+      }) {
         const sessionId = `session_${store.sessions.size + 1}`;
         store.sessions.set(sessionId, {
           id: sessionId,
@@ -90,7 +99,9 @@ export function createHarnessRepositories(store: InMemoryStore) {
           tableId: input.tableId,
           status: "ACTIVE" as SessionStatus,
           startedAt: input.startedAt,
-          plannedEndAt: input.plannedEndAt
+          plannedEndAt: input.plannedEndAt,
+          ps5MemberCount: input.ps5MemberCount ?? null,
+          hourlyRateSnapshot: input.hourlyRateSnapshot
         });
         return { sessionId };
       },

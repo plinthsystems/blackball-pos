@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/server/db/prisma";
 import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
 import { requirePermission } from "@/server/auth/permissions";
-import { productFormSchema } from "@/features/sessions/schemas";
+import { brandingFormSchema, productFormSchema } from "@/features/sessions/schemas";
 
 type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 
@@ -61,5 +61,28 @@ export async function deactivateProductAction(input: unknown): Promise<ActionRes
     return { ok: true, message: "Item removed from list." };
   } catch {
     return { ok: false, message: "Menu item could not be removed." };
+  }
+}
+
+export async function updateBrandingAction(input: unknown): Promise<ActionResult> {
+  try {
+    const context = await getCurrentEmployeeContext();
+    requirePermission(context, "settings.update");
+    const parsed = brandingFormSchema.parse(input);
+
+    await prisma.businessSettings.upsert({
+      where: { businessId: context.businessId },
+      update: parsed,
+      create: {
+        businessId: context.businessId,
+        ...parsed
+      }
+    });
+
+    revalidatePath("/", "layout");
+    revalidatePath("/settings");
+    return { ok: true, message: "Branding updated." };
+  } catch {
+    return { ok: false, message: "Branding could not be saved." };
   }
 }

@@ -45,12 +45,19 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
   const hourlyRateByTableType = new Map(
     pricingRules.map((rule) => [`${rule.gameType}:${rule.pricingGroup}`, Number(rule.priceAmount)])
   );
+  const ps5MemberRates = {
+    1: hourlyRateByTableType.get("PS5:players-1") ?? 100,
+    2: hourlyRateByTableType.get("PS5:players-2") ?? 150,
+    3: hourlyRateByTableType.get("PS5:players-3") ?? 200,
+    4: hourlyRateByTableType.get("PS5:players-4") ?? 250
+  } satisfies Record<1 | 2 | 3 | 4, number>;
   const now = new Date();
 
   return tables.map((table) => {
     const session = table.sessions[0];
     const elapsedSeconds = session ? calculateBillableSeconds({ startedAt: session.startedAt, endedAt: now, pauses: [] }) : 0;
-    const hourlyRate = hourlyRateByTableType.get(`${table.gameType}:${table.pricingGroup}`) ?? 0;
+    const baseHourlyRate = table.gameType === "PS5" ? ps5MemberRates[1] : hourlyRateByTableType.get(`${table.gameType}:${table.pricingGroup}`) ?? 0;
+    const hourlyRate = session ? Number(session.hourlyRateSnapshot) || baseHourlyRate : baseHourlyRate;
     const currentCharge = calculateMinuteBasedTableCharge({ billableSeconds: elapsedSeconds, hourlyRate });
     const currentBill = session?.bills[0] ? mapOpenBill(session.bills[0], currentBillTableAmount(session.bills[0].openedAt, now, hourlyRate)) : null;
     const billSummary = currentBill?.summary ?? summarizeBill({ tableAmount: currentCharge, items: [] });
@@ -59,6 +66,8 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
       number: table.number,
       gameType: table.gameType,
       status: table.status,
+      hourlyRate,
+      ps5MemberRates: table.gameType === "PS5" ? ps5MemberRates : undefined,
       currentSession: session
         ? {
             id: session.id,
@@ -67,6 +76,8 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
             startedAt: session.startedAt.toISOString(),
             plannedEndAt: session.plannedEndAt.toISOString(),
             elapsedSeconds,
+            ps5MemberCount: session.ps5MemberCount,
+            hourlyRateSnapshot: hourlyRate,
             billEstimate: Number(session.billableSecondsSnapshot) || currentCharge,
             billSummary,
             currentBill,

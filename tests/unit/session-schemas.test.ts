@@ -21,6 +21,16 @@ describe("session schemas", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts PS5 member count on walk-in sessions", () => {
+    const result = startWalkInSessionSchema.safeParse({
+      tableId: "ps5_1",
+      durationMinutes: 60,
+      ps5MemberCount: 4
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("rejects unsupported extension durations", () => {
     const result = extendSessionSchema.safeParse({
       sessionId: "session_1",

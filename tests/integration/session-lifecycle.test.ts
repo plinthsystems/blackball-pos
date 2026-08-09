@@ -11,14 +11,20 @@ describe("session lifecycle integration", () => {
     expect(tables.map((table) => table.number).sort()).toEqual([
       "Mini Snooker 1",
       "Mini Snooker 2",
+      "PS5 1",
+      "PS5 2",
       "Pool Table 1",
       "Royal Snooker 1",
       "Royal Snooker 2"
     ]);
-    expect(pricing.map((rule) => `${rule.pricingGroup}:${Number(rule.priceAmount)}`).sort()).toEqual([
-      "mini:330",
-      "royal:350",
-      "standard:160"
+    expect(pricing.map((rule) => `${rule.gameType}:${rule.pricingGroup}:${Number(rule.priceAmount)}`).sort()).toEqual([
+      "POOL:standard:160",
+      "PS5:players-1:100",
+      "PS5:players-2:150",
+      "PS5:players-3:200",
+      "PS5:players-4:250",
+      "SNOOKER:mini:330",
+      "SNOOKER:royal:350"
     ]);
     expect(new Set(products.map((product) => product.category))).toEqual(new Set(["FOOD", "CIGARETTES", "BEVERAGES"]));
     expect(products.map((product) => product.name)).toContain("Water Bottle");

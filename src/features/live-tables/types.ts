@@ -1,5 +1,5 @@
 export type LiveTableStatus = "AVAILABLE" | "RESERVED" | "OCCUPIED" | "CLEANING" | "MAINTENANCE" | "BLOCKED";
-export type LiveTableGameType = "POOL" | "SNOOKER";
+export type LiveTableGameType = "POOL" | "SNOOKER" | "PS5";
 export type LiveSessionStatus = "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
 export type ProductCategory = "FOOD" | "CAFE" | "CIGARETTES" | "BEVERAGES";
 
@@ -40,6 +40,8 @@ export type LiveTableCardData = {
   number: string;
   gameType: LiveTableGameType;
   status: LiveTableStatus;
+  hourlyRate: number;
+  ps5MemberRates?: Record<1 | 2 | 3 | 4, number>;
   currentSession: null | {
     id: string;
     status: LiveSessionStatus;
@@ -47,6 +49,8 @@ export type LiveTableCardData = {
     startedAt: string;
     plannedEndAt: string;
     elapsedSeconds: number;
+    ps5MemberCount: number | null;
+    hourlyRateSnapshot: number;
     billEstimate: number;
     billSummary: LiveBillSummary;
     currentBill: LiveBillData | null;

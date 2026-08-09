@@ -25,6 +25,8 @@ export class SessionService {
     tableId: string;
     durationMinutes: 30 | 60;
     now: Date;
+    ps5MemberCount?: number | null;
+    hourlyRateSnapshot: number;
     customerId?: string | null;
     assignedEmployeeId?: string | null;
   }): Promise<{ sessionId: string }> {
@@ -47,6 +49,8 @@ export class SessionService {
         tableId: input.tableId,
         customerId: input.customerId ?? null,
         assignedEmployeeId: input.assignedEmployeeId ?? input.employeeId,
+        ps5MemberCount: input.ps5MemberCount ?? null,
+        hourlyRateSnapshot: input.hourlyRateSnapshot,
         startedAt,
         plannedEndAt,
         tx
@@ -59,7 +63,7 @@ export class SessionService {
         action: "session.started",
         entityType: "Session",
         entityId: session.sessionId,
-        metadata: { tableId: input.tableId, plannedEndAt },
+        metadata: { tableId: input.tableId, plannedEndAt, ps5MemberCount: input.ps5MemberCount ?? null, hourlyRateSnapshot: input.hourlyRateSnapshot },
         tx
       });
       await this.events.publish({

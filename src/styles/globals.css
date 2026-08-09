@@ -3,22 +3,31 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
-  --app-background: #f8fafd;
-  --app-surface: #ffffff;
-  --app-text: #202124;
-  --app-muted: #5f6368;
-  --app-outline: #dadce0;
-  --app-primary: #1a73e8;
+  color-scheme: dark;
+  --app-background: #07110f;
+  --app-surface: #0f1a18;
+  --app-text: #ecfff7;
+  --app-muted: #94a3a0;
+  --app-outline: #233833;
+  --app-primary: #84cc16;
 }
 
 html {
-  background: var(--app-background);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(132, 204, 22, 0.16), transparent 28%),
+    radial-gradient(circle at 88% 0%, rgba(34, 211, 238, 0.12), transparent 24%),
+    var(--app-background);
 }
 
 body {
   margin: 0;
-  background: var(--app-background);
+  background:
+    linear-gradient(rgba(132, 204, 22, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 12% 8%, rgba(132, 204, 22, 0.14), transparent 26%),
+    radial-gradient(circle at 88% 0%, rgba(34, 211, 238, 0.12), transparent 24%),
+    var(--app-background);
+  background-size: 42px 42px, 42px 42px, auto, auto, auto;
   color: var(--app-text);
   font-family: Inter, Roboto, Arial, sans-serif;
 }
@@ -31,7 +40,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--app-primary);
+  outline: 2px solid #bef264;
   outline-offset: 2px;
 }
 

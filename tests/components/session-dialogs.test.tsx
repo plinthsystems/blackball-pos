@@ -12,4 +12,14 @@ describe("StartWalkInDialog", () => {
 
     expect(screen.getByText("Choose a duration.")).toBeInTheDocument();
   });
+
+  it("shows PS5 member choices and a rate preview", async () => {
+    const user = userEvent.setup();
+
+    render(<StartWalkInDialog tableId="ps5_1" tableNumber="PS5 1" gameType="PS5" hourlyRate={100} open onOpenChange={() => undefined} />);
+
+    await user.selectOptions(screen.getByLabelText("Members"), "4");
+
+    expect(screen.getByText("PS5 rate: ₹250.00/hr")).toBeInTheDocument();
+  });
 });

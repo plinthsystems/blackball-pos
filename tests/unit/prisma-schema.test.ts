@@ -26,6 +26,25 @@ describe("Prisma schema", () => {
     expect(schema).toMatch(/model BillItem[\s\S]*lineTotalAmount\s+Decimal\s+@db\.Decimal\(12, 2\)/);
   });
 
+  it("models PS5 as a rentable station type", () => {
+    expect(schema).toMatch(/enum GameType\s+\{[\s\S]*POOL[\s\S]*SNOOKER[\s\S]*PS5[\s\S]*\}/);
+  });
+
+  it("models tenant account types and configurable branding", () => {
+    expect(schema).toMatch(/enum AccountType\s+\{[\s\S]*STORE_USER[\s\S]*MANAGER[\s\S]*\}/);
+    expect(schema).toMatch(/model Business[\s\S]*slug\s+String\s+@unique/);
+    expect(schema).toMatch(/model BusinessSettings[\s\S]*appName\s+String\s+@default\("Black Ball"\)/);
+    expect(schema).toMatch(/model BusinessSettings[\s\S]*logoInitials\s+String\s+@default\("BB"\)/);
+    expect(schema).toMatch(/model BusinessSettings[\s\S]*brandColor\s+String\s+@default\("#12613d"\)/);
+    expect(schema).toMatch(/model Employee[\s\S]*accountType\s+AccountType\s+@default\(STORE_USER\)/);
+    expect(schema).toMatch(/model Employee[\s\S]*@@unique\(\[businessId, email\]\)/);
+  });
+
+  it("stores session billing snapshots for member-based PS5 pricing", () => {
+    expect(schema).toMatch(/model Session[\s\S]*ps5MemberCount\s+Int\?/);
+    expect(schema).toMatch(/model Session[\s\S]*hourlyRateSnapshot\s+Decimal\s+@default\(0\)\s+@db\.Decimal\(12, 2\)/);
+  });
+
   it("keeps mutable operational records versioned", () => {
     expect(schema).toMatch(/model ClubTable[\s\S]*version\s+Int\s+@default\(1\)/);
     expect(schema).toMatch(/model Session[\s\S]*version\s+Int\s+@default\(1\)/);

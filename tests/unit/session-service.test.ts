@@ -11,6 +11,7 @@ describe("SessionService", () => {
       employeeId: "employee_1",
       tableId: "table_available",
       durationMinutes: 60,
+      hourlyRateSnapshot: 160,
       now: new Date("2026-07-23T10:00:00.000Z")
     });
 
@@ -41,6 +42,7 @@ describe("SessionService", () => {
       employeeId: "employee_1",
       tableId: "table_available",
       durationMinutes: 60,
+      hourlyRateSnapshot: 160,
       now: new Date("2026-07-23T10:00:00.000Z")
     });
 
