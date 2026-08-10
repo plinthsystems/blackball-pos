@@ -33,7 +33,7 @@ describe("Prisma schema", () => {
   it("models multi-tenancy organization and account types", () => {
     expect(schema).toContain("model Organization");
     expect(schema).toContain("enum OrganizationType");
-    expect(schema).toMatch(/enum AccountType\s+\{[\s\S]*HQ_ADMIN[\s\S]*STORE_OWNER[\s\S]*MANAGER[\s\S]*STORE_USER[\s\S]*\}/);
+    expect(schema).toMatch(/enum AccountType\s+\{[\s\S]*PLATFORM_ADMIN[\s\S]*HQ_ADMIN[\s\S]*STORE_OWNER[\s\S]*MANAGER[\s\S]*STORE_USER[\s\S]*\}/);
     expect(schema).toMatch(/model Business[\s\S]*organizationId\s+String\?/);
     expect(schema).toMatch(/model BusinessSettings[\s\S]*appName\s+String\s+@default\("Black Ball"\)/);
   });

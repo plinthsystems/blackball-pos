@@ -80,6 +80,7 @@ enum BillStatus {
 }
 
 enum AccountType {
+  PLATFORM_ADMIN
   HQ_ADMIN
   STORE_OWNER
   MANAGER

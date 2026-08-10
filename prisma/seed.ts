@@ -74,6 +74,31 @@ async function main() {
   console.log("Seeding realistic Multi-Tenancy Demo Data...");
 
   const plans = await seedSubscriptionPlans();
+
+  await prisma.permission.upsert({
+    where: { key: "platform.setup.manage" },
+    update: {},
+    create: { key: "platform.setup.manage" }
+  });
+
+  await prisma.employee.upsert({
+    where: { id: "user-platform-admin" },
+    update: {
+      name: "Ajinkya Platform Admin",
+      email: "platform@blackball.example",
+      passwordHash: defaultPasswordHash,
+      accountType: "PLATFORM_ADMIN",
+      active: true
+    },
+    create: {
+      id: "user-platform-admin",
+      name: "Ajinkya Platform Admin",
+      email: "platform@blackball.example",
+      passwordHash: defaultPasswordHash,
+      accountType: "PLATFORM_ADMIN",
+      active: true
+    }
+  });
   
   // Ensure all employees have default password set
   await prisma.employee.updateMany({

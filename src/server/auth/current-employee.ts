@@ -1,6 +1,6 @@
 import { prisma } from "@/server/db/prisma";
 
-export type AccountType = "HQ_ADMIN" | "STORE_OWNER" | "MANAGER" | "STORE_USER";
+export type AccountType = "PLATFORM_ADMIN" | "HQ_ADMIN" | "STORE_OWNER" | "MANAGER" | "STORE_USER";
 
 export type TenantBranding = {
   appName: string;
@@ -155,8 +155,12 @@ export function buildCurrentEmployeeContext(
     employeeRole.role.permissions.map((rolePermission) => rolePermission.permission.key)
   );
 
-  if (["HQ_ADMIN", "STORE_OWNER", "MANAGER"].includes(employee.accountType)) {
+  if (["PLATFORM_ADMIN", "HQ_ADMIN", "STORE_OWNER", "MANAGER"].includes(employee.accountType)) {
     rawPermissions.push("dashboard.read", "tables.read", "products.manage", "rates.manage", "settings.update");
+  }
+
+  if (employee.accountType === "PLATFORM_ADMIN") {
+    rawPermissions.push("platform.setup.manage", "hq.dashboard.read", "hq.manage");
   }
 
   if (employee.accountType === "HQ_ADMIN") {
@@ -164,7 +168,7 @@ export function buildCurrentEmployeeContext(
   }
 
   let permissions = Array.from(new Set(rawPermissions));
-  if (employee.accountType !== "HQ_ADMIN") {
+  if (!["PLATFORM_ADMIN", "HQ_ADMIN"].includes(employee.accountType)) {
     permissions = permissions.filter((permission) => !permission.startsWith("hq."));
   }
 
@@ -211,7 +215,7 @@ export function buildCurrentEmployeeContext(
 }
 
 function getAllowedBusinesses(employee: EmployeeWithTenantAccess, organizationBusinesses: BusinessAccessSummary[]) {
-  if (employee.accountType === "HQ_ADMIN") {
+  if (["PLATFORM_ADMIN", "HQ_ADMIN"].includes(employee.accountType)) {
     return organizationBusinesses.length > 0 ? organizationBusinesses : compactBusiness(employee.business);
   }
 
@@ -278,8 +282,10 @@ async function buildFallbackContext(tenantSlug: string, email?: string): Promise
     }
   });
   const settings = business?.settings ?? defaultBranding;
-  const isHq = Boolean(email?.toLowerCase().includes("hq."));
-  const accountType: AccountType = isHq ? "HQ_ADMIN" : "MANAGER";
+  const normalizedEmail = email?.toLowerCase() ?? "";
+  const isPlatformAdmin = normalizedEmail.includes("platform.") || normalizedEmail.startsWith("platform@");
+  const isHq = Boolean(normalizedEmail.includes("hq."));
+  const accountType: AccountType = isPlatformAdmin ? "PLATFORM_ADMIN" : isHq ? "HQ_ADMIN" : "MANAGER";
 
   const permissions = [
     "bills.manage",
@@ -297,14 +303,16 @@ async function buildFallbackContext(tenantSlug: string, email?: string): Promise
     "tables.update_status"
   ];
 
-  if (isHq) {
+  if (isPlatformAdmin) {
+    permissions.push("platform.setup.manage", "hq.dashboard.read", "hq.manage");
+  } else if (isHq) {
     permissions.push("hq.dashboard.read", "hq.manage");
   }
 
   return {
     businessId: business?.id ?? "seed-business",
     employeeId: "seed-employee",
-    employeeName: isHq ? "HQ Director" : "Store Manager",
+    employeeName: isPlatformAdmin ? "Platform Admin" : isHq ? "HQ Director" : "Store Manager",
     employeeEmail: email ?? "manager@example.com",
     accountType,
     permissions,
