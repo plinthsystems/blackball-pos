@@ -91,20 +91,74 @@ enum OrganizationType {
   FRANCHISE
 }
 
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum RoyaltyBasis {
+  GROSS_SALES
+  NET_SALES
+  FIXED
+}
+
+enum RoyaltyInvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+}
+
 model Organization {
-  id         String           @id @default(cuid())
-  name       String
-  slug       String           @unique
-  type       OrganizationType @default(INDEPENDENT_SAAS)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-  businesses Business[]
-  employees  Employee[]
+  id                String             @id @default(cuid())
+  name              String
+  slug              String             @unique
+  type              OrganizationType   @default(INDEPENDENT_SAAS)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  businesses        Business[]
+  employees         Employee[]
+  franchisees       Franchisee[]
+  subscriptionPlans SubscriptionPlan[]
+  subscriptions     Subscription[]
+  royaltyRules      RoyaltyRule[]
+  royaltyInvoices   RoyaltyInvoice[]
+}
+
+model Franchisee {
+  id              String           @id @default(cuid())
+  organizationId  String
+  name            String
+  slug            String
+  contactName     String?
+  email           String?
+  phone           String?
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  businesses      Business[]
+  employees       Employee[]
+  subscriptions   Subscription[]
+  royaltyRules    RoyaltyRule[]
+  royaltyInvoices RoyaltyInvoice[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, active])
 }
 
 model Business {
   id             String            @id @default(cuid())
   organizationId String?
+  franchiseeId   String?
   slug           String            @unique
   name           String
   phone          String?
@@ -113,6 +167,7 @@ model Business {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  franchisee     Franchisee?       @relation(fields: [franchiseeId], references: [id], onDelete: SetNull)
   settings       BusinessSettings?
   employees      Employee[]
   customers      Customer[]
@@ -127,6 +182,10 @@ model Business {
   sessionItems   SessionItem[]
   bills          Bill[]
   billItems      BillItem[]
+  subscriptions  Subscription[]
+
+  @@index([organizationId])
+  @@index([franchiseeId])
 }
 
 model BusinessSettings {
@@ -148,6 +207,7 @@ model Employee {
   id               String        @id @default(cuid())
   businessId       String?
   organizationId   String?
+  franchiseeId     String?
   name             String
   email            String
   passwordHash     String?
@@ -158,10 +218,14 @@ model Employee {
   updatedAt        DateTime      @updatedAt
   business         Business?     @relation(fields: [businessId], references: [id], onDelete: Cascade)
   organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  franchisee       Franchisee?   @relation(fields: [franchiseeId], references: [id], onDelete: SetNull)
   roles            EmployeeRole[]
   assignedSessions Session[]     @relation("AssignedEmployee")
   createdSessions  Session[]     @relation("CreatedByEmployee")
   auditLogs        AuditLog[]
+
+  @@index([organizationId])
+  @@index([franchiseeId])
 }
 
 model Role {
@@ -422,6 +486,95 @@ model Payment {
   createdAt  DateTime      @default(now())
   business   Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   invoice    Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+}
+
+model SubscriptionPlan {
+  id                    String         @id @default(cuid())
+  organizationId        String?
+  code                  String
+  name                  String
+  description           String?
+  billingCycle          BillingCycle   @default(MONTHLY)
+  baseAmount            Decimal        @db.Decimal(12, 2)
+  pricePerOutletAmount  Decimal        @default(0) @db.Decimal(12, 2)
+  setupFeeAmount        Decimal        @default(0) @db.Decimal(12, 2)
+  includedOutletCount   Int            @default(1)
+  features              Json
+  active                Boolean        @default(true)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  organization          Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscriptions         Subscription[]
+
+  @@unique([organizationId, code])
+  @@index([active, billingCycle])
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  organizationId     String
+  businessId         String?
+  franchiseeId       String?
+  planId             String
+  status             SubscriptionStatus @default(TRIALING)
+  outletLimit        Int?
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  trialEndsAt        DateTime?
+  startedAt          DateTime           @default(now())
+  cancelledAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  business           Business?          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  franchisee         Franchisee?        @relation(fields: [franchiseeId], references: [id], onDelete: Cascade)
+  plan               SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status])
+  @@index([businessId, status])
+  @@index([franchiseeId, status])
+}
+
+model RoyaltyRule {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  franchiseeId        String?
+  name                String
+  basis               RoyaltyBasis  @default(GROSS_SALES)
+  rateBasisPoints     Int           @default(0)
+  fixedAmount         Decimal       @default(0) @db.Decimal(12, 2)
+  minimumAmount       Decimal       @default(0) @db.Decimal(12, 2)
+  active              Boolean       @default(true)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  franchisee          Franchisee?   @relation(fields: [franchiseeId], references: [id], onDelete: Cascade)
+  invoices            RoyaltyInvoice[]
+
+  @@index([organizationId, active])
+  @@index([franchiseeId, active])
+}
+
+model RoyaltyInvoice {
+  id               String               @id @default(cuid())
+  organizationId   String
+  franchiseeId     String
+  ruleId           String?
+  periodStart      DateTime
+  periodEnd        DateTime
+  grossSalesAmount Decimal              @db.Decimal(12, 2)
+  royaltyAmount    Decimal              @db.Decimal(12, 2)
+  status           RoyaltyInvoiceStatus @default(DRAFT)
+  issuedAt         DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  franchisee       Franchisee           @relation(fields: [franchiseeId], references: [id], onDelete: Cascade)
+  rule             RoyaltyRule?         @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, periodStart, periodEnd])
+  @@index([franchiseeId, status])
 }
 
 model AuditLog {

@@ -90,58 +90,77 @@ export function MenuSettingsPage({ products, branding = fallbackBranding }: { pr
   return (
     <section className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Food/Menu</h1>
-        <p className="mt-1 text-sm text-slate-400">Manage Food, Cigarettes, and Beverages. Price changes affect only new bill items.</p>
+        <h1 className="text-2xl font-semibold text-white">Business Profile & Menu</h1>
+        <p className="mt-1 text-sm text-slate-400">Manage your outlet identity and billable Food, Cigarettes, and Beverages.</p>
       </div>
 
-      <div className="space-y-4 rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-black text-white">Branding</h2>
-            <p className="mt-1 text-sm text-slate-400">Customize the tenant name, initials, and club colors.</p>
+      <div className="overflow-hidden rounded-material border border-cyan-300/15 bg-slate-950 shadow-[0_0_34px_rgba(34,211,238,0.08)]">
+        <div className="grid gap-0 lg:grid-cols-[300px_1fr]">
+          <div className="border-b border-cyan-300/15 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(2,6,23,1))] p-5 lg:border-b-0 lg:border-r">
+            <h2 className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Business Profile</h2>
+            <p className="mt-3 text-xl font-black text-white">Club identity</p>
+            <p className="mt-2 text-sm leading-6 text-slate-400">Keep your club identity clear without changing the whole software theme.</p>
+            <div className="mt-5 rounded-material border border-white/10 bg-white/[0.03] p-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border text-base font-black text-white shadow-[0_0_26px_rgba(34,211,238,0.18)]"
+                  style={{ backgroundColor: brandColor, borderColor: accentColor }}
+                  aria-hidden="true"
+                >
+                  {logoInitials || "BB"}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-black text-white">{appName || "Black Ball"}</p>
+                  <p className="mt-1 text-xs text-cyan-100/60">Visible in sidebar, header, and receipts</p>
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <span className="h-2 flex-1 rounded-full" style={{ backgroundColor: brandColor }} />
+                <span className="h-2 w-12 rounded-full" style={{ backgroundColor: accentColor }} />
+              </div>
+            </div>
           </div>
-          <div
-            className="flex h-12 w-12 items-center justify-center rounded-full border text-sm font-bold text-white"
-            style={{ backgroundColor: brandColor, borderColor: accentColor }}
-            aria-hidden="true"
-          >
-            {logoInitials || "BB"}
+          <div className="grid gap-4 p-5 md:grid-cols-[1fr_120px]">
+            <Field label="Application name">
+              <input {...textInputProps()} value={appName} onChange={(event) => setAppName(event.target.value)} />
+            </Field>
+            <Field label="Logo initials">
+              <input
+                {...textInputProps()}
+                value={logoInitials}
+                maxLength={4}
+                onChange={(event) => setLogoInitials(event.target.value.toUpperCase())}
+              />
+            </Field>
+            <Field label="Primary identity color">
+              <input
+                className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-2"
+                type="color"
+                value={brandColor}
+                onChange={(event) => setBrandColor(event.target.value)}
+              />
+            </Field>
+            <Field label="Receipt accent">
+              <input
+                className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-2"
+                type="color"
+                value={accentColor}
+                onChange={(event) => setAccentColor(event.target.value)}
+              />
+            </Field>
+            <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 border-t border-cyan-300/10 pt-4">
+              <p className="text-xs text-slate-500">The interface stays consistent for staff; this identity appears where customers and managers recognize the outlet.</p>
+              <Button type="button" variant="primary" disabled={isPending || !appName.trim() || !logoInitials.trim()} onClick={saveBranding}>
+                Save profile
+              </Button>
+            </div>
           </div>
         </div>
-        <div className="grid gap-3 md:grid-cols-[1fr_110px_140px_140px_auto]">
-          <Field label="Application name">
-            <input {...textInputProps()} value={appName} onChange={(event) => setAppName(event.target.value)} />
-          </Field>
-          <Field label="Logo initials">
-            <input
-              {...textInputProps()}
-              value={logoInitials}
-              maxLength={4}
-              onChange={(event) => setLogoInitials(event.target.value.toUpperCase())}
-            />
-          </Field>
-          <Field label="Brand color">
-            <input
-              className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-2"
-              type="color"
-              value={brandColor}
-              onChange={(event) => setBrandColor(event.target.value)}
-            />
-          </Field>
-          <Field label="Accent color">
-            <input
-              className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-2"
-              type="color"
-              value={accentColor}
-              onChange={(event) => setAccentColor(event.target.value)}
-            />
-          </Field>
-          <div className="flex items-end">
-            <Button type="button" variant="primary" disabled={isPending || !appName.trim() || !logoInitials.trim()} onClick={saveBranding}>
-              Save branding
-            </Button>
-          </div>
-        </div>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-black text-white">Food Menu</h2>
+        <p className="mt-1 text-sm text-slate-400">Manage Food, Cigarettes, and Beverages. Price changes affect only new bill items.</p>
       </div>
 
       <div className="grid gap-3 rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material md:grid-cols-[1fr_180px_140px_auto]">

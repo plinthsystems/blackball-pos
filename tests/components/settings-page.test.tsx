@@ -19,7 +19,7 @@ describe("MenuSettingsPage", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Food/Menu" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Business Profile & Menu" })).toBeInTheDocument();
     expect(screen.getByText("Manage Food, Cigarettes, and Beverages. Price changes affect only new bill items.")).toBeInTheDocument();
     expect(screen.getByText("Water Bottle")).toBeInTheDocument();
     expect(screen.getAllByText("Food").length).toBeGreaterThan(0);
@@ -27,7 +27,7 @@ describe("MenuSettingsPage", () => {
     expect(screen.getAllByRole("button", { name: "Update price" })).toHaveLength(2);
   });
 
-  it("renders tenant branding controls", () => {
+  it("renders polished business profile controls instead of raw tenant branding controls", () => {
     render(
       <MenuSettingsPage
         branding={{
@@ -40,10 +40,12 @@ describe("MenuSettingsPage", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Branding" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Business Profile" })).toBeInTheDocument();
+    expect(screen.getByText("Keep your club identity clear without changing the whole software theme.")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Cue City POS")).toBeInTheDocument();
     expect(screen.getByDisplayValue("CC")).toBeInTheDocument();
-    expect(screen.getByLabelText("Brand color")).toHaveValue("#14532d");
-    expect(screen.getByRole("button", { name: "Save branding" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Brand color")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Primary identity color")).toHaveValue("#14532d");
+    expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
   });
 });

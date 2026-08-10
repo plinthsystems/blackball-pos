@@ -118,14 +118,14 @@ function BrandMark({ branding, compact = false }: { branding: TenantBranding; co
   return (
     <div className="flex items-center gap-3">
       <div
-        className="flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black text-white shadow-[0_0_22px_rgba(132,204,22,0.25)]"
-        style={{ backgroundColor: branding.brandColor, borderColor: branding.accentColor }}
+        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/25 bg-slate-900 text-sm font-black text-white shadow-[0_0_22px_rgba(34,211,238,0.14)]"
       >
+        <span className="absolute inset-1 rounded-full border" style={{ borderColor: branding.brandColor }} aria-hidden="true" />
         {branding.logoInitials}
       </div>
       <div>
         <p className={compact ? "text-sm font-black text-white" : "text-sm font-black text-white"}>{branding.appName}</p>
-        {!compact ? <p className="text-xs text-lime-100/60">{branding.businessName}</p> : null}
+        {!compact ? <p className="text-xs text-cyan-100/60">{branding.businessName}</p> : null}
       </div>
     </div>
   );

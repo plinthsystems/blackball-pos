@@ -57,6 +57,7 @@ const menuProducts = [
   { name: "Club Sandwich", category: ProductCategory.FOOD, priceAmount: "140.00" },
   { name: "French Fries", category: ProductCategory.FOOD, priceAmount: "110.00" },
   { name: "Classic Cigarette", category: ProductCategory.CIGARETTES, priceAmount: "20.00" },
+  { name: "Water Bottle", category: ProductCategory.BEVERAGES, priceAmount: "20.00" },
   { name: "Mineral Water 1L", category: ProductCategory.BEVERAGES, priceAmount: "20.00" },
   { name: "Red Bull Energy Drink", category: ProductCategory.BEVERAGES, priceAmount: "160.00" },
   { name: "Cold Coffee", category: ProductCategory.BEVERAGES, priceAmount: "120.00" }
@@ -71,6 +72,8 @@ const standardPricing = [
 
 async function main() {
   console.log("Seeding realistic Multi-Tenancy Demo Data...");
+
+  const plans = await seedSubscriptionPlans();
   
   // Ensure all employees have default password set
   await prisma.employee.updateMany({
@@ -83,6 +86,42 @@ async function main() {
     where: { slug: "blackball-franchise" },
     update: { name: "BlackBall Franchise Group", type: "FRANCHISE" },
     create: { id: "org-blackball-franchise", name: "BlackBall Franchise Group", slug: "blackball-franchise", type: "FRANCHISE" }
+  });
+
+  const blackballBangaloreFranchisee = await prisma.franchisee.upsert({
+    where: { organizationId_slug: { organizationId: blackballOrg.id, slug: "bangalore-central" } },
+    update: { name: "Bangalore Central Franchisee", contactName: "Rahul Sharma", email: "franchisee.bangalore@blackball.example", active: true },
+    create: {
+      id: "franchisee-blackball-bangalore",
+      organizationId: blackballOrg.id,
+      slug: "bangalore-central",
+      name: "Bangalore Central Franchisee",
+      contactName: "Rahul Sharma",
+      email: "franchisee.bangalore@blackball.example",
+      phone: "+91 98765 90001"
+    }
+  });
+
+  const blackballEastFranchisee = await prisma.franchisee.upsert({
+    where: { organizationId_slug: { organizationId: blackballOrg.id, slug: "bangalore-east" } },
+    update: { name: "Bangalore East Franchisee", contactName: "Priya Nair", email: "franchisee.east@blackball.example", active: true },
+    create: {
+      id: "franchisee-blackball-east",
+      organizationId: blackballOrg.id,
+      slug: "bangalore-east",
+      name: "Bangalore East Franchisee",
+      contactName: "Priya Nair",
+      email: "franchisee.east@blackball.example",
+      phone: "+91 98765 90002"
+    }
+  });
+
+  await seedRoyaltyRule({
+    id: "royalty-blackball-standard",
+    organizationId: blackballOrg.id,
+    name: "BlackBall standard royalty",
+    rateBasisPoints: 600,
+    minimumAmount: "15000.00"
   });
 
   // BlackBall HQ Admin
@@ -99,6 +138,7 @@ async function main() {
     name: "BlackBall Koramangala",
     phone: "+91 98765 11111",
     email: "koramangala@blackball.example",
+    franchiseeId: blackballBangaloreFranchisee.id,
     appName: "BlackBall Koramangala",
     logoInitials: "BB-K",
     brandColor: "#12613d",
@@ -118,6 +158,7 @@ async function main() {
     name: "BlackBall MG Road",
     phone: "+91 98765 22222",
     email: "mgroad@blackball.example",
+    franchiseeId: blackballBangaloreFranchisee.id,
     appName: "BlackBall MG Road",
     logoInitials: "BB-M",
     brandColor: "#12613d",
@@ -135,6 +176,7 @@ async function main() {
     name: "BlackBall Indiranagar",
     phone: "+91 98765 33333",
     email: "indiranagar@blackball.example",
+    franchiseeId: blackballEastFranchisee.id,
     appName: "BlackBall Indiranagar",
     logoInitials: "BB-I",
     brandColor: "#12613d",
@@ -154,6 +196,42 @@ async function main() {
     create: { id: "org-cuenation-franchise", name: "CueNation Franchise Group", slug: "cuenation-franchise", type: "FRANCHISE" }
   });
 
+  const cuenationWhitefieldFranchisee = await prisma.franchisee.upsert({
+    where: { organizationId_slug: { organizationId: cuenationOrg.id, slug: "whitefield-franchisee" } },
+    update: { name: "Whitefield Franchisee", contactName: "Karthik Verma", email: "franchisee.whitefield@cuenation.example", active: true },
+    create: {
+      id: "franchisee-cuenation-whitefield",
+      organizationId: cuenationOrg.id,
+      slug: "whitefield-franchisee",
+      name: "Whitefield Franchisee",
+      contactName: "Karthik Verma",
+      email: "franchisee.whitefield@cuenation.example",
+      phone: "+91 98765 90003"
+    }
+  });
+
+  const cuenationSouthFranchisee = await prisma.franchisee.upsert({
+    where: { organizationId_slug: { organizationId: cuenationOrg.id, slug: "south-bangalore-franchisee" } },
+    update: { name: "South Bangalore Franchisee", contactName: "Deepak Rao", email: "franchisee.south@cuenation.example", active: true },
+    create: {
+      id: "franchisee-cuenation-south",
+      organizationId: cuenationOrg.id,
+      slug: "south-bangalore-franchisee",
+      name: "South Bangalore Franchisee",
+      contactName: "Deepak Rao",
+      email: "franchisee.south@cuenation.example",
+      phone: "+91 98765 90004"
+    }
+  });
+
+  await seedRoyaltyRule({
+    id: "royalty-cuenation-standard",
+    organizationId: cuenationOrg.id,
+    name: "CueNation standard royalty",
+    rateBasisPoints: 500,
+    minimumAmount: "12000.00"
+  });
+
   // CueNation HQ Admin
   await prisma.employee.upsert({
     where: { id: "user-cuenation-hq" },
@@ -168,6 +246,7 @@ async function main() {
     name: "CueNation Whitefield",
     phone: "+91 98765 44444",
     email: "whitefield@cuenation.example",
+    franchiseeId: cuenationWhitefieldFranchisee.id,
     appName: "CueNation Whitefield",
     logoInitials: "CN-W",
     brandColor: "#0284c7",
@@ -185,6 +264,7 @@ async function main() {
     name: "CueNation HSR Layout",
     phone: "+91 98765 55555",
     email: "hsr@cuenation.example",
+    franchiseeId: cuenationSouthFranchisee.id,
     appName: "CueNation HSR",
     logoInitials: "CN-H",
     brandColor: "#0284c7",
@@ -220,6 +300,13 @@ async function main() {
     occupiedCount: 3,
     salesTarget: 5800
   });
+  await seedSubscription({
+    id: "subscription-royal-snooker",
+    organizationId: saas1Org.id,
+    businessId: "saas-royal-snooker",
+    planId: plans.professional.id,
+    outletLimit: 1
+  });
 
   // Independent SaaS Store 2
   const saas2Org = await prisma.organization.upsert({
@@ -242,6 +329,13 @@ async function main() {
     managerName: "Varun Mehta (Club Owner)",
     occupiedCount: 2,
     salesTarget: 4300
+  });
+  await seedSubscription({
+    id: "subscription-break-and-run",
+    organizationId: saas2Org.id,
+    businessId: "saas-break-and-run",
+    planId: plans.professional.id,
+    outletLimit: 1
   });
 
   // Independent SaaS Store 3
@@ -266,6 +360,29 @@ async function main() {
     occupiedCount: 2,
     salesTarget: 4900
   });
+  await seedSubscription({
+    id: "subscription-gamezone",
+    organizationId: saas3Org.id,
+    businessId: "saas-gamezone",
+    planId: plans.multiOutlet.id,
+    outletLimit: 3
+  });
+
+  await seedSubscription({
+    id: "subscription-blackball-franchise",
+    organizationId: blackballOrg.id,
+    franchiseeId: blackballBangaloreFranchisee.id,
+    planId: plans.franchise.id,
+    outletLimit: 5
+  });
+
+  await seedSubscription({
+    id: "subscription-cuenation-franchise",
+    organizationId: cuenationOrg.id,
+    franchiseeId: cuenationWhitefieldFranchisee.id,
+    planId: plans.franchise.id,
+    outletLimit: 5
+  });
 
   console.log("Successfully seeded 2 Franchise Groups (5 Outlets total) and 3 Independent B2B SaaS Store accounts!");
 }
@@ -273,6 +390,7 @@ async function main() {
 type CreateStoreInput = {
   id: string;
   organizationId: string;
+  franchiseeId?: string;
   slug: string;
   name: string;
   phone: string;
@@ -289,11 +407,184 @@ type CreateStoreInput = {
   salesTarget: number;
 };
 
+async function seedSubscriptionPlans() {
+  const starter = await prisma.subscriptionPlan.upsert({
+    where: { id: "plan-starter-monthly" },
+    update: {
+      name: "Starter",
+      baseAmount: "1999.00",
+      pricePerOutletAmount: "0.00",
+      setupFeeAmount: "10000.00",
+      includedOutletCount: 1,
+      active: true,
+      features: ["live_tables", "billing", "food_menu", "daily_reports"]
+    },
+    create: {
+      id: "plan-starter-monthly",
+      code: "starter",
+      name: "Starter",
+      description: "Single outlet table and billing operations",
+      billingCycle: "MONTHLY",
+      baseAmount: "1999.00",
+      pricePerOutletAmount: "0.00",
+      setupFeeAmount: "10000.00",
+      includedOutletCount: 1,
+      features: ["live_tables", "billing", "food_menu", "daily_reports"]
+    }
+  });
+
+  const professional = await prisma.subscriptionPlan.upsert({
+    where: { id: "plan-professional-monthly" },
+    update: {
+      name: "Professional",
+      baseAmount: "3999.00",
+      pricePerOutletAmount: "0.00",
+      setupFeeAmount: "20000.00",
+      includedOutletCount: 1,
+      active: true,
+      features: ["live_tables", "billing", "food_menu", "rates", "owner_dashboard", "staff_roles"]
+    },
+    create: {
+      id: "plan-professional-monthly",
+      code: "professional",
+      name: "Professional",
+      description: "Full club operations with owner dashboard",
+      billingCycle: "MONTHLY",
+      baseAmount: "3999.00",
+      pricePerOutletAmount: "0.00",
+      setupFeeAmount: "20000.00",
+      includedOutletCount: 1,
+      features: ["live_tables", "billing", "food_menu", "rates", "owner_dashboard", "staff_roles"]
+    }
+  });
+
+  const multiOutlet = await prisma.subscriptionPlan.upsert({
+    where: { id: "plan-multi-outlet-monthly" },
+    update: {
+      name: "Multi-Outlet",
+      baseAmount: "6999.00",
+      pricePerOutletAmount: "2000.00",
+      setupFeeAmount: "30000.00",
+      includedOutletCount: 2,
+      active: true,
+      features: ["multi_outlet_dashboard", "store_switching", "central_rates", "inventory_ready", "advanced_reports"]
+    },
+    create: {
+      id: "plan-multi-outlet-monthly",
+      code: "multi-outlet",
+      name: "Multi-Outlet",
+      description: "Owner dashboard across multiple outlets",
+      billingCycle: "MONTHLY",
+      baseAmount: "6999.00",
+      pricePerOutletAmount: "2000.00",
+      setupFeeAmount: "30000.00",
+      includedOutletCount: 2,
+      features: ["multi_outlet_dashboard", "store_switching", "central_rates", "inventory_ready", "advanced_reports"]
+    }
+  });
+
+  const franchise = await prisma.subscriptionPlan.upsert({
+    where: { id: "plan-franchise-monthly" },
+    update: {
+      name: "Franchise Platform",
+      baseAmount: "15000.00",
+      pricePerOutletAmount: "2500.00",
+      setupFeeAmount: "50000.00",
+      includedOutletCount: 3,
+      active: true,
+      features: ["hq_dashboard", "franchisee_dashboard", "royalties", "multi_outlet_controls", "priority_support"]
+    },
+    create: {
+      id: "plan-franchise-monthly",
+      code: "franchise",
+      name: "Franchise Platform",
+      description: "Franchisor and franchisee management",
+      billingCycle: "MONTHLY",
+      baseAmount: "15000.00",
+      pricePerOutletAmount: "2500.00",
+      setupFeeAmount: "50000.00",
+      includedOutletCount: 3,
+      features: ["hq_dashboard", "franchisee_dashboard", "royalties", "multi_outlet_controls", "priority_support"]
+    }
+  });
+
+  return { starter, professional, multiOutlet, franchise };
+}
+
+async function seedRoyaltyRule(input: {
+  id: string;
+  organizationId: string;
+  name: string;
+  rateBasisPoints: number;
+  minimumAmount: string;
+}) {
+  return prisma.royaltyRule.upsert({
+    where: { id: input.id },
+    update: {
+      organizationId: input.organizationId,
+      name: input.name,
+      basis: "GROSS_SALES",
+      rateBasisPoints: input.rateBasisPoints,
+      minimumAmount: input.minimumAmount,
+      active: true
+    },
+    create: {
+      id: input.id,
+      organizationId: input.organizationId,
+      name: input.name,
+      basis: "GROSS_SALES",
+      rateBasisPoints: input.rateBasisPoints,
+      minimumAmount: input.minimumAmount,
+      fixedAmount: "0.00"
+    }
+  });
+}
+
+async function seedSubscription(input: {
+  id: string;
+  organizationId: string;
+  businessId?: string;
+  franchiseeId?: string;
+  planId: string;
+  outletLimit: number;
+}) {
+  const currentPeriodStart = new Date();
+  currentPeriodStart.setHours(0, 0, 0, 0);
+  const currentPeriodEnd = new Date(currentPeriodStart);
+  currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+
+  return prisma.subscription.upsert({
+    where: { id: input.id },
+    update: {
+      organizationId: input.organizationId,
+      businessId: input.businessId ?? null,
+      franchiseeId: input.franchiseeId ?? null,
+      planId: input.planId,
+      status: "ACTIVE",
+      outletLimit: input.outletLimit,
+      currentPeriodStart,
+      currentPeriodEnd
+    },
+    create: {
+      id: input.id,
+      organizationId: input.organizationId,
+      businessId: input.businessId ?? null,
+      franchiseeId: input.franchiseeId ?? null,
+      planId: input.planId,
+      status: "ACTIVE",
+      outletLimit: input.outletLimit,
+      currentPeriodStart,
+      currentPeriodEnd
+    }
+  });
+}
+
 async function createStoreWithData(input: CreateStoreInput) {
   const store = await prisma.business.upsert({
     where: { id: input.id },
     update: {
       organizationId: input.organizationId,
+      franchiseeId: input.franchiseeId ?? null,
       slug: input.slug,
       name: input.name,
       phone: input.phone,
@@ -302,6 +593,7 @@ async function createStoreWithData(input: CreateStoreInput) {
     create: {
       id: input.id,
       organizationId: input.organizationId,
+      franchiseeId: input.franchiseeId ?? null,
       slug: input.slug,
       name: input.name,
       phone: input.phone,
@@ -369,6 +661,7 @@ async function createStoreWithData(input: CreateStoreInput) {
     update: {
       businessId: store.id,
       organizationId: input.organizationId,
+      franchiseeId: input.franchiseeId ?? null,
       name: input.managerName,
       email: input.managerEmail,
       passwordHash: defaultPasswordHash,
@@ -379,6 +672,7 @@ async function createStoreWithData(input: CreateStoreInput) {
       id: `user-mgr-${store.id}`,
       businessId: store.id,
       organizationId: input.organizationId,
+      franchiseeId: input.franchiseeId ?? null,
       name: input.managerName,
       email: input.managerEmail,
       passwordHash: defaultPasswordHash,
@@ -400,6 +694,7 @@ async function createStoreWithData(input: CreateStoreInput) {
       update: {
         businessId: store.id,
         organizationId: input.organizationId,
+        franchiseeId: input.franchiseeId ?? null,
         name: input.staffName,
         email: input.staffEmail,
         passwordHash: defaultPasswordHash,
@@ -410,6 +705,7 @@ async function createStoreWithData(input: CreateStoreInput) {
         id: `user-staff-${store.id}`,
         businessId: store.id,
         organizationId: input.organizationId,
+        franchiseeId: input.franchiseeId ?? null,
         name: input.staffName,
         email: input.staffEmail,
         passwordHash: defaultPasswordHash,

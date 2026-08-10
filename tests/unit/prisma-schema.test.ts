@@ -38,6 +38,19 @@ describe("Prisma schema", () => {
     expect(schema).toMatch(/model BusinessSettings[\s\S]*appName\s+String\s+@default\("Black Ball"\)/);
   });
 
+  it("models franchisees, subscriptions, and royalty billing for the platform business model", () => {
+    expect(schema).toContain("model Franchisee");
+    expect(schema).toMatch(/model Business[\s\S]*franchiseeId\s+String\?/);
+    expect(schema).toMatch(/model Employee[\s\S]*franchiseeId\s+String\?/);
+    expect(schema).toContain("model SubscriptionPlan");
+    expect(schema).toContain("model Subscription");
+    expect(schema).toContain("enum SubscriptionStatus");
+    expect(schema).toContain("model RoyaltyRule");
+    expect(schema).toContain("model RoyaltyInvoice");
+    expect(schema).toMatch(/model RoyaltyInvoice[\s\S]*grossSalesAmount\s+Decimal\s+@db\.Decimal\(12, 2\)/);
+    expect(schema).toMatch(/model RoyaltyInvoice[\s\S]*royaltyAmount\s+Decimal\s+@db\.Decimal\(12, 2\)/);
+  });
+
   it("stores session billing snapshots for member-based PS5 pricing", () => {
     expect(schema).toMatch(/model Session[\s\S]*ps5MemberCount\s+Int\?/);
     expect(schema).toMatch(/model Session[\s\S]*hourlyRateSnapshot\s+Decimal\s+@default\(0\)\s+@db\.Decimal\(12, 2\)/);

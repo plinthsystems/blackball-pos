@@ -14,7 +14,14 @@ export type OrganizationContext = {
   id: string;
   name: string;
   type: "INDEPENDENT_SAAS" | "FRANCHISE";
-  businesses: Array<{ id: string; name: string; slug: string }>;
+  businesses: Array<{ id: string; name: string; slug: string; franchiseeId?: string | null }>;
+};
+
+export type TenantScope = {
+  organizationId: string | null;
+  franchiseeId: string | null;
+  businessIds: string[];
+  selectedBusinessId: string;
 };
 
 export type CurrentEmployeeContext = {
@@ -26,12 +33,27 @@ export type CurrentEmployeeContext = {
   permissions: string[];
   tenantBranding: TenantBranding;
   organization?: OrganizationContext;
+  scope: TenantScope;
+};
+
+type BusinessAccessSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  franchiseeId?: string | null;
+  settings?: {
+    appName: string;
+    logoInitials: string;
+    brandColor: string;
+    accentColor: string;
+  } | null;
 };
 
 type EmployeeWithTenantAccess = {
   id: string;
   businessId: string | null;
   organizationId: string | null;
+  franchiseeId: string | null;
   name: string;
   email: string;
   accountType: AccountType;
@@ -39,22 +61,18 @@ type EmployeeWithTenantAccess = {
     id: string;
     name: string;
     type: "INDEPENDENT_SAAS" | "FRANCHISE";
-    businesses: Array<{
-      id: string;
-      name: string;
-      slug: string;
-      settings?: {
-        appName: string;
-        logoInitials: string;
-        brandColor: string;
-        accentColor: string;
-      } | null;
-    }>;
+    businesses: BusinessAccessSummary[];
+  } | null;
+  franchisee: {
+    id: string;
+    name: string;
+    businesses: BusinessAccessSummary[];
   } | null;
   business: {
     id: string;
     name: string;
     slug: string;
+    franchiseeId?: string | null;
     settings: {
       appName: string;
       logoInitials: string;
@@ -90,7 +108,12 @@ export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContex
     include: {
       organization: {
         include: {
-          businesses: { select: { id: true, name: true, slug: true, settings: true } }
+          businesses: { select: { id: true, name: true, slug: true, franchiseeId: true, settings: true } }
+        }
+      },
+      franchisee: {
+        include: {
+          businesses: { select: { id: true, name: true, slug: true, franchiseeId: true, settings: true } }
         }
       },
       business: {
@@ -98,7 +121,7 @@ export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContex
           settings: true,
           organization: {
             include: {
-              businesses: { select: { id: true, name: true, slug: true, settings: true } }
+              businesses: { select: { id: true, name: true, slug: true, franchiseeId: true, settings: true } }
             }
           }
         }
@@ -146,11 +169,15 @@ export function buildCurrentEmployeeContext(
   }
 
   const organization = employee.organization;
-  const selectedBusiness = (currentSlug ? organization?.businesses.find(b => b.slug === currentSlug) : undefined) ?? employee.business ?? organization?.businesses[0];
+  const organizationBusinesses = organization?.businesses ?? [];
+  const allowedBusinesses = getAllowedBusinesses(employee, organizationBusinesses);
+  const selectedBusiness = (currentSlug ? allowedBusinesses.find((business) => business.slug === currentSlug) : undefined) ?? allowedBusinesses[0];
   const settings = selectedBusiness?.settings ?? employee.business?.settings ?? defaultBranding;
+  const selectedBusinessId = selectedBusiness?.id ?? employee.businessId ?? "seed-business";
+  const businessIds = allowedBusinesses.length > 0 ? allowedBusinesses.map((business) => business.id) : [selectedBusinessId];
 
   return {
-    businessId: selectedBusiness?.id ?? employee.businessId ?? "seed-business",
+    businessId: selectedBusinessId,
     employeeId: employee.id,
     employeeName: employee.name,
     employeeEmail: employee.email,
@@ -167,9 +194,49 @@ export function buildCurrentEmployeeContext(
       id: organization.id,
       name: organization.name,
       type: organization.type,
-      businesses: organization.businesses
-    } : undefined
+      businesses: allowedBusinesses.map((business) => ({
+        id: business.id,
+        name: business.name,
+        slug: business.slug,
+        franchiseeId: business.franchiseeId ?? null
+      }))
+    } : undefined,
+    scope: {
+      organizationId: employee.organizationId ?? organization?.id ?? null,
+      franchiseeId: employee.franchiseeId ?? employee.franchisee?.id ?? null,
+      businessIds,
+      selectedBusinessId
+    }
   };
+}
+
+function getAllowedBusinesses(employee: EmployeeWithTenantAccess, organizationBusinesses: BusinessAccessSummary[]) {
+  if (employee.accountType === "HQ_ADMIN") {
+    return organizationBusinesses.length > 0 ? organizationBusinesses : compactBusiness(employee.business);
+  }
+
+  if (employee.franchisee) {
+    return employee.franchisee.businesses;
+  }
+
+  if (employee.accountType === "STORE_OWNER" && organizationBusinesses.length > 0 && !employee.franchiseeId) {
+    return organizationBusinesses;
+  }
+
+  return compactBusiness(employee.business);
+}
+
+function compactBusiness(business: EmployeeWithTenantAccess["business"]): BusinessAccessSummary[] {
+  if (!business) {
+    return [];
+  }
+  return [{
+    id: business.id,
+    name: business.name,
+    slug: business.slug,
+    franchiseeId: business.franchiseeId ?? null,
+    settings: business.settings
+  }];
 }
 
 import { verifySessionToken } from "./auth-service";
@@ -205,7 +272,7 @@ async function buildFallbackContext(tenantSlug: string, email?: string): Promise
       settings: true,
       organization: {
         include: {
-          businesses: { select: { id: true, name: true, slug: true } }
+          businesses: { select: { id: true, name: true, slug: true, franchiseeId: true } }
         }
       }
     }
@@ -253,6 +320,12 @@ async function buildFallbackContext(tenantSlug: string, email?: string): Promise
       name: business.organization.name,
       type: business.organization.type,
       businesses: business.organization.businesses
-    } : undefined
+    } : undefined,
+    scope: {
+      organizationId: business?.organization?.id ?? null,
+      franchiseeId: null,
+      businessIds: business ? [business.id] : ["seed-business"],
+      selectedBusinessId: business?.id ?? "seed-business"
+    }
   };
 }
