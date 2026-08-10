@@ -1,18 +1,13 @@
 "use server";
 
-import nodeCrypto from "crypto";
-import { GameType, Prisma, ProductCategory } from "@prisma/client";
-import { cookies } from "next/headers";
+import { GameType, ProductCategory } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
 import { hashPassword } from "@/server/auth/auth-service";
 import { prisma } from "@/server/db/prisma";
 
-function generateOneTimePassword(): string {
-  return nodeCrypto.randomBytes(9).toString("base64url");
-}
+const defaultPasswordHash = hashPassword("Password@123");
 
 const saasSchema = z.object({
   organizationName: z.string().trim().min(2),
@@ -34,7 +29,6 @@ const franchiseSchema = z.object({
 const operationalPermissions = [
   "dashboard.read",
   "tables.read",
-  "tables.manage",
   "tables.update_status",
   "sessions.start",
   "sessions.pause",
@@ -45,8 +39,7 @@ const operationalPermissions = [
   "bills.manage",
   "products.manage",
   "rates.manage",
-  "settings.update",
-  "bookings.manage"
+  "settings.update"
 ];
 
 const staffPermissions = [
@@ -61,70 +54,40 @@ const staffPermissions = [
   "bills.manage"
 ];
 
-type SetupDb = Prisma.TransactionClient;
-
 export async function createSaasSetupAction(formData: FormData) {
   await assertPlatformAdmin();
   const input = saasSchema.parse(Object.fromEntries(formData.entries()));
   const organizationSlug = slugify(input.organizationName);
   const businessSlug = uniqueBusinessSlug(input.businessName);
-  let createdBusinessSlug = businessSlug;
 
-  await prisma.$transaction(async (tx) => {
-    await assertActivePlan(tx, input.planId);
+  const organization = await prisma.organization.upsert({
+    where: { slug: organizationSlug },
+    update: { name: input.organizationName, type: "INDEPENDENT_SAAS" },
+    create: { name: input.organizationName, slug: organizationSlug, type: "INDEPENDENT_SAAS" }
+  });
 
-    const organization = await tx.organization.upsert({
-      where: { slug: organizationSlug },
-      update: { name: input.organizationName, type: "INDEPENDENT_SAAS" },
-      create: { name: input.organizationName, slug: organizationSlug, type: "INDEPENDENT_SAAS" }
-    });
+  const business = await createOperationalOutlet({
+    organizationId: organization.id,
+    name: input.businessName,
+    slug: businessSlug,
+    email: input.ownerEmail,
+    appName: input.organizationName,
+    logoInitials: initials(input.organizationName),
+    ownerEmail: input.ownerEmail,
+    ownerName: `${input.organizationName} Owner`,
+    staffEmail: input.staffEmail || undefined,
+    franchiseeId: null
+  });
 
-    const { business, ownerPassword, staffPassword } = await createOperationalOutlet(tx, {
-      organizationId: organization.id,
-      name: input.businessName,
-      slug: businessSlug,
-      email: input.ownerEmail,
-      appName: input.organizationName,
-      logoInitials: initials(input.organizationName),
-      ownerEmail: input.ownerEmail,
-      ownerName: `${input.organizationName} Owner`,
-      staffEmail: input.staffEmail || undefined,
-      franchiseeId: null
-    });
-    createdBusinessSlug = business.slug;
-
-    await createSubscription(tx, {
-      id: `subscription-${business.slug}`,
-      organizationId: organization.id,
-      businessId: business.id,
-      planId: input.planId,
-      outletLimit: 1
-    });
-
-    const cookieStore = await cookies();
-    await cookieStore.set(
-      "provision_otps",
-      JSON.stringify({
-        [business.slug]: {
-          ownerEmail: input.ownerEmail,
-          ownerPassword,
-          staffEmail: input.staffEmail || null,
-          staffPassword
-        }
-      }),
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 30 * 60
-      }
-    );
+  await createSubscription({
+    id: `subscription-${business.slug}`,
+    organizationId: organization.id,
+    businessId: business.id,
+    planId: input.planId,
+    outletLimit: 1
   });
 
   revalidatePath("/platform/setup");
-  revalidatePath("/platform/setup/saas");
-  redirect(`/platform/setup/saas?created=${encodeURIComponent(createdBusinessSlug)}`);
 }
 
 export async function createFranchiseSetupAction(formData: FormData) {
@@ -132,97 +95,73 @@ export async function createFranchiseSetupAction(formData: FormData) {
   const input = franchiseSchema.parse(Object.fromEntries(formData.entries()));
   const organizationSlug = slugify(input.franchiseBrandName);
   const franchiseeSlug = slugify(input.franchiseeName);
-  const businessSlug = uniqueBusinessSlug(input.businessName);
-  let createdBusinessSlug = businessSlug;
 
-  await prisma.$transaction(async (tx) => {
-    await assertActivePlan(tx, input.planId);
+  const organization = await prisma.organization.upsert({
+    where: { slug: organizationSlug },
+    update: { name: input.franchiseBrandName, type: "FRANCHISE" },
+    create: { name: input.franchiseBrandName, slug: organizationSlug, type: "FRANCHISE" }
+  });
 
-    const organization = await tx.organization.upsert({
-      where: { slug: organizationSlug },
-      update: { name: input.franchiseBrandName, type: "FRANCHISE" },
-      create: { name: input.franchiseBrandName, slug: organizationSlug, type: "FRANCHISE" }
-    });
-
-    const franchisee = await tx.franchisee.upsert({
-      where: { organizationId_slug: { organizationId: organization.id, slug: franchiseeSlug } },
-      update: {
-        name: input.franchiseeName,
-        contactName: input.franchiseeName,
-        email: input.ownerEmail,
-        active: true
-      },
-      create: {
-        organizationId: organization.id,
-        slug: franchiseeSlug,
-        name: input.franchiseeName,
-        contactName: input.franchiseeName,
-        email: input.ownerEmail
-      }
-    });
-
-    const { business, ownerPassword } = await createOperationalOutlet(tx, {
-      organizationId: organization.id,
-      franchiseeId: franchisee.id,
-      name: input.businessName,
-      slug: businessSlug,
+  const franchisee = await prisma.franchisee.upsert({
+    where: { organizationId_slug: { organizationId: organization.id, slug: franchiseeSlug } },
+    update: {
+      name: input.franchiseeName,
+      contactName: input.franchiseeName,
       email: input.ownerEmail,
-      appName: input.franchiseBrandName,
-      logoInitials: initials(input.franchiseBrandName),
-      ownerEmail: input.ownerEmail,
-      ownerName: `${input.franchiseeName} Owner`
-    });
-    createdBusinessSlug = business.slug;
+      active: true
+    },
+    create: {
+      organizationId: organization.id,
+      slug: franchiseeSlug,
+      name: input.franchiseeName,
+      contactName: input.franchiseeName,
+      email: input.ownerEmail
+    }
+  });
 
-    await createSubscription(tx, {
-      id: `subscription-${business.slug}`,
+  const business = await createOperationalOutlet({
+    organizationId: organization.id,
+    franchiseeId: franchisee.id,
+    name: input.businessName,
+    slug: uniqueBusinessSlug(input.businessName),
+    email: input.ownerEmail,
+    appName: input.franchiseBrandName,
+    logoInitials: initials(input.franchiseBrandName),
+    ownerEmail: input.ownerEmail,
+    ownerName: `${input.franchiseeName} Owner`
+  });
+
+  await createSubscription({
+    id: `subscription-${business.slug}`,
+    organizationId: organization.id,
+    franchiseeId: franchisee.id,
+    planId: input.planId,
+    outletLimit: 1
+  });
+
+  await prisma.royaltyRule.upsert({
+    where: { id: `royalty-${franchisee.slug}` },
+    update: {
       organizationId: organization.id,
       franchiseeId: franchisee.id,
-      planId: input.planId,
-      outletLimit: 1
-    });
-
-    await tx.royaltyRule.upsert({
-      where: { id: `royalty-${franchisee.id}` },
-      update: {
-        organizationId: organization.id,
-        franchiseeId: franchisee.id,
-        name: `${input.franchiseeName} royalty`,
-        basis: "GROSS_SALES",
-        rateBasisPoints: Math.round(input.royaltyPercent * 100),
-        active: true
-      },
-      create: {
-        id: `royalty-${franchisee.id}`,
-        organizationId: organization.id,
-        franchiseeId: franchisee.id,
-        name: `${input.franchiseeName} royalty`,
-        basis: "GROSS_SALES",
-        rateBasisPoints: Math.round(input.royaltyPercent * 100),
-        fixedAmount: "0.00",
-        minimumAmount: "0.00"
-      }
-    });
-
-    const cookieStore = await cookies();
-    await cookieStore.set(
-      "provision_otps",
-      JSON.stringify({
-        [business.slug]: { ownerEmail: input.ownerEmail, ownerPassword, staffEmail: null, staffPassword: null }
-      }),
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 30 * 60
-      }
-    );
+      name: `${input.franchiseeName} royalty`,
+      basis: "GROSS_SALES",
+      rateBasisPoints: Math.round(input.royaltyPercent * 100),
+      active: true
+    },
+    create: {
+      id: `royalty-${franchisee.slug}`,
+      organizationId: organization.id,
+      franchiseeId: franchisee.id,
+      name: `${input.franchiseeName} royalty`,
+      basis: "GROSS_SALES",
+      rateBasisPoints: Math.round(input.royaltyPercent * 100),
+      fixedAmount: "0.00",
+      minimumAmount: "0.00"
+    }
   });
 
   revalidatePath("/platform/setup");
-  revalidatePath("/platform/setup/franchise");
-  redirect(`/platform/setup/franchise?created=${encodeURIComponent(createdBusinessSlug)}`);
 }
 
 async function assertPlatformAdmin() {
@@ -232,18 +171,7 @@ async function assertPlatformAdmin() {
   }
 }
 
-async function assertActivePlan(db: SetupDb, planId: string) {
-  const plan = await db.subscriptionPlan.findFirst({
-    where: { id: planId, active: true },
-    select: { id: true }
-  });
-
-  if (!plan) {
-    throw new Error("Please choose an active subscription plan before creating setup.");
-  }
-}
-
-async function createOperationalOutlet(db: SetupDb, input: {
+async function createOperationalOutlet(input: {
   organizationId: string;
   franchiseeId?: string | null;
   name: string;
@@ -255,7 +183,7 @@ async function createOperationalOutlet(db: SetupDb, input: {
   ownerName: string;
   staffEmail?: string;
 }) {
-  const business = await db.business.upsert({
+  const business = await prisma.business.upsert({
     where: { slug: input.slug },
     update: {
       organizationId: input.organizationId,
@@ -272,7 +200,7 @@ async function createOperationalOutlet(db: SetupDb, input: {
     }
   });
 
-  await db.businessSettings.upsert({
+  await prisma.businessSettings.upsert({
     where: { businessId: business.id },
     update: {
       appName: input.appName,
@@ -291,7 +219,7 @@ async function createOperationalOutlet(db: SetupDb, input: {
     }
   });
 
-  const { ownerPassword, staffPassword } = await seedOutletRolesAndAccounts(db, {
+  await seedOutletRolesAndAccounts({
     businessId: business.id,
     organizationId: input.organizationId,
     franchiseeId: input.franchiseeId ?? null,
@@ -299,34 +227,34 @@ async function createOperationalOutlet(db: SetupDb, input: {
     ownerName: input.ownerName,
     staffEmail: input.staffEmail
   });
-  await seedDefaultOutletCatalog(db, business.id);
+  await seedDefaultOutletCatalog(business.id);
 
-  return { business, ownerPassword, staffPassword };
+  return business;
 }
 
-async function seedOutletRolesAndAccounts(db: SetupDb, input: {
+async function seedOutletRolesAndAccounts(input: {
   businessId: string;
   organizationId: string;
   franchiseeId: string | null;
   ownerEmail: string;
   ownerName: string;
   staffEmail?: string;
-}): Promise<{ ownerPassword: string; staffPassword: string | null }> {
+}) {
   await Promise.all(
     [...new Set([...operationalPermissions, ...staffPermissions])].map((key) =>
-      db.permission.upsert({ where: { key }, update: {}, create: { key } })
+      prisma.permission.upsert({ where: { key }, update: {}, create: { key } })
     )
   );
 
-  const ownerRole = await db.role.upsert({
+  const ownerRole = await prisma.role.upsert({
     where: { businessId_name: { businessId: input.businessId, name: "Owner" } },
     update: {},
     create: { businessId: input.businessId, name: "Owner", description: "Full outlet operations and settings access" }
   });
-  const ownerPermissions = await db.permission.findMany({ where: { key: { in: operationalPermissions } } });
+  const ownerPermissions = await prisma.permission.findMany({ where: { key: { in: operationalPermissions } } });
   await Promise.all(
     ownerPermissions.map((permission) =>
-      db.rolePermission.upsert({
+      prisma.rolePermission.upsert({
         where: { roleId_permissionId: { roleId: ownerRole.id, permissionId: permission.id } },
         update: {},
         create: { roleId: ownerRole.id, permissionId: permission.id }
@@ -334,9 +262,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
     )
   );
 
-  const ownerPassword = generateOneTimePassword();
-
-  await db.employee.upsert({
+  await prisma.employee.upsert({
     where: { id: `user-owner-${input.businessId}` },
     update: {
       businessId: input.businessId,
@@ -344,6 +270,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: input.ownerName,
       email: input.ownerEmail.toLowerCase(),
+      passwordHash: defaultPasswordHash,
       accountType: "STORE_OWNER",
       active: true
     },
@@ -354,27 +281,26 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: input.ownerName,
       email: input.ownerEmail.toLowerCase(),
-      passwordHash: hashPassword(ownerPassword),
+      passwordHash: defaultPasswordHash,
       accountType: "STORE_OWNER",
       active: true,
-      mustChangePassword: true,
       roles: { create: { roleId: ownerRole.id } }
     }
   });
 
   if (!input.staffEmail) {
-    return { ownerPassword, staffPassword: null };
+    return;
   }
 
-  const staffRole = await db.role.upsert({
+  const staffRole = await prisma.role.upsert({
     where: { businessId_name: { businessId: input.businessId, name: "Staff" } },
     update: {},
     create: { businessId: input.businessId, name: "Staff", description: "Floor, table, and billing operations" }
   });
-  const selectedStaffPermissions = await db.permission.findMany({ where: { key: { in: staffPermissions } } });
+  const selectedStaffPermissions = await prisma.permission.findMany({ where: { key: { in: staffPermissions } } });
   await Promise.all(
     selectedStaffPermissions.map((permission) =>
-      db.rolePermission.upsert({
+      prisma.rolePermission.upsert({
         where: { roleId_permissionId: { roleId: staffRole.id, permissionId: permission.id } },
         update: {},
         create: { roleId: staffRole.id, permissionId: permission.id }
@@ -382,9 +308,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
     )
   );
 
-  const staffPassword = generateOneTimePassword();
-
-  await db.employee.upsert({
+  await prisma.employee.upsert({
     where: { id: `user-staff-${input.businessId}` },
     update: {
       businessId: input.businessId,
@@ -392,6 +316,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: "Floor Staff",
       email: input.staffEmail.toLowerCase(),
+      passwordHash: defaultPasswordHash,
       accountType: "STORE_USER",
       active: true
     },
@@ -402,18 +327,24 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: "Floor Staff",
       email: input.staffEmail.toLowerCase(),
-      passwordHash: hashPassword(staffPassword),
+      passwordHash: defaultPasswordHash,
       accountType: "STORE_USER",
       active: true,
-      mustChangePassword: true,
       roles: { create: { roleId: staffRole.id } }
     }
   });
-
-  return { ownerPassword, staffPassword };
 }
 
-async function seedDefaultOutletCatalog(db: SetupDb, businessId: string) {
+async function seedDefaultOutletCatalog(businessId: string) {
+  const tables = [
+    { number: "Royal Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "royal" },
+    { number: "Royal Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "royal" },
+    { number: "Mini Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "mini" },
+    { number: "Mini Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "mini" },
+    { number: "Pool Table 1", gameType: GameType.POOL, pricingGroup: "standard" },
+    { number: "PS5 1", gameType: GameType.PS5, pricingGroup: "players-2" },
+    { number: "PS5 2", gameType: GameType.PS5, pricingGroup: "players-4" }
+  ];
   const pricing = [
     { gameType: GameType.SNOOKER, pricingGroup: "royal", durationMinutes: 60, priceAmount: "350.00" },
     { gameType: GameType.SNOOKER, pricingGroup: "mini", durationMinutes: 60, priceAmount: "330.00" },
@@ -432,8 +363,18 @@ async function seedDefaultOutletCatalog(db: SetupDb, businessId: string) {
   ];
 
   await Promise.all(
+    tables.map((table) =>
+      prisma.clubTable.upsert({
+        where: { businessId_number: { businessId, number: table.number } },
+        update: { gameType: table.gameType, pricingGroup: table.pricingGroup, status: "AVAILABLE" },
+        create: { businessId, ...table }
+      })
+    )
+  );
+
+  await Promise.all(
     pricing.map((rule) =>
-      db.tablePricing.upsert({
+      prisma.tablePricing.upsert({
         where: {
           businessId_gameType_pricingGroup_durationMinutes: {
             businessId,
@@ -450,7 +391,7 @@ async function seedDefaultOutletCatalog(db: SetupDb, businessId: string) {
 
   await Promise.all(
     products.map((product) =>
-      db.product.upsert({
+      prisma.product.upsert({
         where: { id: product.id },
         update: { name: product.name, category: product.category, priceAmount: product.priceAmount, active: true },
         create: { businessId, ...product }
@@ -459,7 +400,7 @@ async function seedDefaultOutletCatalog(db: SetupDb, businessId: string) {
   );
 }
 
-async function createSubscription(db: SetupDb, input: {
+async function createSubscription(input: {
   id: string;
   organizationId: string;
   businessId?: string;
@@ -472,7 +413,7 @@ async function createSubscription(db: SetupDb, input: {
   const currentPeriodEnd = new Date(currentPeriodStart);
   currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
 
-  return db.subscription.upsert({
+  return prisma.subscription.upsert({
     where: { id: input.id },
     update: {
       organizationId: input.organizationId,
