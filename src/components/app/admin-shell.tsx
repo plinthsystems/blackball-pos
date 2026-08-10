@@ -6,6 +6,7 @@ import type { AccountType, OrganizationContext, TenantBranding } from "@/server/
 import { StoreSwitcher } from "./store-switcher";
 
 const navItems = [
+  { href: "/platform/setup", label: "Platform Setup", icon: "add_business", permission: "platform.setup.manage" },
   { href: "/hq/dashboard", label: "Franchise HQ", icon: "corporate_fare", permission: "hq.dashboard.read" },
   { href: "/dashboard", label: "Dashboard", icon: "monitoring", permission: "dashboard.read" },
   { href: "/live-tables", label: "Live Floor", icon: "grid_view", permission: "tables.read" },
@@ -50,6 +51,7 @@ export function AdminShell({
 }) {
   const visibleNavItems = navItems.filter((item) => account.permissions.includes(item.permission));
   const accountLabelMap: Record<AccountType, string> = {
+    PLATFORM_ADMIN: "Platform Admin",
     HQ_ADMIN: "Franchise HQ Director",
     STORE_OWNER: "Store Owner",
     MANAGER: "Store Manager",

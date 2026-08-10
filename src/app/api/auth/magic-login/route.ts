@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     storeSlug: activeStoreSlug
   });
 
-  const targetUrl = employee.accountType === "HQ_ADMIN" ? "/hq/dashboard" : "/dashboard";
+  const targetUrl = employee.accountType === "PLATFORM_ADMIN" ? "/platform/setup" : employee.accountType === "HQ_ADMIN" ? "/hq/dashboard" : "/dashboard";
   const response = NextResponse.redirect(new URL(targetUrl, request.url));
 
   response.cookies.set("auth_session", token, {

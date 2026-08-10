@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       storeSlug: employee.business?.slug ?? undefined
     });
 
-    const redirectUrl = employee.accountType === "HQ_ADMIN" ? "/hq/dashboard" : "/dashboard";
+    const redirectUrl = employee.accountType === "PLATFORM_ADMIN" ? "/platform/setup" : employee.accountType === "HQ_ADMIN" ? "/hq/dashboard" : "/dashboard";
 
     const response = NextResponse.json({ success: true, redirectUrl });
     response.cookies.set("auth_session", token, {

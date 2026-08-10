@@ -21,8 +21,9 @@ export function middleware(request: NextRequest) {
   ) {
     // If visiting /login while authenticated, redirect to role dashboard
     if (pathname === "/login" && isAuthenticated) {
+      const isPlatformAdmin = tokenPayload?.accountType === "PLATFORM_ADMIN" || Boolean(demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@"));
       const isHq = tokenPayload?.accountType === "HQ_ADMIN" || Boolean(demoEmail?.includes("hq."));
-      return NextResponse.redirect(new URL(isHq ? "/hq/dashboard" : "/dashboard", request.url));
+      return NextResponse.redirect(new URL(isPlatformAdmin ? "/platform/setup" : isHq ? "/hq/dashboard" : "/dashboard", request.url));
     }
     return NextResponse.next();
   }
@@ -32,9 +33,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 2. AUTHORIZATION GUARD: Enforce role-based access for HQ routes
+  // 2. AUTHORIZATION GUARD: Enforce role-based access for Platform/HQ routes
+  if (pathname.startsWith("/platform")) {
+    const isPlatformAdmin = tokenPayload?.accountType === "PLATFORM_ADMIN" || Boolean(demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@"));
+    if (!isPlatformAdmin) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
   if (pathname.startsWith("/hq")) {
-    const isHqAdmin = tokenPayload?.accountType === "HQ_ADMIN" || Boolean(demoEmail?.includes("hq."));
+    const isHqAdmin = tokenPayload?.accountType === "HQ_ADMIN" || tokenPayload?.accountType === "PLATFORM_ADMIN" || Boolean(demoEmail?.includes("hq.") || demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@"));
     if (!isHqAdmin) {
       // Non-HQ users (Store Managers/Owners) attempting to access /hq/* are blocked and redirected to /dashboard
       return NextResponse.redirect(new URL("/dashboard", request.url));
