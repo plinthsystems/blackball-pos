@@ -14,7 +14,7 @@ export default async function PlatformSetupRoute() {
     redirect(getDefaultRouteForPermissions(context.permissions));
   }
 
-  const [plans, organizations] = await Promise.all([
+  const [plans, organizations, franchiseeCount, outletCount] = await Promise.all([
     prisma.subscriptionPlan.findMany({
       where: { active: true },
       orderBy: [{ baseAmount: "asc" }, { name: "asc" }],
@@ -23,7 +23,9 @@ export default async function PlatformSetupRoute() {
     prisma.organization.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true, slug: true, type: true }
-    })
+    }),
+    prisma.franchisee.count(),
+    prisma.business.count()
   ]);
 
   return (
@@ -33,6 +35,12 @@ export default async function PlatformSetupRoute() {
         baseAmount: Number(plan.baseAmount)
       }))}
       organizations={organizations}
+      summary={{
+        organizations: organizations.length,
+        franchisees: franchiseeCount,
+        outlets: outletCount,
+        plans: plans.length
+      }}
       createSaasAction={createSaasSetupAction}
       createFranchiseAction={createFranchiseSetupAction}
     />
