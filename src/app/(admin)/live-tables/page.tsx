@@ -6,10 +6,11 @@ export const dynamic = "force-dynamic";
 
 export default async function LiveTablesRoute() {
   const context = await getCurrentEmployeeContext();
+  const isHqAdmin = context.accountType === "HQ_ADMIN";
   const [tables, products, counterBills] = await Promise.all([
     getLiveTableBoard(context.businessId),
     getProductOptions(context.businessId),
     getOpenCounterBills(context.businessId)
   ]);
-  return <LiveTablePage tables={tables} products={products} counterBills={counterBills} />;
+  return <LiveTablePage tables={tables} products={products} counterBills={counterBills} isHqAdmin={isHqAdmin} />;
 }

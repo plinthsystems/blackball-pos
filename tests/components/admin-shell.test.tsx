@@ -56,4 +56,20 @@ describe("AdminShell", () => {
     expect(screen.queryByRole("link", { name: /Food\/Menu/ })).not.toBeInTheDocument();
     expect(screen.getByText("Store User")).toBeInTheDocument();
   });
+
+  it("shows Franchise HQ link for HQ admins", () => {
+    render(
+      <AdminShell
+        account={{
+          name: "HQ Director",
+          accountType: "HQ_ADMIN",
+          permissions: ["hq.dashboard.read", "dashboard.read"]
+        }}
+      >
+        <div>Content</div>
+      </AdminShell>
+    );
+
+    expect(screen.getByRole("link", { name: /Franchise HQ/ })).toBeInTheDocument();
+  });
 });

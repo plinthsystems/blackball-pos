@@ -80,33 +80,53 @@ enum BillStatus {
 }
 
 enum AccountType {
-  STORE_USER
+  HQ_ADMIN
+  STORE_OWNER
   MANAGER
+  STORE_USER
+}
+
+enum OrganizationType {
+  INDEPENDENT_SAAS
+  FRANCHISE
+}
+
+model Organization {
+  id         String           @id @default(cuid())
+  name       String
+  slug       String           @unique
+  type       OrganizationType @default(INDEPENDENT_SAAS)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  businesses Business[]
+  employees  Employee[]
 }
 
 model Business {
-  id           String             @id @default(cuid())
-  slug         String             @unique
-  name         String
-  phone        String?
-  email        String?
-  currency     String             @default("INR")
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  settings     BusinessSettings?
-  employees    Employee[]
-  customers    Customer[]
-  tables       ClubTable[]
-  bookings     Booking[]
-  sessions     Session[]
-  invoices     Invoice[]
-  payments     Payment[]
-  auditLogs    AuditLog[]
-  pricingRules TablePricing[]
-  products     Product[]
-  sessionItems SessionItem[]
-  bills        Bill[]
-  billItems    BillItem[]
+  id             String            @id @default(cuid())
+  organizationId String?
+  slug           String            @unique
+  name           String
+  phone          String?
+  email          String?
+  currency       String            @default("INR")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  settings       BusinessSettings?
+  employees      Employee[]
+  customers      Customer[]
+  tables         ClubTable[]
+  bookings       Booking[]
+  sessions       Session[]
+  invoices       Invoice[]
+  payments       Payment[]
+  auditLogs      AuditLog[]
+  pricingRules   TablePricing[]
+  products       Product[]
+  sessionItems   SessionItem[]
+  bills          Bill[]
+  billItems      BillItem[]
 }
 
 model BusinessSettings {
@@ -125,22 +145,23 @@ model BusinessSettings {
 }
 
 model Employee {
-  id               String    @id @default(cuid())
-  businessId       String
+  id               String        @id @default(cuid())
+  businessId       String?
+  organizationId   String?
   name             String
   email            String
+  passwordHash     String?
   phone            String?
-  accountType      AccountType @default(STORE_USER)
-  active           Boolean   @default(true)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  business         Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  accountType      AccountType   @default(STORE_USER)
+  active           Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  business         Business?     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   roles            EmployeeRole[]
-  assignedSessions Session[] @relation("AssignedEmployee")
-  createdSessions  Session[] @relation("CreatedByEmployee")
+  assignedSessions Session[]     @relation("AssignedEmployee")
+  createdSessions  Session[]     @relation("CreatedByEmployee")
   auditLogs        AuditLog[]
-
-  @@unique([businessId, email])
 }
 
 model Role {

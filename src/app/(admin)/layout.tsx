@@ -9,9 +9,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       tenantBranding={context.tenantBranding}
       account={{
         name: context.employeeName,
+        email: context.employeeEmail,
         accountType: context.accountType,
         permissions: context.permissions
       }}
+      businessId={context.businessId}
+      organization={context.organization}
     >
       {children}
     </AdminShell>

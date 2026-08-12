@@ -1,4 +1,5 @@
 .DS_Store
+.vscode
 node_modules
 .next
 coverage
@@ -6,3 +7,4 @@ coverage
 playwright-report
 test-results
 *.tsbuildinfo
+.tmp_screenshots
