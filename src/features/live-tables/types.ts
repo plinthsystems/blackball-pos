@@ -57,6 +57,11 @@ export type LiveTableCardData = {
     assignedStaffName: string | null;
   };
   recentBill: LiveBillData | null;
+  upcomingBooking?: null | {
+    startsAt: string;
+    endsAt: string;
+    status: "PENDING" | "CONFIRMED" | "CHECKED_IN";
+  };
 };
 
 export type CounterBillData = LiveBillData & {

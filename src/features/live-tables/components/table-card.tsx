@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/money";
 import { formatClockTime } from "@/lib/time";
 import type { LiveTableCardData, LiveTableGameType, LiveTableStatus, ProductCategory, ProductOption } from "../types";
 import { TableStatusMenu } from "./table-status-menu";
+import { BookingCountdown } from "./booking-countdown";
 import { StartWalkInDialog } from "@/features/sessions/components/start-walk-in-dialog";
 import { ExtendSessionDialog } from "@/features/sessions/components/extend-session-dialog";
 import { EndSessionDialog } from "@/features/sessions/components/end-session-dialog";
@@ -82,6 +83,9 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
         </div>
         <Badge tone={statusTone[table.status]}>{statusLabel[table.status]}</Badge>
       </div>
+      {table.upcomingBooking ? (
+        <BookingCountdown startsAt={table.upcomingBooking.startsAt} endsAt={table.upcomingBooking.endsAt} />
+      ) : null}
       <div className={session ? "mt-4 min-h-24 text-sm text-slate-200" : "mt-4 min-h-24 text-sm text-slate-300"}>
         {session ? (
           <div className="space-y-3">
