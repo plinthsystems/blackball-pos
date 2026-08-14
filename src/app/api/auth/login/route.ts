@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/prisma";
 import { createSessionToken, verifyPassword } from "@/server/auth/auth-service";
+import { checkRateLimit, clientIpFromRequest } from "@/server/auth/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    if (!checkRateLimit(`login:${clientIpFromRequest(request)}`, 10)) {
+      return NextResponse.json(
+        { error: "Too many login attempts. Please wait a few minutes." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { email, password } = body;
 
@@ -33,23 +41,34 @@ export async function POST(request: Request) {
       email: employee.email,
       accountType: employee.accountType,
       businessId: employee.businessId ?? undefined,
-      storeSlug: employee.business?.slug ?? undefined
+      storeSlug: employee.business?.slug ?? undefined,
+      mustChangePassword: employee.mustChangePassword
     });
 
-    const redirectUrl = employee.accountType === "PLATFORM_ADMIN" ? "/platform/setup" : employee.accountType === "HQ_ADMIN" ? "/hq/dashboard" : "/dashboard";
+    const redirectUrl =
+      employee.accountType === "PLATFORM_ADMIN"
+        ? "/platform/setup"
+        : employee.accountType === "HQ_ADMIN"
+          ? "/hq/dashboard"
+          : employee.mustChangePassword
+            ? "/change-password"
+            : "/dashboard";
 
     const response = NextResponse.json({ success: true, redirectUrl });
     response.cookies.set("auth_session", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7 // 7 days
     });
 
-    // Also set demo cookies for consistency
-    response.cookies.set("demo_user_email", employee.email, { path: "/", maxAge: 60 * 60 * 24 * 7 });
-    if (employee.business?.slug) {
-      response.cookies.set("demo_store_slug", employee.business.slug, { path: "/", maxAge: 60 * 60 * 24 * 7 });
+    // Demo cookies are development helpers only — never set in production.
+    if (process.env.NODE_ENV !== "production") {
+      response.cookies.set("demo_user_email", employee.email, { path: "/", maxAge: 60 * 60 * 24 * 7 });
+      if (employee.business?.slug) {
+        response.cookies.set("demo_store_slug", employee.business.slug, { path: "/", maxAge: 60 * 60 * 24 * 7 });
+      }
     }
 
     return response;

@@ -11,6 +11,7 @@ describe("buildCurrentEmployeeContext", () => {
       name: "Ravi Manager",
       email: "ravi@example.com",
       accountType: "MANAGER",
+      mustChangePassword: false,
       organization: null,
       franchisee: null,
       business: {
@@ -42,7 +43,7 @@ describe("buildCurrentEmployeeContext", () => {
       employeeName: "Ravi Manager",
       employeeEmail: "ravi@example.com",
       accountType: "MANAGER",
-      permissions: ["tables.read", "rates.manage", "dashboard.read", "products.manage", "settings.update"],
+      permissions: ["tables.read", "rates.manage", "dashboard.read", "products.manage", "settings.update", "tables.manage"],
       tenantBranding: {
         appName: "Cue City POS",
         logoInitials: "CC",
@@ -50,6 +51,7 @@ describe("buildCurrentEmployeeContext", () => {
         brandColor: "#14532d",
         accentColor: "#b98922"
       },
+      mustChangePassword: false,
       organization: undefined,
       scope: {
         organizationId: null,
@@ -69,6 +71,7 @@ describe("buildCurrentEmployeeContext", () => {
       name: "Bangalore Franchise Owner",
       email: "franchisee@example.com",
       accountType: "STORE_OWNER",
+      mustChangePassword: false,
       organization: {
         id: "org_blackball",
         name: "BlackBall Franchise",
@@ -110,6 +113,7 @@ describe("buildCurrentEmployeeContext", () => {
       name: "HQ Director",
       email: "hq@example.com",
       accountType: "HQ_ADMIN",
+      mustChangePassword: false,
       organization: {
         id: "org_blackball",
         name: "BlackBall Franchise",

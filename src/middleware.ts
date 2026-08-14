@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { decodeSessionTokenPayload } from "@/server/auth/auth-service";
+import { getAuthSecret, verifySessionTokenEdge } from "@/server/auth/auth-service";
 
-export function middleware(request: NextRequest) {
+const isProduction = () => process.env.NODE_ENV === "production";
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const authSession = request.cookies.get("auth_session")?.value;
   const demoEmail = request.cookies.get("demo_user_email")?.value;
 
-  const tokenPayload = authSession ? decodeSessionTokenPayload(authSession) : null;
-  const isAuthenticated = Boolean(tokenPayload || demoEmail);
+  // SECURITY: middleware verifies the HMAC signature — decoding without verifying
+  // would let attackers forge role claims. Demo cookies are only trusted in dev.
+  const tokenPayload = authSession ? await verifySessionTokenEdge(authSession) : null;
+  const demoIdentityAllowed = !isProduction() && Boolean(demoEmail);
+  const isAuthenticated = Boolean(tokenPayload || demoIdentityAllowed);
 
   // Allow public routes without auth checks
   if (
@@ -16,14 +21,18 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/login") ||
     pathname.startsWith("/magic-login") ||
     pathname.startsWith("/docs") ||
+    pathname === "/book" ||
+    pathname.startsWith("/book/") ||
+    pathname.startsWith("/qr/") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon")
   ) {
     // If visiting /login while authenticated, redirect to role dashboard
-    if (pathname === "/login" && isAuthenticated) {
-      const isPlatformAdmin = tokenPayload?.accountType === "PLATFORM_ADMIN" || Boolean(demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@"));
-      const isHq = tokenPayload?.accountType === "HQ_ADMIN" || Boolean(demoEmail?.includes("hq."));
+    if (pathname === "/login" && isAuthenticated && !pathname.startsWith("/api")) {
+      const accountType = tokenPayload?.accountType;
+      const isPlatformAdmin = accountType === "PLATFORM_ADMIN" || (!isProduction() && Boolean(demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@")));
+      const isHq = accountType === "HQ_ADMIN" || (!isProduction() && Boolean(demoEmail?.includes("hq.")));
       return NextResponse.redirect(new URL(isPlatformAdmin ? "/platform/setup" : isHq ? "/hq/dashboard" : "/dashboard", request.url));
     }
     return NextResponse.next();
@@ -34,18 +43,31 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // 3. PASSWORD-RESET GUARD: force password change before any other page
+  if (
+    tokenPayload?.mustChangePassword &&
+    !pathname.startsWith("/change-password") &&
+    !pathname.startsWith("/api/")
+  ) {
+    return NextResponse.redirect(new URL("/change-password", request.url));
+  }
+
   // 2. AUTHORIZATION GUARD: Enforce role-based access for Platform/HQ routes
   if (pathname.startsWith("/platform")) {
-    const isPlatformAdmin = tokenPayload?.accountType === "PLATFORM_ADMIN" || Boolean(demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@"));
+    const isPlatformAdmin =
+      tokenPayload?.accountType === "PLATFORM_ADMIN" ||
+      (!isProduction() && Boolean(demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@")));
     if (!isPlatformAdmin) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
 
   if (pathname.startsWith("/hq")) {
-    const isHqAdmin = tokenPayload?.accountType === "HQ_ADMIN" || tokenPayload?.accountType === "PLATFORM_ADMIN" || Boolean(demoEmail?.includes("hq.") || demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@"));
+    const isHqAdmin =
+      tokenPayload?.accountType === "HQ_ADMIN" ||
+      tokenPayload?.accountType === "PLATFORM_ADMIN" ||
+      (!isProduction() && Boolean(demoEmail?.includes("hq.") || demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@")));
     if (!isHqAdmin) {
-      // Non-HQ users (Store Managers/Owners) attempting to access /hq/* are blocked and redirected to /dashboard
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }

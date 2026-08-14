@@ -19,6 +19,7 @@ describe("authorization helpers", () => {
       accountType: "HQ_ADMIN",
       permissions: ["dashboard.read"],
       tenantBranding: {} as any,
+      mustChangePassword: false,
       scope: defaultScope
     });
 
@@ -35,6 +36,7 @@ describe("authorization helpers", () => {
       accountType: "STORE_OWNER",
       permissions: ["tables.read"],
       tenantBranding: {} as any,
+      mustChangePassword: false,
       scope: { ...defaultScope, businessIds: ["biz_2"], selectedBusinessId: "biz_2" }
     });
 
@@ -50,6 +52,7 @@ describe("authorization helpers", () => {
       accountType: "STORE_USER",
       permissions: ["tables.read"],
       tenantBranding: {} as any,
+      mustChangePassword: false,
       scope: { ...defaultScope, businessIds: ["biz_3"], selectedBusinessId: "biz_3" }
     });
 
@@ -65,6 +68,7 @@ describe("authorization helpers", () => {
       accountType: "STORE_USER",
       permissions: ["tables.read"],
       tenantBranding: {} as any,
+      mustChangePassword: false,
       scope: { ...defaultScope, businessIds: ["biz_3"], selectedBusinessId: "biz_3" }
     });
 

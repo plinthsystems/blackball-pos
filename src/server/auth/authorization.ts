@@ -13,7 +13,7 @@ export class AuthorizationError extends Error {
  */
 export async function requireAuth(): Promise<CurrentEmployeeContext> {
   const context = await getCurrentEmployeeContext();
-  if (!context) {
+  if (!context || !context.employeeId) {
     throw new AuthorizationError("Unauthenticated session. Please sign in.", 401);
   }
   return context;

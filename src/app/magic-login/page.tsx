@@ -2,7 +2,20 @@ export const dynamic = "force-dynamic";
 
 import { MagicLoginBuilderUI } from "./magic-login-builder";
 
-export default function MagicLoginPage() {
+const errorLabels: Record<string, string> = {
+  invalid_key: "Galat access key. Seedha email se login ab allowed nahi hai — upar access key daalo.",
+  disabled: "Magic login is production me disabled hai (MAGIC_LOGIN_ENABLED=true + DEV_ACCESS_KEY se hi chalta hai).",
+  rate_limited: "Bahut saare attempts — thodi der baad try karo.",
+  user_not_found: "Is email se koi active employee nahi mila."
+};
+
+export default async function MagicLoginPage({
+  searchParams
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 lg:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -15,7 +28,7 @@ export default function MagicLoginPage() {
             <div>
               <h1 className="text-2xl font-black text-white tracking-tight">Dev Magic Login Link Generator</h1>
               <p className="text-xs text-slate-400 mt-0.5">
-                Generate 1-click testing magic login links for any Franchise, Store, or User role without typing passwords.
+                Secure 1-click testing login — required access key ke saath. Bina key ke koi bhi account nahi khulta.
               </p>
             </div>
           </div>
@@ -29,7 +42,7 @@ export default function MagicLoginPage() {
         </div>
 
         {/* Builder UI */}
-        <MagicLoginBuilderUI />
+        <MagicLoginBuilderUI error={error ? (errorLabels[error] ?? error) : null} />
       </div>
     </div>
   );
