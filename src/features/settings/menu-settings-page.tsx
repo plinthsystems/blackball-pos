@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Field, textInputProps } from "@/components/ui/field";
 import { Snackbar } from "@/components/ui/snackbar";
 import { formatMoney } from "@/lib/money";
-import { createOrUpdateProductAction, deactivateProductAction, updateBrandingAction } from "./actions";
+import { createOrUpdateProductAction, deactivateProductAction, updateBookingSettingsAction, updateBrandingAction } from "./actions";
 import type { ProductCategory } from "@/features/live-tables/types";
 
 export type SettingsProduct = {
@@ -21,6 +21,20 @@ export type SettingsBranding = {
   logoInitials: string;
   brandColor: string;
   accentColor: string;
+};
+
+export type SettingsBooking = {
+  bookingEnabled: boolean;
+  requireConfirmation: boolean;
+  bookingBufferMinutes: number;
+  bookingOpenHour: number;
+  bookingCloseHour: number;
+  paymentProvider: "NONE" | "RAZORPAY" | "STRIPE";
+  bookingAdvanceAmount: number;
+  availablePaymentProviders: Array<{ code: "NONE" | "RAZORPAY" | "STRIPE"; label: string; ready: boolean }>;
+  whatsappConfigured: boolean;
+  paymentInfo: string | null;
+  bookingLink: string;
 };
 
 const categoryLabels: Record<ProductCategory, string> = {
@@ -39,7 +53,15 @@ const fallbackBranding: SettingsBranding = {
   accentColor: "#b98922"
 };
 
-export function MenuSettingsPage({ products, branding = fallbackBranding }: { products: SettingsProduct[]; branding?: SettingsBranding }) {
+export function MenuSettingsPage({
+  products,
+  branding = fallbackBranding,
+  booking
+}: {
+  products: SettingsProduct[];
+  branding?: SettingsBranding;
+  booking?: SettingsBooking;
+}) {
   const [name, setName] = useState("");
   const [category, setCategory] = useState<Exclude<ProductCategory, "CAFE">>("FOOD");
   const [priceAmount, setPriceAmount] = useState(0);
@@ -49,6 +71,13 @@ export function MenuSettingsPage({ products, branding = fallbackBranding }: { pr
   const [accentColor, setAccentColor] = useState(branding.accentColor);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [bookingEnabled, setBookingEnabled] = useState(booking?.bookingEnabled ?? true);
+  const [requireConfirmation, setRequireConfirmation] = useState(booking?.requireConfirmation ?? false);
+  const [paymentProvider, setPaymentProvider] = useState(booking?.paymentProvider ?? "NONE");
+  const [advanceAmount, setAdvanceAmount] = useState(booking?.bookingAdvanceAmount ?? 0);
+  const [bufferMinutes, setBufferMinutes] = useState(booking?.bookingBufferMinutes ?? 10);
+  const [openHour, setOpenHour] = useState(booking?.bookingOpenHour ?? 10);
+  const [closeHour, setCloseHour] = useState(booking?.bookingCloseHour ?? 23);
 
   function addItem() {
     startTransition(async () => {
@@ -83,6 +112,21 @@ export function MenuSettingsPage({ products, branding = fallbackBranding }: { pr
   function saveBranding() {
     startTransition(async () => {
       const result = await updateBrandingAction({ appName, logoInitials, brandColor, accentColor });
+      setMessage(result.message);
+    });
+  }
+
+  function saveBookingSettings() {
+    startTransition(async () => {
+      const result = await updateBookingSettingsAction({
+        bookingEnabled,
+        requireConfirmation,
+        bookingBufferMinutes: Number(bufferMinutes),
+        bookingOpenHour: Number(openHour),
+        bookingCloseHour: Number(closeHour),
+        paymentProvider,
+        bookingAdvanceAmount: Number(advanceAmount)
+      });
       setMessage(result.message);
     });
   }
@@ -152,6 +196,100 @@ export function MenuSettingsPage({ products, branding = fallbackBranding }: { pr
               <p className="text-xs text-slate-500">The interface stays consistent for staff; this identity appears where customers and managers recognize the outlet.</p>
               <Button type="button" variant="primary" disabled={isPending || !appName.trim() || !logoInitials.trim()} onClick={saveBranding}>
                 Save profile
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-material border border-cyan-300/15 bg-slate-950 shadow-[0_0_34px_rgba(34,211,238,0.08)]">
+        <div className="grid gap-0 lg:grid-cols-[300px_1fr]">
+          <div className="border-b border-cyan-300/15 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(2,6,23,1))] p-5 lg:border-b-0 lg:border-r">
+            <h2 className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Customer Online Booking</h2>
+            <p className="mt-3 text-xl font-black text-white">Self-service reservations</p>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Customers book tables from the public link below. No login needed — just a phone number.
+            </p>
+            {booking && (
+              <div className="mt-4 rounded-material border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Booking link (QR)</p>
+                <p className="mt-1 break-all font-mono text-xs text-cyan-200">{booking.bookingLink}</p>
+              </div>
+            )}
+          </div>
+          <div className="grid gap-4 p-5 md:grid-cols-2">
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-material border border-white/10 bg-white/[0.03] p-3">
+              <span>
+                <span className="block text-sm font-black text-white">Accept new bookings</span>
+                <span className="text-xs text-slate-400">Disables the public booking page when off</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={bookingEnabled}
+                onChange={(event) => setBookingEnabled(event.target.checked)}
+                className="h-5 w-5 accent-emerald-500"
+              />
+            </label>
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-material border border-white/10 bg-white/[0.03] p-3">
+              <span>
+                <span className="block text-sm font-black text-white">Staff verification</span>
+                <span className="text-xs text-slate-400">On: bookings stay pending until staff confirms</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={requireConfirmation}
+                onChange={(event) => setRequireConfirmation(event.target.checked)}
+                className="h-5 w-5 accent-amber-500"
+              />
+            </label>
+            <Field label="Cleanup buffer (min)">
+              <input {...textInputProps()} type="number" min={0} max={120} value={bufferMinutes} onChange={(event) => setBufferMinutes(Number(event.target.value))} />
+            </Field>
+            <Field label="Opens at (24h)">
+              <input {...textInputProps()} type="number" min={6} max={14} value={openHour} onChange={(event) => setOpenHour(Number(event.target.value))} />
+            </Field>
+            <Field label="Closes at (24h)">
+              <input {...textInputProps()} type="number" min={14} max={24} value={closeHour} onChange={(event) => setCloseHour(Number(event.target.value))} />
+            </Field>
+            <Field label="Payment provider (advance)">
+              <select
+                className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-3 text-sm text-slate-100"
+                value={paymentProvider}
+                onChange={(event) => setPaymentProvider(event.target.value as "NONE" | "RAZORPAY" | "STRIPE")}
+              >
+                {(booking?.availablePaymentProviders ?? [{ code: "NONE", label: "None — pay at store", ready: true }]).map((provider) => (
+                  <option key={provider.code} value={provider.code} disabled={provider.code !== "NONE" && !provider.ready}>
+                    {provider.label}{provider.code !== "NONE" && !provider.ready ? " (keys missing)" : ""}
+                  </option>
+                ))}
+              </select>
+              {booking?.paymentInfo && (
+                <p className="mt-1 text-[11px] text-amber-200/80">{booking.paymentInfo}</p>
+              )}
+            </Field>
+            <Field label="Advance amount (₹)">
+              <input
+                {...textInputProps()}
+                type="number"
+                min={0}
+                max={100000}
+                value={advanceAmount}
+                onChange={(event) => setAdvanceAmount(Number(event.target.value))}
+              />
+            </Field>
+            <div className="md:col-span-2">
+              <p className="rounded-material border border-slate-700 bg-slate-900 p-3 text-xs text-slate-400">
+                {booking?.whatsappConfigured
+                  ? "💬 WhatsApp is configured — customers get booking & cancellation messages on their phone."
+                  : "🔕 WhatsApp is NOT configured — no SMS/WhatsApp notifications will be sent. Add WHATSAPP_API_URL & WHATSAPP_API_TOKEN in .env to enable."}
+              </p>
+            </div>
+            <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 border-t border-cyan-300/10 pt-4">
+              <p className="text-xs text-slate-500">
+                Same-day slots only, every 30 minutes between opening and closing hours.
+              </p>
+              <Button type="button" variant="primary" disabled={isPending} onClick={saveBookingSettings}>
+                Save booking preferences
               </Button>
             </div>
           </div>

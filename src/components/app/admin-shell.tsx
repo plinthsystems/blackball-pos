@@ -10,6 +10,8 @@ const navItems = [
   { href: "/hq/dashboard", label: "Franchise HQ", icon: "corporate_fare", permission: "hq.dashboard.read" },
   { href: "/dashboard", label: "Dashboard", icon: "monitoring", permission: "dashboard.read" },
   { href: "/live-tables", label: "Live Floor", icon: "grid_view", permission: "tables.read" },
+  { href: "/tables", label: "Bookable Items", icon: "sports", permission: "tables.manage" },
+  { href: "/bookings", label: "Bookings", icon: "calendar_month", permission: "bookings.manage" },
   { href: "/settings", label: "Food/Menu", icon: "restaurant", permission: "products.manage" },
   { href: "/rates", label: "Rates", icon: "currency_rupee", permission: "rates.manage" }
 ];
