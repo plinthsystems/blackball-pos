@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/money";
 import type { CounterBillData, LiveTableCardData, ProductOption } from "../types";
@@ -15,20 +16,40 @@ export function LiveTablePage({
   tables,
   products,
   counterBills,
-  isHqAdmin = false
+  isHqAdmin = false,
+  canManageItems = false,
+  bookingLink = null,
+  bookingQrUrl = null,
+  businessName = "Store"
 }: {
   tables: LiveTableCardData[];
   products: ProductOption[];
   counterBills: CounterBillData[];
   isHqAdmin?: boolean;
+  canManageItems?: boolean;
+  bookingLink?: string | null;
+  bookingQrUrl?: string | null;
+  businessName?: string;
 }) {
   const tableStations = tables.filter((table) => table.gameType !== "PS5");
   const ps5Stations = tables.filter((table) => table.gameType === "PS5");
   const activeCount = tables.filter((table) => table.status === "OCCUPIED").length;
   const availableCount = tables.filter((table) => table.status === "AVAILABLE").length;
+  const emptyInventory = tables.length === 0;
 
   return (
     <div className="space-y-5">
+      {emptyInventory && canManageItems && (
+        <div className="rounded-material border border-cyan-400/40 bg-cyan-500/10 p-3 text-xs font-bold text-cyan-200 flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px]">sports</span>
+            <span>No bookable items yet — add your tables and consoles to start the live floor.</span>
+          </div>
+          <Link href="/tables" className="px-3 py-1.5 rounded-full bg-cyan-400 text-slate-950 font-black text-sm hover:bg-cyan-300 transition">
+            Add items
+          </Link>
+        </div>
+      )}
       {isHqAdmin && (
         <div className="rounded-material border border-amber-500/40 bg-amber-500/10 p-3 text-xs font-bold text-amber-300 flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-2">
@@ -40,7 +61,12 @@ export function LiveTablePage({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <TableBoardToolbar tables={tables} />
+        <TableBoardToolbar
+          tables={tables}
+          bookingLink={bookingLink}
+          bookingQrUrl={bookingQrUrl}
+          businessName={businessName}
+        />
         {!isHqAdmin && <StartCounterBillDialog />}
       </div>
       <section className="grid gap-3 md:grid-cols-4" aria-label="Live floor summary">

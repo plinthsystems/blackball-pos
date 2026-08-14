@@ -98,10 +98,34 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
       }
     });
 
+    if (parsed.customerPhone) {
+      void shareBookingLinkWithCustomer(context.businessId, parsed.customerPhone);
+    }
+
     revalidatePath("/live-tables");
     return { ok: true, message: "Session started." };
   } catch (error) {
     return actionError(error);
+  }
+}
+
+async function shareBookingLinkWithCustomer(businessId: string, phone: string) {
+  try {
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { slug: true, name: true }
+    });
+    if (!business) {
+      return;
+    }
+    const { getBookingPageUrl, getBookingQrPngUrl } = await import("@/server/integrations/base-url");
+    const { sendManualBookingShareMessage } = await import("@/server/integrations/whatsapp");
+    await sendManualBookingShareMessage(phone, business.name, {
+      bookingLink: getBookingPageUrl(business.slug),
+      qrImageUrl: getBookingQrPngUrl(business.slug)
+    });
+  } catch {
+    // WhatsApp share is best-effort; never breaks the POS flow.
   }
 }
 

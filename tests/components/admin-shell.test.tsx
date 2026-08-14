@@ -72,4 +72,21 @@ describe("AdminShell", () => {
 
     expect(screen.getByRole("link", { name: /Franchise HQ/ })).toBeInTheDocument();
   });
+
+  it("shows platform setup navigation for platform admins", () => {
+    render(
+      <AdminShell
+        account={{
+          name: "Platform Owner",
+          accountType: "PLATFORM_ADMIN",
+          permissions: ["platform.setup.manage", "dashboard.read"]
+        }}
+      >
+        <div>Content</div>
+      </AdminShell>
+    );
+
+    expect(screen.getByRole("link", { name: /Platform Setup/ })).toBeInTheDocument();
+    expect(screen.getByText("Platform Admin")).toBeInTheDocument();
+  });
 });
