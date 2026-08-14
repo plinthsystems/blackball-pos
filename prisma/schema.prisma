@@ -118,6 +118,20 @@ enum RoyaltyInvoiceStatus {
   CANCELLED
 }
 
+enum PaymentProvider {
+  NONE
+  RAZORPAY
+  STRIPE
+}
+
+enum BookingPaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
 model Organization {
   id                String             @id @default(cuid())
   name              String
@@ -199,23 +213,31 @@ model BusinessSettings {
   gstNumber            String?
   taxRateBasisPoints   Int      @default(1800)
   bookingBufferMinutes Int      @default(10)
+  bookingEnabled       Boolean  @default(true)
+  requireConfirmation  Boolean  @default(false)
+  bookingWindowDays    Int      @default(14)
+  bookingOpenHour      Int      @default(10)
+  bookingCloseHour     Int      @default(23)
+  paymentProvider      PaymentProvider @default(NONE)
+  bookingAdvanceAmount Decimal  @default(0) @db.Decimal(12, 2)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   business             Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
 model Employee {
-  id               String        @id @default(cuid())
-  businessId       String?
-  organizationId   String?
-  franchiseeId     String?
-  name             String
-  email            String
-  passwordHash     String?
-  phone            String?
-  accountType      AccountType   @default(STORE_USER)
-  active           Boolean       @default(true)
-  createdAt        DateTime      @default(now())
+  id                  String        @id @default(cuid())
+  businessId          String?
+  organizationId      String?
+  franchiseeId        String?
+  name                String
+  email               String
+  passwordHash        String?
+  phone               String?
+  accountType         AccountType   @default(STORE_USER)
+  active              Boolean       @default(true)
+  mustChangePassword  Boolean       @default(false)
+  createdAt           DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   business         Business?     @relation(fields: [businessId], references: [id], onDelete: Cascade)
   organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -291,6 +313,7 @@ model ClubTable {
   status       TableStatus @default(AVAILABLE)
   pricingGroup String      @default("standard")
   version      Int         @default(1)
+  active       Boolean     @default(true)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   business     Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -300,22 +323,27 @@ model ClubTable {
   @@unique([businessId, number])
   @@index([businessId, status])
   @@index([businessId, gameType])
+  @@index([businessId, active])
 }
 
 model Booking {
-  id          String        @id @default(cuid())
-  businessId  String
-  tableId     String
-  customerId  String?
-  status      BookingStatus @default(PENDING)
-  startsAt    DateTime
-  endsAt      DateTime
-  lockedUntil DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  business    Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  table       ClubTable     @relation(fields: [tableId], references: [id], onDelete: Restrict)
-  customer    Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  id                String              @id @default(cuid())
+  businessId        String
+  tableId           String
+  customerId        String?
+  status            BookingStatus       @default(PENDING)
+  startsAt          DateTime
+  endsAt            DateTime
+  lockedUntil       DateTime?
+  paymentStatus     BookingPaymentStatus @default(UNPAID)
+  paymentProvider   String?
+  paymentExternalId String?
+  advanceAmount     Decimal             @default(0) @db.Decimal(12, 2)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  business          Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  table             ClubTable           @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  customer          Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   @@index([businessId, tableId, status, startsAt, endsAt])
 }

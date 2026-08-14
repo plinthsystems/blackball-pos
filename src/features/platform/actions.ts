@@ -30,6 +30,7 @@ const franchiseSchema = z.object({
 const operationalPermissions = [
   "dashboard.read",
   "tables.read",
+  "tables.manage",
   "tables.update_status",
   "sessions.start",
   "sessions.pause",
@@ -40,7 +41,8 @@ const operationalPermissions = [
   "bills.manage",
   "products.manage",
   "rates.manage",
-  "settings.update"
+  "settings.update",
+  "bookings.manage"
 ];
 
 const staffPermissions = [
@@ -315,6 +317,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       passwordHash: defaultPasswordHash,
       accountType: "STORE_OWNER",
       active: true,
+      mustChangePassword: true,
       roles: { create: { roleId: ownerRole.id } }
     }
   });
@@ -361,21 +364,13 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       passwordHash: defaultPasswordHash,
       accountType: "STORE_USER",
       active: true,
+      mustChangePassword: true,
       roles: { create: { roleId: staffRole.id } }
     }
   });
 }
 
 async function seedDefaultOutletCatalog(db: SetupDb, businessId: string) {
-  const tables = [
-    { number: "Royal Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "royal" },
-    { number: "Royal Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "royal" },
-    { number: "Mini Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "mini" },
-    { number: "Mini Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "mini" },
-    { number: "Pool Table 1", gameType: GameType.POOL, pricingGroup: "standard" },
-    { number: "PS5 1", gameType: GameType.PS5, pricingGroup: "players-2" },
-    { number: "PS5 2", gameType: GameType.PS5, pricingGroup: "players-4" }
-  ];
   const pricing = [
     { gameType: GameType.SNOOKER, pricingGroup: "royal", durationMinutes: 60, priceAmount: "350.00" },
     { gameType: GameType.SNOOKER, pricingGroup: "mini", durationMinutes: 60, priceAmount: "330.00" },
@@ -392,16 +387,6 @@ async function seedDefaultOutletCatalog(db: SetupDb, businessId: string) {
     { id: `product-${businessId}-classic-cigarette`, name: "Classic Cigarette", category: ProductCategory.CIGARETTES, priceAmount: "20.00" },
     { id: `product-${businessId}-cold-coffee`, name: "Cold Coffee", category: ProductCategory.BEVERAGES, priceAmount: "120.00" }
   ];
-
-  await Promise.all(
-    tables.map((table) =>
-      db.clubTable.upsert({
-        where: { businessId_number: { businessId, number: table.number } },
-        update: { gameType: table.gameType, pricingGroup: table.pricingGroup, status: "AVAILABLE" },
-        create: { businessId, ...table }
-      })
-    )
-  );
 
   await Promise.all(
     pricing.map((rule) =>
