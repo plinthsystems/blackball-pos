@@ -7,6 +7,7 @@ const defaultPasswordHash = hashPassword("Password@123");
 const permissionKeys = [
   "dashboard.read",
   "tables.read",
+  "tables.manage",
   "tables.update_status",
   "sessions.start",
   "sessions.pause",
@@ -17,7 +18,8 @@ const permissionKeys = [
   "bills.manage",
   "products.manage",
   "rates.manage",
-  "settings.update"
+  "settings.update",
+  "bookings.manage"
 ];
 
 const storeUserPermissionKeys = [
