@@ -34,7 +34,31 @@ export type CurrentEmployeeContext = {
   tenantBranding: TenantBranding;
   organization?: OrganizationContext;
   scope: TenantScope;
+  mustChangePassword: boolean;
 };
+
+export function isAuthenticatedContext(context: CurrentEmployeeContext): boolean {
+  return Boolean(context.employeeId) && context.accountType !== "STORE_USER" ? true : Boolean(context.employeeId);
+}
+
+export function buildDeniedContext(): CurrentEmployeeContext {
+  return {
+    businessId: "",
+    employeeId: "",
+    employeeName: "",
+    employeeEmail: "",
+    accountType: "STORE_USER",
+    permissions: [],
+    tenantBranding: defaultBranding,
+    scope: {
+      organizationId: null,
+      franchiseeId: null,
+      businessIds: [],
+      selectedBusinessId: ""
+    },
+    mustChangePassword: false
+  };
+}
 
 type BusinessAccessSummary = {
   id: string;
@@ -57,6 +81,7 @@ type EmployeeWithTenantAccess = {
   name: string;
   email: string;
   accountType: AccountType;
+  mustChangePassword: boolean;
   organization: {
     id: string;
     name: string;
@@ -94,12 +119,16 @@ type EmployeeWithTenantAccess = {
 const defaultBranding = {
   appName: "Black Ball",
   logoInitials: "BB",
+  businessName: "Pool & Snooker Cafe",
   brandColor: "#12613d",
   accentColor: "#b98922"
 };
 
 export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContext> {
   const identity = await getRequestIdentity();
+  if (!identity.email) {
+    return buildDeniedContext();
+  }
   const employee = await prisma.employee.findFirst({
     where: {
       email: identity.email,
@@ -144,12 +173,18 @@ export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContex
     return buildCurrentEmployeeContext(employee as unknown as EmployeeWithTenantAccess, identity.tenantSlug);
   }
 
-  return buildFallbackContext(identity.tenantSlug, identity.email);
+  // SECURITY: only the development fallback grants an anonymous manager context.
+  // In production, an unresolvable identity is DENIED — never an implicit role.
+  if (process.env.NODE_ENV === "production") {
+    return buildDeniedContext();
+  }
+
+  return buildFallbackContext(identity.tenantSlug ?? "seed-business", identity.email ?? "owner@cueclub.example");
 }
 
 export function buildCurrentEmployeeContext(
   employee: EmployeeWithTenantAccess,
-  currentSlug?: string
+  currentSlug?: string | null
 ): CurrentEmployeeContext {
   const rawPermissions = employee.roles.flatMap((employeeRole) =>
     employeeRole.role.permissions.map((rolePermission) => rolePermission.permission.key)
@@ -157,6 +192,10 @@ export function buildCurrentEmployeeContext(
 
   if (["PLATFORM_ADMIN", "HQ_ADMIN", "STORE_OWNER", "MANAGER"].includes(employee.accountType)) {
     rawPermissions.push("dashboard.read", "tables.read", "products.manage", "rates.manage", "settings.update");
+  }
+
+  if (["STORE_OWNER", "MANAGER"].includes(employee.accountType)) {
+    rawPermissions.push("tables.manage");
   }
 
   if (employee.accountType === "PLATFORM_ADMIN") {
@@ -210,7 +249,8 @@ export function buildCurrentEmployeeContext(
       franchiseeId: employee.franchiseeId ?? employee.franchisee?.id ?? null,
       businessIds,
       selectedBusinessId
-    }
+    },
+    mustChangePassword: employee.mustChangePassword
   };
 }
 
@@ -245,10 +285,11 @@ function compactBusiness(business: EmployeeWithTenantAccess["business"]): Busine
 
 import { verifySessionToken } from "./auth-service";
 
-async function getRequestIdentity() {
-  const tenantSlug = process.env.BLACKBALL_TENANT_SLUG ?? process.env.NEXT_PUBLIC_BLACKBALL_TENANT_SLUG ?? "seed-business";
-  const defaultEmail = process.env.BLACKBALL_USER_EMAIL ?? "owner@cueclub.example";
+const isProduction = () => process.env.NODE_ENV === "production";
 
+async function getRequestIdentity() {
+  // Production: identity ONLY from a cryptographically verified session token.
+  // Request headers / demo cookies / env fallbacks are NEVER trusted in production.
   try {
     const { headers, cookies } = await import("next/headers");
     const requestHeaders = await headers();
@@ -257,15 +298,36 @@ async function getRequestIdentity() {
     const authSessionCookie = requestCookies.get("auth_session")?.value;
     const sessionPayload = authSessionCookie ? verifySessionToken(authSessionCookie) : null;
 
+    if (isProduction()) {
+      if (!sessionPayload) {
+        return { tenantSlug: null, email: null };
+      }
+      return {
+        tenantSlug: sessionPayload.storeSlug ?? null,
+        email: sessionPayload.email
+      };
+    }
+
     const cookieEmail = sessionPayload?.email ?? requestCookies.get("demo_user_email")?.value;
     const cookieStoreSlug = sessionPayload?.storeSlug ?? requestCookies.get("demo_store_slug")?.value;
+    const tenantSlug =
+      process.env.BLACKBALL_TENANT_SLUG ??
+      process.env.NEXT_PUBLIC_BLACKBALL_TENANT_SLUG ??
+      "seed-business";
+    const defaultEmail = process.env.BLACKBALL_USER_EMAIL ?? "owner@cueclub.example";
 
     return {
       tenantSlug: requestHeaders.get("x-tenant-slug") ?? cookieStoreSlug ?? tenantSlug,
       email: requestHeaders.get("x-user-email") ?? cookieEmail ?? defaultEmail
     };
   } catch {
-    return { tenantSlug, email: defaultEmail };
+    if (isProduction()) {
+      return { tenantSlug: null, email: null };
+    }
+    return {
+      tenantSlug: process.env.BLACKBALL_TENANT_SLUG ?? "seed-business",
+      email: process.env.BLACKBALL_USER_EMAIL ?? "owner@cueclub.example"
+    };
   }
 }
 
@@ -299,6 +361,7 @@ async function buildFallbackContext(tenantSlug: string, email?: string): Promise
     "sessions.resume",
     "sessions.start",
     "settings.update",
+    "tables.manage",
     "tables.read",
     "tables.update_status"
   ];
@@ -334,6 +397,7 @@ async function buildFallbackContext(tenantSlug: string, email?: string): Promise
       franchiseeId: null,
       businessIds: business ? [business.id] : ["seed-business"],
       selectedBusinessId: business?.id ?? "seed-business"
-    }
+    },
+    mustChangePassword: false
   };
 }

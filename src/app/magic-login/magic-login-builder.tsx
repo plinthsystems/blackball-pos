@@ -152,11 +152,12 @@ const personaAccounts: PersonaCard[] = [
   }
 ];
 
-export function MagicLoginBuilderUI() {
+export function MagicLoginBuilderUI({ error = null }: { error?: string | null }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [accessKey, setAccessKey] = useState("");
 
   const getMagicUrl = (acc: PersonaCard) => {
-    return `/api/auth/magic-login?email=${encodeURIComponent(acc.email)}${acc.storeSlug ? `&store=${encodeURIComponent(acc.storeSlug)}` : ""}`;
+    return `/api/auth/magic-login?email=${encodeURIComponent(acc.email)}${acc.storeSlug ? `&store=${encodeURIComponent(acc.storeSlug)}` : ""}&key=${encodeURIComponent(accessKey)}`;
   };
 
   const handleCopy = (acc: PersonaCard) => {
@@ -177,6 +178,33 @@ export function MagicLoginBuilderUI() {
 
   return (
     <div className="space-y-12">
+      <div className="rounded-2xl border border-amber-400/40 bg-slate-900 p-5 shadow-lg">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-[24px] text-amber-300">key</span>
+          <h2 className="text-base font-black text-amber-300 tracking-wider uppercase">
+            Secured Access Key (mandatory)
+          </h2>
+        </div>
+        <p className="mt-1.5 text-xs text-slate-300 leading-relaxed">
+          One-click login ab email-only nahi hai — har magic-login request ko access key chahiye.
+          Dev default: <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-amber-200">local-dev-key</code>.
+          Production environment me kabhi default nahi hota — <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-amber-200">DEV_ACCESS_KEY</code> env variable se set hota hai
+          (agar <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-amber-200">MAGIC_LOGIN_ENABLED=true</code> karo).
+        </p>
+        <input
+          type="password"
+          value={accessKey}
+          onChange={(event) => setAccessKey(event.target.value)}
+          placeholder="Agar blank hai to 'local-dev-key' input karo (local)"
+          className="mt-3 w-full rounded-xl border border-amber-400/40 bg-slate-950 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none"
+        />
+        {error && (
+          <p className="mt-2 rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-300">
+            ⚠️ {error}
+          </p>
+        )}
+      </div>
+
       <div className="space-y-4">
         <div className="flex items-center gap-2 border-b border-lime-500/40 pb-2.5">
           <span className="material-symbols-outlined text-[24px] text-lime-300">admin_panel_settings</span>
