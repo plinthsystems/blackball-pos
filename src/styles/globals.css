@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --app-background: #07110f;
+  --app-surface: #0f1a18;
+  --app-text: #ecfff7;
+  --app-muted: #94a3a0;
+  --app-outline: #233833;
+  --app-primary: #84cc16;
+}
+
+html {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(132, 204, 22, 0.16), transparent 28%),
+    radial-gradient(circle at 88% 0%, rgba(34, 211, 238, 0.12), transparent 24%),
+    var(--app-background);
+}
+
+body {
+  margin: 0;
+  background:
+    linear-gradient(rgba(132, 204, 22, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 12% 8%, rgba(132, 204, 22, 0.14), transparent 26%),
+    radial-gradient(circle at 88% 0%, rgba(34, 211, 238, 0.12), transparent 24%),
+    var(--app-background);
+  background-size: 42px 42px, 42px 42px, auto, auto, auto;
+  color: var(--app-text);
+  font-family: Inter, Roboto, Arial, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid #bef264;
+  outline-offset: 2px;
+}
+
+.material-symbols-outlined {
+  direction: ltr;
+  display: inline-block;
+  font-family: "Material Symbols Outlined";
+  font-feature-settings: "liga";
+  font-size: 20px;
+  font-style: normal;
+  font-weight: normal;
+  letter-spacing: normal;
+  line-height: 1;
+  overflow-wrap: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+}
