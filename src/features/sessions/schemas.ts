@@ -67,6 +67,17 @@ export const tableStatusSchema = z.object({
   status: z.literal("AVAILABLE")
 });
 
+export const bookableItemFormSchema = z.object({
+  id: z.string().min(1).optional(),
+  number: z.string().trim().min(1).max(80),
+  gameType: z.enum(["POOL", "SNOOKER", "PS5"]),
+  pricingGroup: z.string().trim().min(1).max(40)
+});
+
+export const bookableItemIdSchema = z.object({
+  id: z.string().min(1)
+});
+
 export type StartWalkInSessionInput = z.infer<typeof startWalkInSessionSchema>;
 export type ExtendSessionInput = z.infer<typeof extendSessionSchema>;
 export type EndSessionInput = z.infer<typeof endSessionSchema>;
