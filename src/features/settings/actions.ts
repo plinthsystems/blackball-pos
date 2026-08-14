@@ -1,10 +1,40 @@
 "use server";
 
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/server/db/prisma";
 import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
 import { requirePermission } from "@/server/auth/permissions";
 import { brandingFormSchema, productFormSchema } from "@/features/sessions/schemas";
+
+const bookingSettingsSchema = z.object({
+  bookingEnabled: z.boolean(),
+  requireConfirmation: z.boolean(),
+  bookingBufferMinutes: z.number().int().min(0).max(120),
+  bookingOpenHour: z.number().int().min(6).max(14),
+  bookingCloseHour: z.number().int().min(14).max(24),
+  paymentProvider: z.enum(["NONE", "RAZORPAY", "STRIPE"]),
+  bookingAdvanceAmount: z.number().min(0).max(100000)
+});
+
+export async function updateBookingSettingsAction(input: unknown): Promise<ActionResult> {
+  try {
+    const context = await getCurrentEmployeeContext();
+    requirePermission(context, "settings.update");
+    const parsed = bookingSettingsSchema.parse(input);
+
+    await prisma.businessSettings.upsert({
+      where: { businessId: context.businessId },
+      update: parsed,
+      create: { businessId: context.businessId, ...parsed }
+    });
+
+    revalidatePath("/settings");
+    return { ok: true, message: "Booking preferences saved." };
+  } catch {
+    return { ok: false, message: "Booking preferences could not be saved." };
+  }
+}
 
 type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 
