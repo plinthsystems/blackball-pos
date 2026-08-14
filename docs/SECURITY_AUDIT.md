@@ -21,11 +21,11 @@ runtime exploitation attempts against a production build, `npm audit`.
 | 6. Middleware decoded tokens WITHOUT verifying signature | **CRITICAL** | ✅ FIXED |
 | 7. No rate limiting on login / magic-login / public booking | HIGH | ✅ FIXED (in-memory) |
 | 8. `demo_user_email` / `demo_store_slug` cookies set even in production | MEDIUM | ✅ FIXED |
-| 9. No security headers (CSP, HSTS, X-Frame-Options, etc.) | MEDIUM | ⏳ OPEN |
-| 10. `/docs` publicly serves the internal handbook | MEDIUM | ⏳ OPEN (by design) |
-| 11. Docs viewer: CDN scripts w/o SRI + mermaid `securityLevel: loose` | MEDIUM | ⏳ OPEN |
-| 12. Booking double-book race (check+create not atomic) | MEDIUM | ⏳ OPEN |
-| 13. Dependency vulnerabilities (6 high, build/dev chain) | MEDIUM | ⏳ OPEN (audit fix) |
+| 9. No security headers (CSP, HSTS, X-Frame-Options, etc.) | MEDIUM | ✅ FIXED |
+| 10. `/docs` publicly serves the internal handbook | MEDIUM | ✅ FIXED (env-gated) |
+| 11. Docs viewer: CDN scripts w/o SRI + mermaid `securityLevel: loose` | MEDIUM | ✅ FIXED (SRI + strict) |
+| 12. Booking double-book race (check+create not atomic) | MEDIUM | ✅ FIXED (row lock + tx) |
+| 13. Dependency vulnerabilities (6 high, build/dev chain) | MEDIUM | ✅ FIXED (audit fix + overrides) |
 
 ---
 
@@ -97,15 +97,15 @@ curl -H "x-user-email: platform.attacker@x.com" -H "x-tenant-slug: seed-business
 
 ---
 
-## 4. Remaining (non-blocking) Items
+## 4. Remaining Items — All Resolved (2026-08-15 hardening pass)
 
-| # | Item | Why | Suggestion |
-| :--- | :--- | :--- | :--- |
-| 9 | **Security headers** | No CSP/HSTS/X-Frame-Options → clickjacking & MIME sniffing unmitigated | Add `headers()` in `next.config.ts`: `Content-Security-Policy` (allow self + CDNs), `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` |
-| 10 | **Public `/docs`** | Full system blueprint (schema, routes, auth internals, local paths) is public | Restrict in prod: reverse-proxy rule or `NODE_ENV`-gated route; also remove `file:///` paths from handbook files |
-| 11 | **Docs viewer CDN** | `highlight.js` + `mermaid` from CDNs without SRI; mermaid `securityLevel:"loose"` | Pin versions + SRI hashes; mermaid `securityLevel:"strict"` |
-| 12 | **Booking double-book race** | conflict check and insert are two steps | Wrap in `prisma.$transaction` + `SELECT ... FOR UPDATE` semantics |
-| 13 | **npm audit: 6 high** | dev/build chain: brace-expansion, js-yaml, nanoid, postcss, sharp, next↔transitives | `npm audit fix`; `--force` would jump to Next 16 (breaking) — schedule upgrade |
+| # | Item | Resolution |
+| :--- | :--- | :--- |
+| 9 | **Security headers** | `next.config.ts` `headers()`: CSP (self + cloudflare/jsdelivr CDNs), HSTS, `X-Frame-Options: DENY`, `nosniff`, `no-referrer`, Permissions-Policy |
+| 10 | **Public `/docs`** | `src/app/docs/page.tsx` returns 404 in production unless `DOCS_ENABLED=true`; `file:///` local paths removed from handbook files |
+| 11 | **Docs viewer CDN** | highlight.js 11.9.0 + mermaid **10.9.3 pinned** with SRI `integrity` + `crossOrigin` hashes; mermaid `securityLevel: "strict"` |
+| 12 | **Booking double-book race** | check + create wrapped in `prisma.$transaction` with `SELECT ... FOR UPDATE` on the table row — concurrent bookings on the same table serialize |
+| 13 | **npm audit: 6 high** | `npm audit fix` + overrides: `sharp ^0.35.3` (libvips CVEs) & `postcss ^8.5.26` (nested in next) → **0 vulnerabilities** |
 
 ---
 
