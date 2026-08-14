@@ -1,12 +1,13 @@
 import { prisma } from "@/server/db/prisma";
 import { calculateBillSegmentTableAmount, summarizeBill } from "@/server/domain/bill-summary";
 import { calculateBillableSeconds, calculateMinuteBasedTableCharge } from "@/server/domain/session-calculations";
+import { getUpcomingBookingBadges } from "@/features/booking/queries";
 import type { BillLineItem, CounterBillData, LiveBillData, LiveTableCardData, ProductOption } from "./types";
 
 export async function getLiveTableBoard(businessId: string): Promise<LiveTableCardData[]> {
-  const [tables, pricingRules] = await Promise.all([
+  const [tables, pricingRules, bookingBadges] = await Promise.all([
     prisma.clubTable.findMany({
-      where: { businessId },
+      where: { businessId, active: true },
       orderBy: [{ gameType: "asc" }, { number: "asc" }],
       include: {
         sessions: {
@@ -26,7 +27,8 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
         }
       }
     }),
-    prisma.tablePricing.findMany({ where: { businessId, durationMinutes: 60 } })
+    prisma.tablePricing.findMany({ where: { businessId, durationMinutes: 60 } }),
+    getUpcomingBookingBadges(businessId)
   ]);
   const recentBills = await prisma.bill.findMany({
     where: { businessId, status: "CLOSED", kind: "SESSION", sessionId: { not: null } },
@@ -84,7 +86,8 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
             assignedStaffName: session.assignedEmployee?.name ?? null
           }
         : null,
-      recentBill: recentBillByTableId.get(table.id) ?? null
+      recentBill: recentBillByTableId.get(table.id) ?? null,
+      upcomingBooking: bookingBadges.get(table.id) ?? null
     };
   });
 }
