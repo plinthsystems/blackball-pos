@@ -127,3 +127,57 @@ Against a `next build` production server (docs avoid prod-only keys):
 - Magic-login with `MAGIC_LOGIN_ENABLED=true` + wrong key → `error=invalid_key`; correct key → login ✅
 - 12 rapid logins → 429 ✅
 - Dev mode: key-less magic login blocked; `local-dev-key` works ✅
+
+---
+
+## 7. Second Full Audit (2026-08-15) — Post-Merge `main`
+
+**Method:** two parallel static reviews (auth/session/middleware + public endpoints/actions/webhooks), SQLi & secret scan, npm audit, SRI re-verification, headless-Chrome CSP/hydration check, curl exploitation suite against a production build.
+
+### 7.1 New findings
+
+| # | Severity | Finding | Status |
+| :--- | :--- | :--- | :--- |
+| 14 | **HIGH (functional)** | Round-2 CSP blocked Next.js inline hydration scripts + Google Fonts — app rendered server-only, **no client interactivity** (only caught with a real browser). | ✅ FIXED during audit — `'unsafe-inline'` for script-src, fonts.googleapis/gstatic allowed; re-verified 0 CSP violations + hydration OK |
+| 15 | **HIGH** | `Password@123` re-stamped everywhere: `seed.ts` `updateMany` resets **all** employees' passwords on every seed run; platform provisioning `update` branch resets owner/staff password **without** `mustChangePassword` (`platform/actions.ts:306`) | ⏳ |
+| 16 | **HIGH** | Magic-login auto-enabled with public key `local-dev-key` whenever `NODE_ENV !== "production"` → any misconfigured staging/preview = full account takeover (incl. platform admin) | ⏳ |
+| 17 | **HIGH** | Booking action enforces only "not in the past" — no opening window / business hours / lead time server-side → schedule poisoning, availability DoS on any store | ⏳ |
+| 18 | **MEDIUM** | Payment webhooks matched by middleware auth guard → always 307 → payments never marked PAID; protected APIs return HTML redirect, not JSON 401 | ⏳ |
+| 19 | **MEDIUM** | Webhook verification: no Stripe timestamp tolerance (replay), no amount/currency check, `{ id: { endsWith: ref } }` can mark wrong booking PAID, plain non-constant-time compare | ⏳ |
+| 20 | **MEDIUM** | Stateless 7-day tokens: logout only clears cookie; password change doesn't revoke other sessions; HQ page trusts middleware `accountType` claim instead of DB-derived perms | ⏳ |
+| 21 | **MEDIUM** | `listBookableSlotsAction`: unauthenticated, no slug scoping, no rate limit → any store's table occupancy + enumeration | ⏳ |
+| 22 | **MEDIUM** | Login user-enumeration via timing (scrypt only runs for existing users) | ⏳ |
+| 23 | **MEDIUM** | Rate limiter: in-memory + first `X-Forwarded-For` trusted → spoofable when origin directly reachable; per-process on serverless | ⏳ |
+| 24 | **LOW** | `/live-tables` + `/tables` pages render business data with middleware auth only (no `tables.read` check; sibling pages check) | ⏳ |
+| 25 | **LOW** | `verifyPassword` throws on malformed hash (timingSafeEqual length mismatch); HMAC compare non-constant-time (`auth-service.ts:73`) | ⏳ |
+| 26 | **LOW** | Magic-login GET: key in query string, `store` claim unvalidated, `user_not_found` vs `invalid_key` enumeration | ⏳ |
+| 27 | **LOW** | `booking-qr-dialog.tsx:29` `document.write` with DB-controlled `businessName`; docs viewer `dangerouslySetInnerHTML` unsanitized (repo-controlled today) | ⏳ |
+| 28 | **LOW** | `ensureBookingSettingsFor` performs public `CREATE` on missing settings (public write row spam) | ⏳ |
+| 29 | **LOW** | Dev-mode spoofable identity (`x-user-email` headers) sharpens #16 whenever non-prod | ⏳ |
+| 30 | **LOW** | `addSessionItemAction` lacks own `requirePermission` (delegates; fragile); `assignedEmployeeId` unchecked FK | ⏳ |
+| 31 | **LOW** | `bookingWindowDays` dead code; `/book/success` + `/book/cancel` routes missing (404 after paying) | ⏳ |
+| 32 | **LOW** | Money via JS `Number` on Decimal fields (float artifacts) | ⏳ |
+| 33 | **CRITICAL** | **Production auth completely broken** — every valid session rejected (307 → `/login`). Root cause: `auth-service.ts` top-level `import crypto from "crypto"`; in the edge-middleware bundle this node stub throws on access ("edge runtime does not support Node.js 'crypto'"), so `crypto.subtle.importKey` in `verifySessionTokenEdge` always threw → `null` → any valid cookie got logged out instantly. Surfaced only by testing a **valid** token (prior rounds tested only forgeries — which "failed closed" for the wrong reason). | ✅ FIXED during audit — node crypto renamed `nodeCrypto` (node-only paths), edge verifier uses `globalThis.crypto.subtle`; full role/page matrix now passes |
+
+### 7.2 Re-verified GOOD (unchanged)
+
+- Edge middleware verifies HMAC signature (Web Crypto, verify-before-parse); `exp` enforced in both verifiers.
+- `NODE_ENV=production` identity is token-only; headers/demo cookies/env fallbacks ignored → runtime: forged cookie, `x-user-email: platform.*`, demo cookies all 307 → `/login`.
+- `AUTH_SECRET` fail-closed in prod; scrypt + random salt + `timingSafeEqual` (happy path); cookie flags `httpOnly`/`secure`/`SameSite=Lax`.
+- Every ~24 mutating server action calls `requirePermission`; no client-controlled `businessId` anywhere; SQLi: none (only parameterized `$queryRaw`).
+- Public booking create is atomic (`SELECT ... FOR UPDATE` + in-tx conflict re-check).
+- Security headers now browser-verified (CSP violations: 0, hydration OK across `/login`, `/magic-login`, `/`).
+- `/docs` 404 in prod without `DOCS_ENABLED`; SRI hashes re-matched CDN content; **npm audit: 0 vulnerabilities**.
+
+### 7.3 Runtime suite (production build, port 3111) — **DB round 2**
+
+- no cookie / forged token / `x-user-email` spoof / demo cookie → `307 /login` ✅
+- `/api/auth/magic-login` in prod → `307 /magic-login?error=disabled` ✅
+- 12 rapid logins → 429 with JSON ✅
+- `/docs` → 404 ✅ · `/api/integrations/*/webhook` → **307 (finding #18)** ❌
+- Headless Chrome: `/login`, `/magic-login`, `/` → 0 CSP violations, RSC hydration OK ✅
+- **4 seeded roles login OK**; page matrix after #33 fix:
+  `/live-tables` → all roles 200 · `/hq/dashboard` → hq+platform 200 / owner+manager 307 · `/platform/setup` → platform 200 / others 307 · `/rates` `/tables` `/settings` → session-bearing roles 200 ✅
+- `mustChangePassword=true` fresh login → claim baked into token → `/rates` → `307 /change-password`; `/change-password` → 200 ✅ (page-level enforcement works; action-level gap = finding #15)
+- Cross-tenant spoof (`x-tenant-slug` header) with valid owner session → no escalation (header ignored in prod) ✅
+- Signed Stripe-style webhook POST → still 307 (finding #18) ❌
