@@ -158,6 +158,7 @@ Against a `next build` production server (docs avoid prod-only keys):
 | 31 | **LOW** | `bookingWindowDays` dead code; `/book/success` + `/book/cancel` routes missing (404 after paying) | ⏳ |
 | 32 | **LOW** | Money via JS `Number` on Decimal fields (float artifacts) | ⏳ |
 | 33 | **CRITICAL** | **Production auth completely broken** — every valid session rejected (307 → `/login`). Root cause: `auth-service.ts` top-level `import crypto from "crypto"`; in the edge-middleware bundle this node stub throws on access ("edge runtime does not support Node.js 'crypto'"), so `crypto.subtle.importKey` in `verifySessionTokenEdge` always threw → `null` → any valid cookie got logged out instantly. Surfaced only by testing a **valid** token (prior rounds tested only forgeries — which "failed closed" for the wrong reason). | ✅ FIXED during audit — node crypto renamed `nodeCrypto` (node-only paths), edge verifier uses `globalThis.crypto.subtle`; full role/page matrix now passes |
+| 34 | **HIGH (dev/functional)** | **Dev-mode app completely dead in browser** — CSP `script-src` lacked `'unsafe-eval'`, which Next.js dev (webpack/React dev runtime) requires → all client JS broke (login form did nothing → users "dropped back to /login"). Prod worked because prod bundles don't use eval. | ✅ FIXED — CSP is now `NODE_ENV`-conditional: dev adds `'unsafe-eval'`, production CSP unchanged (strict, no eval); verified dev login in headless Chrome (lands on /dashboard) + prod CSP head-check |
 
 ### 7.2 Re-verified GOOD (unchanged)
 
