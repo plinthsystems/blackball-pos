@@ -2,6 +2,12 @@ import { GameType, PrismaClient, ProductCategory } from "@prisma/client";
 import { hashPassword } from "../src/server/auth/auth-service";
 import { buildDatabaseUrl } from "../src/server/db/connection";
 
+if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOWED !== "true") {
+  throw new Error(
+    "Refusing to seed in production — this creates known demo credentials. Set SEED_ALLOWED=true only for disposable sandboxes."
+  );
+}
+
 const prisma = new PrismaClient({ datasourceUrl: buildDatabaseUrl() });
 const defaultPasswordHash = hashPassword("Password@123");
 
@@ -101,11 +107,6 @@ async function main() {
       accountType: "PLATFORM_ADMIN",
       active: true
     }
-  });
-  
-  // Ensure all employees have default password set
-  await prisma.employee.updateMany({
-    data: { passwordHash: defaultPasswordHash }
   });
 
   // 1. FRANCHISE GROUP 1: BlackBall Franchise Group (3 Stores)

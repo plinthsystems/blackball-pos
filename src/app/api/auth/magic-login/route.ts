@@ -5,20 +5,11 @@ import { createSessionToken } from "@/server/auth/auth-service";
 import { checkRateLimit, clientIpFromRequest } from "@/server/auth/rate-limit";
 
 function devAccessKey(): string | null {
-  if (process.env.DEV_ACCESS_KEY) {
-    return process.env.DEV_ACCESS_KEY;
-  }
-  if (process.env.NODE_ENV !== "production") {
-    return "local-dev-key";
-  }
-  return null;
+  return process.env.DEV_ACCESS_KEY || null;
 }
 
 function isMagicLoginEnabled(): boolean {
-  if (process.env.MAGIC_LOGIN_ENABLED === "true") {
-    return true;
-  }
-  return process.env.NODE_ENV !== "production";
+  return process.env.MAGIC_LOGIN_ENABLED === "true";
 }
 
 function matchesAccessKey(provided: string, expected: string): boolean {

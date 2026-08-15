@@ -6,7 +6,8 @@ export type DomainErrorCode =
   | "OVERLAPPING_SESSION"
   | "PRICING_NOT_FOUND"
   | "INVALID_STATUS_TRANSITION"
-  | "UNAUTHORIZED";
+  | "UNAUTHORIZED"
+  | "PASSWORD_CHANGE_REQUIRED";
 
 export class DomainError extends Error {
   constructor(

@@ -1,6 +1,8 @@
 "use server";
 
+import nodeCrypto from "crypto";
 import { GameType, Prisma, ProductCategory } from "@prisma/client";
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -8,7 +10,9 @@ import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
 import { hashPassword } from "@/server/auth/auth-service";
 import { prisma } from "@/server/db/prisma";
 
-const defaultPasswordHash = hashPassword("Password@123");
+function generateOneTimePassword(): string {
+  return nodeCrypto.randomBytes(9).toString("base64url");
+}
 
 const saasSchema = z.object({
   organizationName: z.string().trim().min(2),
@@ -75,7 +79,7 @@ export async function createSaasSetupAction(formData: FormData) {
       create: { name: input.organizationName, slug: organizationSlug, type: "INDEPENDENT_SAAS" }
     });
 
-    const business = await createOperationalOutlet(tx, {
+    const { business, ownerPassword, staffPassword } = await createOperationalOutlet(tx, {
       organizationId: organization.id,
       name: input.businessName,
       slug: businessSlug,
@@ -96,6 +100,26 @@ export async function createSaasSetupAction(formData: FormData) {
       planId: input.planId,
       outletLimit: 1
     });
+
+    const cookieStore = await cookies();
+    await cookieStore.set(
+      "provision_otps",
+      JSON.stringify({
+        [business.slug]: {
+          ownerEmail: input.ownerEmail,
+          ownerPassword,
+          staffEmail: input.staffEmail || null,
+          staffPassword
+        }
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 30 * 60
+      }
+    );
   });
 
   revalidatePath("/platform/setup");
@@ -137,7 +161,7 @@ export async function createFranchiseSetupAction(formData: FormData) {
       }
     });
 
-    const business = await createOperationalOutlet(tx, {
+    const { business, ownerPassword } = await createOperationalOutlet(tx, {
       organizationId: organization.id,
       franchiseeId: franchisee.id,
       name: input.businessName,
@@ -179,6 +203,21 @@ export async function createFranchiseSetupAction(formData: FormData) {
         minimumAmount: "0.00"
       }
     });
+
+    const cookieStore = await cookies();
+    await cookieStore.set(
+      "provision_otps",
+      JSON.stringify({
+        [business.slug]: { ownerEmail: input.ownerEmail, ownerPassword, staffEmail: null, staffPassword: null }
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 30 * 60
+      }
+    );
   });
 
   revalidatePath("/platform/setup");
@@ -252,7 +291,7 @@ async function createOperationalOutlet(db: SetupDb, input: {
     }
   });
 
-  await seedOutletRolesAndAccounts(db, {
+  const { ownerPassword, staffPassword } = await seedOutletRolesAndAccounts(db, {
     businessId: business.id,
     organizationId: input.organizationId,
     franchiseeId: input.franchiseeId ?? null,
@@ -262,7 +301,7 @@ async function createOperationalOutlet(db: SetupDb, input: {
   });
   await seedDefaultOutletCatalog(db, business.id);
 
-  return business;
+  return { business, ownerPassword, staffPassword };
 }
 
 async function seedOutletRolesAndAccounts(db: SetupDb, input: {
@@ -272,7 +311,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
   ownerEmail: string;
   ownerName: string;
   staffEmail?: string;
-}) {
+}): Promise<{ ownerPassword: string; staffPassword: string | null }> {
   await Promise.all(
     [...new Set([...operationalPermissions, ...staffPermissions])].map((key) =>
       db.permission.upsert({ where: { key }, update: {}, create: { key } })
@@ -295,6 +334,8 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
     )
   );
 
+  const ownerPassword = generateOneTimePassword();
+
   await db.employee.upsert({
     where: { id: `user-owner-${input.businessId}` },
     update: {
@@ -303,7 +344,6 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: input.ownerName,
       email: input.ownerEmail.toLowerCase(),
-      passwordHash: defaultPasswordHash,
       accountType: "STORE_OWNER",
       active: true
     },
@@ -314,7 +354,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: input.ownerName,
       email: input.ownerEmail.toLowerCase(),
-      passwordHash: defaultPasswordHash,
+      passwordHash: hashPassword(ownerPassword),
       accountType: "STORE_OWNER",
       active: true,
       mustChangePassword: true,
@@ -323,7 +363,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
   });
 
   if (!input.staffEmail) {
-    return;
+    return { ownerPassword, staffPassword: null };
   }
 
   const staffRole = await db.role.upsert({
@@ -342,6 +382,8 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
     )
   );
 
+  const staffPassword = generateOneTimePassword();
+
   await db.employee.upsert({
     where: { id: `user-staff-${input.businessId}` },
     update: {
@@ -350,7 +392,6 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: "Floor Staff",
       email: input.staffEmail.toLowerCase(),
-      passwordHash: defaultPasswordHash,
       accountType: "STORE_USER",
       active: true
     },
@@ -361,13 +402,15 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: "Floor Staff",
       email: input.staffEmail.toLowerCase(),
-      passwordHash: defaultPasswordHash,
+      passwordHash: hashPassword(staffPassword),
       accountType: "STORE_USER",
       active: true,
       mustChangePassword: true,
       roles: { create: { roleId: staffRole.id } }
     }
   });
+
+  return { ownerPassword, staffPassword };
 }
 
 async function seedDefaultOutletCatalog(db: SetupDb, businessId: string) {

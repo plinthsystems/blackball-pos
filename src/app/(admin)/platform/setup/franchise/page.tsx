@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createFranchiseSetupAction } from "@/features/platform/actions";
 import { PlatformFranchiseSetupPage } from "@/features/platform/components/platform-setup-page";
 import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
@@ -18,6 +19,14 @@ export default async function PlatformFranchiseSetupRoute({ searchParams }: { se
 
   const params = await searchParams;
   const createdSlug = typeof params?.created === "string" ? params.created : undefined;
+  const otpsRaw = (await cookies()).get("provision_otps")?.value;
+  let temporaryCredentials: TemporaryCredentials | null = null;
+  if (createdSlug && otpsRaw) {
+    try {
+      const parsed = JSON.parse(otpsRaw) as Record<string, TemporaryCredentials>;
+      temporaryCredentials = parsed?.[createdSlug] ?? null;
+    } catch {}
+  }
   const [plans, organizations, recentOutlets, createdOutlet] = await Promise.all([
     prisma.subscriptionPlan.findMany({
       where: { active: true },
@@ -48,10 +57,18 @@ export default async function PlatformFranchiseSetupRoute({ searchParams }: { se
       organizations={organizations}
       recentOutlets={recentOutlets}
       createdOutlet={createdOutlet}
+      temporaryCredentials={temporaryCredentials}
       createFranchiseAction={createFranchiseSetupAction}
     />
   );
 }
+
+type TemporaryCredentials = {
+  ownerEmail: string;
+  ownerPassword: string;
+  staffEmail: string | null;
+  staffPassword: string | null;
+};
 
 function setupOutletSelect() {
   return {
