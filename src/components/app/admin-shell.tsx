@@ -80,6 +80,18 @@ export function AdminShell({
               {item.label}
             </Link>
           ))}
+          <div className="mt-4 border-t border-lime-300/15 pt-3">
+            <Link
+              href="/change-password"
+              title="Change password"
+              className="flex h-10 items-center gap-3 rounded-material px-3 text-sm font-bold text-slate-300 hover:bg-amber-500/10 hover:text-amber-300"
+            >
+              <span className="material-symbols-outlined text-[20px] text-amber-400" aria-hidden="true">
+                lock
+              </span>
+              Change Password
+            </Link>
+          </div>
         </nav>
       </aside>
       <div className="lg:pl-64">
@@ -98,6 +110,14 @@ export function AdminShell({
               <div className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase text-cyan-100">
                 {accountLabel}
               </div>
+              <Link
+                href="/change-password"
+                title="Change password"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-300 hover:border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-300 transition"
+              >
+                <span className="material-symbols-outlined text-[16px]">lock</span>
+                <span>Password</span>
+              </Link>
               <button
                 onClick={async () => {
                   await fetch("/api/auth/logout", { method: "POST" });

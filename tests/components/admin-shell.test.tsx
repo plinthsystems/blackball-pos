@@ -27,6 +27,7 @@ describe("AdminShell", () => {
     expect(screen.getAllByText("CC").length).toBeGreaterThan(0);
     expect(screen.queryByText("BlackBall POS")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Dashboard/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Change Password/ })).toBeInTheDocument();
     expect(screen.queryByText("Operations")).not.toBeInTheDocument();
   });
 
@@ -51,6 +52,7 @@ describe("AdminShell", () => {
     );
 
     expect(screen.getByRole("link", { name: /Live Floor/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Change Password/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Dashboard/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Rates/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Food\/Menu/ })).not.toBeInTheDocument();

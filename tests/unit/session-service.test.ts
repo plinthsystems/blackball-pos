@@ -19,6 +19,22 @@ describe("SessionService", () => {
     expect(store.tables.get("table_available")?.status).toBe("OCCUPIED");
   });
 
+  it("captures the hourly rate snapshot when a walk-in session starts", async () => {
+    const { service, store } = createSessionServiceForTests();
+
+    const result = await service.startWalkInSession({
+      businessId: "business_1",
+      employeeId: "employee_1",
+      tableId: "table_available",
+      durationMinutes: 60,
+      hourlyRateSnapshot: 200,
+      now: new Date("2026-07-23T10:00:00.000Z")
+    });
+
+    const session = store.sessions.get(result.sessionId);
+    expect(session?.hourlyRateSnapshot).toBe(200);
+  });
+
   it("rejects an extension that overlaps a future confirmed booking", async () => {
     const { service } = createSessionServiceForTests();
 
