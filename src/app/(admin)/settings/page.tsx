@@ -4,8 +4,10 @@ import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
 import { getDefaultRouteForPermissions } from "@/server/auth/routes";
 import { isPaymentProviderConfigured } from "@/server/integrations/payments";
 import { isWhatsAppConfigured } from "@/server/integrations/whatsapp";
+import { getRequestBaseUrl } from "@/server/integrations/base-url";
 import { prisma } from "@/server/db/prisma";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +28,8 @@ export default async function SettingsPage() {
     })
   ]);
 
-  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-  const host = process.env.APP_BASE_URL ?? "localhost:3000";
+  const headerStore = await headers();
+  const baseUrl = getRequestBaseUrl(headerStore);
   const razorpayReady = isPaymentProviderConfigured("RAZORPAY");
   const stripeReady = isPaymentProviderConfigured("STRIPE");
 
@@ -60,7 +62,7 @@ export default async function SettingsPage() {
               paymentInfo: settings.paymentProvider !== "NONE" && !(settings.paymentProvider === "RAZORPAY" ? razorpayReady : stripeReady)
                 ? "⚠️ Selected provider's secret keys are missing from .env — payments will stay disabled until configured."
                 : null,
-              bookingLink: `${protocol}://${host}/book/${business?.slug ?? ""}`
+              bookingLink: `${baseUrl}/book/${business?.slug ?? ""}`
             }
           : undefined
       }
