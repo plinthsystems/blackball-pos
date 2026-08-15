@@ -1,9 +1,10 @@
 import { prisma } from "@/server/db/prisma";
 import { generateBookingQrPng } from "@/server/integrations/qr";
+import { getRequestBaseUrl } from "@/server/integrations/base-url";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const business = await prisma.business.findUnique({
     where: { slug },
@@ -13,7 +14,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     return new Response("Store not found", { status: 404 });
   }
 
-  const png = await generateBookingQrPng(slug);
+  const baseUrl = getRequestBaseUrl(request.headers);
+  const png = await generateBookingQrPng(slug, baseUrl);
   return new Response(new Uint8Array(png), {
     headers: {
       "Content-Type": "image/png",

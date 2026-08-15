@@ -1,8 +1,8 @@
 import QRCode from "qrcode";
 import { getBookingPageUrl } from "./base-url";
 
-export async function generateBookingQrPng(businessSlug: string): Promise<Buffer> {
-  const dataUrl = await QRCode.toDataURL(getBookingPageUrl(businessSlug), {
+export async function generateBookingQrPng(businessSlug: string, baseUrl?: string): Promise<Buffer> {
+  const dataUrl = await QRCode.toDataURL(getBookingPageUrl(businessSlug, baseUrl), {
     errorCorrectionLevel: "M",
     width: 512,
     margin: 2,
