@@ -35,4 +35,23 @@ describe("session calculations", () => {
 
     expect(amount).toBe(87.5);
   });
+
+  describe("rate snapshot behavior", () => {
+    it("keeps a running session at the original hourly rate after the table rate changes", () => {
+      // Table started at ₹200/hour. After 30 minutes the manager raises the table rate to ₹250.
+      // The running session must keep billing at the original ₹200/hour.
+      const elapsedSeconds = 30 * 60;
+      const runningSessionCharge = calculateMinuteBasedTableCharge({ billableSeconds: elapsedSeconds, hourlyRate: 200 });
+      const hypotheticalNewRateCharge = calculateMinuteBasedTableCharge({ billableSeconds: elapsedSeconds, hourlyRate: 250 });
+
+      expect(runningSessionCharge).toBe(100);
+      expect(hypotheticalNewRateCharge).toBe(125);
+      expect(runningSessionCharge).not.toBe(hypotheticalNewRateCharge);
+    });
+
+    it("charges a new session at the latest hourly rate", () => {
+      const newSessionCharge = calculateMinuteBasedTableCharge({ billableSeconds: 60 * 60, hourlyRate: 250 });
+      expect(newSessionCharge).toBe(250);
+    });
+  });
 });
