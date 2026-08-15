@@ -29,13 +29,17 @@ export function generateSlotStarts(
   dateKey: string,
   openHour: number,
   closeHour: number,
-  durationMinutes: number
+  durationMinutes: number,
+  closeNextDay = false
 ): Date[] {
   const starts: Date[] = [];
   const open = new Date(`${dateKey}T00:00:00`);
   open.setHours(openHour, 0, 0, 0);
   const close = new Date(`${dateKey}T00:00:00`);
   close.setHours(closeHour, 0, 0, 0);
+  if (closeNextDay) {
+    close.setDate(close.getDate() + 1);
+  }
 
   let cursor = open.getTime();
   while (cursor + durationMinutes * 60_000 <= close.getTime()) {

@@ -5,9 +5,13 @@ import {
   evaluateSlotAvailability,
   formatSlotTime,
   generateSlotStarts,
-  isDateWithinWindow,
   toLocalDateKey
 } from "@/server/domain/booking-slots";
+import {
+  buildBookingBusinessWindow,
+  getActiveAndNextBusinessWindows,
+  isBookingWindowDate
+} from "@/server/domain/booking-settings";
 import { getActivePaymentProvider } from "@/server/integrations/payments";
 import { isWhatsAppConfigured } from "@/server/integrations/whatsapp";
 
@@ -18,8 +22,10 @@ export type PublicBookCatalog = {
   bookingEnabled: boolean;
   requireConfirmation: boolean;
   bookingBufferMinutes: number;
+  bookingMinLeadMinutes: number;
   bookingOpenHour: number;
   bookingCloseHour: number;
+  bookingCloseNextDay: boolean;
   paymentProvider: "razorpay" | "stripe" | null;
   advanceAmount: number;
   whatsappConfigured: boolean;
@@ -70,8 +76,10 @@ export async function getPublicBookCatalog(businessSlug: string): Promise<Public
     bookingEnabled: settings.bookingEnabled,
     requireConfirmation: settings.requireConfirmation,
     bookingBufferMinutes: settings.bookingBufferMinutes,
+    bookingMinLeadMinutes: settings.bookingMinLeadMinutes,
     bookingOpenHour: settings.bookingOpenHour,
     bookingCloseHour: settings.bookingCloseHour,
+    bookingCloseNextDay: settings.bookingCloseNextDay,
     paymentProvider: getActivePaymentProvider(settings.paymentProvider),
     advanceAmount: Number(settings.bookingAdvanceAmount),
     whatsappConfigured: isWhatsAppConfigured(),
@@ -93,7 +101,13 @@ export async function listBookableSlots(
   const settings = await ensureBookingSettingsFor(businessId);
 
   if (
-    !isDateWithinWindow(dateKey, settings.bookingWindowDays) ||
+    !isBookingWindowDate(
+      dateKey,
+      new Date(),
+      settings.bookingOpenHour,
+      settings.bookingCloseHour,
+      settings.bookingCloseNextDay
+    ) ||
     durationMinutes <= 0
   ) {
     return [];
@@ -107,7 +121,12 @@ export async function listBookableSlots(
   }
 
   const dayStart = new Date(`${dateKey}T00:00:00`);
-  const dayEnd = new Date(`${dateKey}T23:59:59`);
+  const { openTime, closeTime } = buildBookingBusinessWindow(
+    dayStart,
+    settings.bookingOpenHour,
+    settings.bookingCloseHour,
+    settings.bookingCloseNextDay
+  );
 
   const [existingBookings, activeSession] = await Promise.all([
     prisma.booking.findMany({
@@ -115,8 +134,9 @@ export async function listBookableSlots(
         businessId,
         tableId,
         status: { in: [...ACTIVE_BOOKING_STATUSES] },
-        startsAt: { lt: dayEnd },
-        endsAt: { gt: dayStart }
+        // Use the business window (which may span to the next day) instead of the calendar day.
+        startsAt: { lt: closeTime },
+        endsAt: { gt: openTime }
       },
       select: { startsAt: true, endsAt: true }
     }),
@@ -129,7 +149,8 @@ export async function listBookableSlots(
     dateKey,
     settings.bookingOpenHour,
     settings.bookingCloseHour,
-    durationMinutes
+    durationMinutes,
+    settings.bookingCloseNextDay
   );
 
   const blockedUntil = activeSession ? addMinutes(activeSession.startedAt, 120) : null;
@@ -138,17 +159,23 @@ export async function listBookableSlots(
     candidateStarts,
     durationMinutes,
     existingBookings,
-    settings.bookingBufferMinutes
+    settings.bookingBufferMinutes,
+    settings.bookingMinLeadMinutes
   );
 
-  return evaluated.map((slot) => {
-    const blocked = blockedUntil && slot.startsAt.getTime() < blockedUntil.getTime();
-    return {
-      iso: slot.startsAt.toISOString(),
-      label: formatSlotTime(slot.startsAt, true),
-      available: slot.available && !blocked
-    };
-  });
+  const now = new Date();
+  const leadTimeThreshold = now.getTime() + settings.bookingMinLeadMinutes * 60_000;
+
+  return evaluated
+    .filter((slot) => slot.startsAt.getTime() >= leadTimeThreshold)
+    .map((slot) => {
+      const blocked = blockedUntil && slot.startsAt.getTime() < blockedUntil.getTime();
+      return {
+        iso: slot.startsAt.toISOString(),
+        label: formatSlotTime(slot.startsAt, true),
+        available: slot.available && !blocked
+      };
+    });
 }
 
 export async function getUpcomingBookings(businessId: string) {
@@ -183,38 +210,55 @@ export async function getUpcomingBookings(businessId: string) {
 }
 
 export async function getUpcomingBookingBadges(businessId: string) {
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const tomorrowStart = new Date(todayStart);
-  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  const settings = await ensureBookingSettingsFor(businessId);
+  const now = new Date();
+  const [activeWindow, nextWindow] = getActiveAndNextBusinessWindows(
+    now,
+    settings.bookingOpenHour,
+    settings.bookingCloseHour,
+    settings.bookingCloseNextDay
+  );
 
   const bookings = await prisma.booking.findMany({
     where: {
       businessId,
       status: { in: [...ACTIVE_BOOKING_STATUSES] },
-      startsAt: { gte: new Date(), lt: tomorrowStart }
+      startsAt: { gte: now, lt: nextWindow.closeTime }
     },
     select: {
       tableId: true,
       startsAt: true,
       endsAt: true,
-      status: true
+      status: true,
+      customer: { select: { name: true } }
     },
     orderBy: [{ startsAt: "asc" }]
   });
 
   const byTable = new Map<
     string,
-    { startsAt: string; endsAt: string; status: "PENDING" | "CONFIRMED" | "CHECKED_IN" }
-  >();
-  for (const booking of bookings) {
-    if (!byTable.has(booking.tableId)) {
-      byTable.set(booking.tableId, {
-        startsAt: booking.startsAt.toISOString(),
-        endsAt: booking.endsAt.toISOString(),
-        status: booking.status as "PENDING" | "CONFIRMED" | "CHECKED_IN"
-      });
+    {
+      startsAt: string;
+      endsAt: string;
+      status: "PENDING" | "CONFIRMED" | "CHECKED_IN";
+      customerName: string | null;
     }
+  >();
+
+  for (const booking of bookings) {
+    if (byTable.has(booking.tableId)) continue;
+
+    const start = booking.startsAt.getTime();
+    const inActiveWindow = start >= activeWindow.openTime.getTime() && start < activeWindow.closeTime.getTime();
+    const inNextWindow = start >= nextWindow.openTime.getTime() && start < nextWindow.closeTime.getTime();
+    if (!inActiveWindow && !inNextWindow) continue;
+
+    byTable.set(booking.tableId, {
+      startsAt: booking.startsAt.toISOString(),
+      endsAt: booking.endsAt.toISOString(),
+      status: booking.status as "PENDING" | "CONFIRMED" | "CHECKED_IN",
+      customerName: booking.customer?.name ?? null
+    });
   }
 
   return byTable;

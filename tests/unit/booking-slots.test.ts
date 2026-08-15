@@ -39,6 +39,19 @@ describe("Booking Slot Domain", () => {
       expect(starts[1].getHours()).toBe(21);
       expect(starts[1].getMinutes()).toBe(30);
     });
+
+    it("generates slots across midnight when close is next day", () => {
+      const starts = generateSlotStarts("2026-08-13", 10, 1, 60, true);
+      const first = starts[0];
+      const last = starts[starts.length - 1];
+      expect(first.getHours()).toBe(10);
+      expect(first.getDate()).toBe(13);
+      expect(last.getHours()).toBe(0);
+      expect(last.getDate()).toBe(14);
+      // last slot ends at 01:00 next day
+      expect(addMinutes(last, 60).getHours()).toBe(1);
+      expect(addMinutes(last, 60).getDate()).toBe(14);
+    });
   });
 
   describe("isDateWithinWindow", () => {
@@ -105,6 +118,26 @@ describe("Booking Slot Domain", () => {
       const result = evaluateSlotAvailability(starts, 60, [], 10, 90);
       expect(result[0].available).toBe(false);
       expect(result[1].available).toBe(true);
+    });
+
+    it("respects a custom minimum lead time", () => {
+      const now = new Date();
+      const starts = [
+        addMinutes(now, 10),
+        addMinutes(now, 30),
+        addMinutes(now, 90)
+      ];
+      const result = evaluateSlotAvailability(starts, 60, [], 0, 30);
+      expect(result[0].available).toBe(false);
+      expect(result[1].available).toBe(true);
+      expect(result[2].available).toBe(true);
+    });
+
+    it("allows immediate booking when lead time is zero", () => {
+      const now = new Date();
+      const starts = [addMinutes(now, 1)];
+      const result = evaluateSlotAvailability(starts, 30, [], 0, 0);
+      expect(result[0].available).toBe(true);
     });
   });
 

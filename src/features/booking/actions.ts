@@ -15,6 +15,10 @@ import {
   toLocalDateKey
 } from "@/server/domain/booking-slots";
 import {
+  bookingSettingsSchema,
+  findBusinessWindowForSlot
+} from "@/server/domain/booking-settings";
+import {
   createBookingPaymentLink,
   getActivePaymentProvider
 } from "@/server/integrations/payments";
@@ -35,16 +39,6 @@ const publicBookingSchema = z.object({
 
 const manageBookingSchema = z.object({
   bookingId: z.string().trim().min(1)
-});
-
-const bookingSettingsSchema = z.object({
-  bookingEnabled: z.boolean(),
-  requireConfirmation: z.boolean(),
-  bookingBufferMinutes: z.number().int().min(0).max(120),
-  bookingOpenHour: z.number().int().min(6).max(14),
-  bookingCloseHour: z.number().int().min(14).max(24),
-  paymentProvider: z.enum(["NONE", "RAZORPAY", "STRIPE"]),
-  bookingAdvanceAmount: z.number().min(0).max(100000)
 });
 
 class SlotUnavailableError extends Error {}
@@ -105,21 +99,25 @@ export async function createPublicBookingAction(input: unknown): Promise<PublicB
     }
 
     // Server-side window enforcement (mirrors the public UI + slot generator):
-    // 1. same-day only; 2. minimum 90-minute lead time; 3. within business hours.
-    if (toLocalDateKey(startsAt) !== toLocalDateKey(now)) {
-      return { ok: false, message: "Online bookings are only open for today. Please pick a valid slot." };
-    }
-    if (startsAt.getTime() < now.getTime() + 90 * 60_000) {
-      return { ok: false, message: "Please pick a slot at least 90 minutes from now." };
-    }
-    const openHour = new Date(now);
-    openHour.setHours(settings.bookingOpenHour, 0, 0, 0);
-    const closeHour = new Date(now);
-    closeHour.setHours(settings.bookingCloseHour, 0, 0, 0);
-    if (startsAt.getTime() < openHour.getTime() || endsAt.getTime() > closeHour.getTime()) {
+    // 1. minimum lead time from settings; 2. within an active or upcoming business window.
+    const minLeadMs = settings.bookingMinLeadMinutes * 60_000;
+    if (startsAt.getTime() < now.getTime() + minLeadMs) {
       return {
         ok: false,
-        message: `Bookings are only open ${formatSlotTime(openHour, true)} to ${formatSlotTime(closeHour, true)}.`
+        message: `Please pick a slot at least ${settings.bookingMinLeadMinutes} minutes from now.`
+      };
+    }
+    const window = findBusinessWindowForSlot(
+      startsAt,
+      now,
+      settings.bookingOpenHour,
+      settings.bookingCloseHour,
+      settings.bookingCloseNextDay
+    );
+    if (!window || endsAt.getTime() > window.closeTime.getTime()) {
+      return {
+        ok: false,
+        message: `Bookings are only open during business hours. Please pick a valid slot.`
       };
     }
 

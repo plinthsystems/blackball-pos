@@ -27,8 +27,10 @@ export type SettingsBooking = {
   bookingEnabled: boolean;
   requireConfirmation: boolean;
   bookingBufferMinutes: number;
+  bookingMinLeadMinutes: number;
   bookingOpenHour: number;
   bookingCloseHour: number;
+  bookingCloseNextDay: boolean;
   paymentProvider: "NONE" | "RAZORPAY" | "STRIPE";
   bookingAdvanceAmount: number;
   availablePaymentProviders: Array<{ code: "NONE" | "RAZORPAY" | "STRIPE"; label: string; ready: boolean }>;
@@ -76,8 +78,10 @@ export function MenuSettingsPage({
   const [paymentProvider, setPaymentProvider] = useState(booking?.paymentProvider ?? "NONE");
   const [advanceAmount, setAdvanceAmount] = useState(booking?.bookingAdvanceAmount ?? 0);
   const [bufferMinutes, setBufferMinutes] = useState(booking?.bookingBufferMinutes ?? 10);
+  const [minLeadMinutes, setMinLeadMinutes] = useState(booking?.bookingMinLeadMinutes ?? 90);
   const [openHour, setOpenHour] = useState(booking?.bookingOpenHour ?? 10);
   const [closeHour, setCloseHour] = useState(booking?.bookingCloseHour ?? 23);
+  const [closeNextDay, setCloseNextDay] = useState(booking?.bookingCloseNextDay ?? false);
 
   function addItem() {
     startTransition(async () => {
@@ -122,8 +126,10 @@ export function MenuSettingsPage({
         bookingEnabled,
         requireConfirmation,
         bookingBufferMinutes: Number(bufferMinutes),
+        bookingMinLeadMinutes: Number(minLeadMinutes),
         bookingOpenHour: Number(openHour),
         bookingCloseHour: Number(closeHour),
+        bookingCloseNextDay: closeNextDay,
         paymentProvider,
         bookingAdvanceAmount: Number(advanceAmount)
       });
@@ -245,12 +251,43 @@ export function MenuSettingsPage({
             <Field label="Cleanup buffer (min)">
               <input {...textInputProps()} type="number" min={0} max={120} value={bufferMinutes} onChange={(event) => setBufferMinutes(Number(event.target.value))} />
             </Field>
+            <Field label="Min. lead time (min)">
+              <input
+                {...textInputProps()}
+                type="number"
+                min={0}
+                max={240}
+                value={minLeadMinutes}
+                onChange={(event) => setMinLeadMinutes(Number(event.target.value))}
+              />
+            </Field>
             <Field label="Opens at (24h)">
-              <input {...textInputProps()} type="number" min={6} max={14} value={openHour} onChange={(event) => setOpenHour(Number(event.target.value))} />
+              <input {...textInputProps()} type="number" min={0} max={23} value={openHour} onChange={(event) => setOpenHour(Number(event.target.value))} />
             </Field>
             <Field label="Closes at (24h)">
-              <input {...textInputProps()} type="number" min={14} max={24} value={closeHour} onChange={(event) => setCloseHour(Number(event.target.value))} />
+              <input
+                {...textInputProps()}
+                type="number"
+                min={closeNextDay ? 0 : openHour + 1}
+                max={24}
+                value={closeHour}
+                onChange={(event) => setCloseHour(Number(event.target.value))}
+              />
             </Field>
+            <label className="md:col-span-2 flex cursor-pointer items-center justify-between gap-3 rounded-material border border-white/10 bg-white/[0.03] p-3">
+              <span>
+                <span className="block text-sm font-black text-white">Closes next day</span>
+                <span className="text-xs text-slate-400">
+                  Enable when the store closes after midnight (e.g. opens 10:00, closes 01:00 next day)
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={closeNextDay}
+                onChange={(event) => setCloseNextDay(event.target.checked)}
+                className="h-5 w-5 accent-cyan-500"
+              />
+            </label>
             <Field label="Payment provider (advance)">
               <select
                 className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-3 text-sm text-slate-100"
@@ -286,7 +323,7 @@ export function MenuSettingsPage({
             </div>
             <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 border-t border-cyan-300/10 pt-4">
               <p className="text-xs text-slate-500">
-                Same-day slots only, every 30 minutes between opening and closing hours.
+                Same-day start slots only, every 30 minutes between opening and closing hours. Overnight hours supported when &quot;Closes next day&quot; is enabled.
               </p>
               <Button type="button" variant="primary" disabled={isPending} onClick={saveBookingSettings}>
                 Save booking preferences
