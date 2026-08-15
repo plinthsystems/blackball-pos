@@ -1,7 +1,8 @@
 import { GameType, PrismaClient, ProductCategory } from "@prisma/client";
 import { hashPassword } from "../src/server/auth/auth-service";
+import { buildDatabaseUrl } from "../src/server/db/connection";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ datasourceUrl: buildDatabaseUrl() });
 const defaultPasswordHash = hashPassword("Password@123");
 
 const permissionKeys = [

@@ -45,6 +45,8 @@ const bookingSettingsSchema = z.object({
   bookingAdvanceAmount: z.number().min(0).max(100000)
 });
 
+class SlotUnavailableError extends Error {}
+
 export type PublicBookingResult =
   | {
       ok: true;
@@ -99,26 +101,6 @@ export async function createPublicBookingAction(input: unknown): Promise<PublicB
       return { ok: false, message: "That slot has already passed. Please pick another time." };
     }
 
-    const conflict = await prisma.booking.findFirst({
-      where: {
-        businessId: business.id,
-        tableId: table.id,
-        status: { in: [...ACTIVE_BOOKING_STATUSES] },
-        startsAt: { lt: addMinutes(endsAt, settings.bookingBufferMinutes) },
-        endsAt: { gt: addMinutes(startsAt, -settings.bookingBufferMinutes) }
-      }
-    });
-    if (conflict) {
-      return { ok: false, message: "That slot was just booked by someone else. Please pick another time." };
-    }
-
-    const existingActive = await prisma.session.findFirst({
-      where: { businessId: business.id, tableId: table.id, status: "ACTIVE" }
-    });
-    if (existingActive) {
-      return { ok: false, message: "This table is currently in play. Please pick a later slot." };
-    }
-
     const phone = parsed.phone;
     let customer = await prisma.customer.findFirst({
       where: { businessId: business.id, phone }
@@ -130,16 +112,58 @@ export async function createPublicBookingAction(input: unknown): Promise<PublicB
     }
 
     const status = settings.requireConfirmation ? "PENDING" : "CONFIRMED";
-    const booking = await prisma.booking.create({
-      data: {
-        businessId: business.id,
-        tableId: table.id,
-        customerId: customer.id,
-        status,
-        startsAt,
-        endsAt
+    let booking: { id: string; status: string; startsAt: Date; endsAt: Date } | null = null;
+
+    try {
+      booking = await prisma.$transaction(async (tx) => {
+        // Lock the table row so concurrent bookings for the same table serialize.
+        await tx.$queryRaw`SELECT id FROM "ClubTable" WHERE id = ${table.id} FOR UPDATE`;
+        await tx.$queryRaw`SELECT id FROM "Business" WHERE id = ${business.id}`;
+
+        const conflict = await tx.booking.findFirst({
+          where: {
+            businessId: business.id,
+            tableId: table.id,
+            status: { in: [...ACTIVE_BOOKING_STATUSES] },
+            startsAt: { lt: addMinutes(endsAt, settings.bookingBufferMinutes) },
+            endsAt: { gt: addMinutes(startsAt, -settings.bookingBufferMinutes) }
+          },
+          select: { id: true }
+        });
+        if (conflict) {
+          throw new SlotUnavailableError(
+            "That slot was just booked by someone else. Please pick another time."
+          );
+        }
+
+        const existingActive = await tx.session.findFirst({
+          where: { businessId: business.id, tableId: table.id, status: "ACTIVE" }
+        });
+        if (existingActive) {
+          throw new SlotUnavailableError("This table is currently in play. Please pick a later slot.");
+        }
+
+        return tx.booking.create({
+          data: {
+            businessId: business.id,
+            tableId: table.id,
+            customerId: customer!.id,
+            status,
+            startsAt,
+            endsAt
+          }
+        });
+      });
+    } catch (error) {
+      if (error instanceof SlotUnavailableError) {
+        return { ok: false, message: error.message };
       }
-    });
+      throw error;
+    }
+
+    if (!booking) {
+      return { ok: false, message: "Booking could not be completed. Please try again." };
+    }
 
     const bookingRef = booking.id.slice(-6).toUpperCase();
     const activeProvider = getActivePaymentProvider(settings.paymentProvider);
