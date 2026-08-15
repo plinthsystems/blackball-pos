@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import nodeCrypto from "crypto";
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -30,16 +30,16 @@ function secretKey(): string {
 }
 
 export function hashPassword(password: string): string {
-  const salt = crypto.randomBytes(16).toString("hex");
-  const derivedKey = crypto.scryptSync(password, salt, 64).toString("hex");
+  const salt = nodeCrypto.randomBytes(16).toString("hex");
+  const derivedKey = nodeCrypto.scryptSync(password, salt, 64).toString("hex");
   return `${salt}:${derivedKey}`;
 }
 
 export function verifyPassword(password: string, hash: string): boolean {
   if (!hash || !hash.includes(":")) return false;
   const [salt, key] = hash.split(":");
-  const derivedKey = crypto.scryptSync(password, salt, 64).toString("hex");
-  return crypto.timingSafeEqual(Buffer.from(key, "hex"), Buffer.from(derivedKey, "hex"));
+  const derivedKey = nodeCrypto.scryptSync(password, salt, 64).toString("hex");
+  return nodeCrypto.timingSafeEqual(Buffer.from(key, "hex"), Buffer.from(derivedKey, "hex"));
 }
 
 export type AuthSessionPayload = {
@@ -61,14 +61,14 @@ export function createSessionToken(payload: Omit<AuthSessionPayload, "createdAt"
   };
   const jsonStr = JSON.stringify(fullPayload);
   const base64Payload = Buffer.from(jsonStr).toString("base64url");
-  const signature = crypto.createHmac("sha256", secretKey()).update(base64Payload).digest("base64url");
+  const signature = nodeCrypto.createHmac("sha256", secretKey()).update(base64Payload).digest("base64url");
   return `${base64Payload}.${signature}`;
 }
 
 export function verifySessionToken(token: string): AuthSessionPayload | null {
   if (!token || !token.includes(".")) return null;
   const [base64Payload, signature] = token.split(".");
-  const expectedSignature = crypto.createHmac("sha256", secretKey()).update(base64Payload).digest("base64url");
+  const expectedSignature = nodeCrypto.createHmac("sha256", secretKey()).update(base64Payload).digest("base64url");
 
   if (signature !== expectedSignature) return null;
 
@@ -96,7 +96,7 @@ export async function verifySessionTokenEdge(token: string): Promise<AuthSession
   try {
     const secret = getAuthSecret();
     const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
+    const key = await globalThis.crypto.subtle.importKey(
       "raw",
       encoder.encode(secret),
       { name: "HMAC", hash: "SHA-256" },
@@ -104,14 +104,15 @@ export async function verifySessionTokenEdge(token: string): Promise<AuthSession
       ["sign", "verify"]
     );
 
-    const expected = await crypto.subtle.sign("HMAC", key, encoder.encode(base64Payload));
+    const expected = await globalThis.crypto.subtle.sign("HMAC", key, encoder.encode(base64Payload));
     const expectedHex = bytesToBase64Url(new Uint8Array(expected));
     if (signature !== expectedHex) {
       return null;
     }
 
     const base64 = base64Payload.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonStr = typeof atob === "function" ? atob(base64) : Buffer.from(base64, "base64").toString("utf8");
+    const padded = base64.length % 4 === 0 ? base64 : base64 + "=".repeat(4 - (base64.length % 4));
+    const jsonStr = typeof atob === "function" ? atob(padded) : Buffer.from(padded, "base64").toString("utf8");
     const payload = JSON.parse(jsonStr) as AuthSessionPayload;
     if (typeof payload.exp === "number" && Date.now() > payload.exp) {
       return null;
