@@ -213,11 +213,13 @@ model BusinessSettings {
   gstNumber            String?
   taxRateBasisPoints   Int      @default(1800)
   bookingBufferMinutes Int      @default(10)
+  bookingMinLeadMinutes Int     @default(90)
   bookingEnabled       Boolean  @default(true)
   requireConfirmation  Boolean  @default(false)
   bookingWindowDays    Int      @default(14)
   bookingOpenHour      Int      @default(10)
   bookingCloseHour     Int      @default(23)
+  bookingCloseNextDay  Boolean  @default(false)
   paymentProvider      PaymentProvider @default(NONE)
   bookingAdvanceAmount Decimal  @default(0) @db.Decimal(12, 2)
   createdAt            DateTime @default(now())

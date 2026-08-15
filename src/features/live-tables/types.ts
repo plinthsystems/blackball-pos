@@ -61,6 +61,7 @@ export type LiveTableCardData = {
     startsAt: string;
     endsAt: string;
     status: "PENDING" | "CONFIRMED" | "CHECKED_IN";
+    customerName: string | null;
   };
 };
 

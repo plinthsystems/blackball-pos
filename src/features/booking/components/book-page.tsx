@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { createPublicBookingAction, listBookableSlotsAction } from "../actions";
-import { BOOKING_DURATIONS, toLocalDateKey } from "@/server/domain/booking-slots";
+import { BOOKING_DURATIONS } from "@/server/domain/booking-slots";
+import { getActiveAndNextBusinessWindows } from "@/server/domain/booking-settings";
 import type { PublicBookCatalog, PublicSlot } from "../queries";
 
 const gameTypeLabels: Record<string, string> = {
@@ -19,6 +20,12 @@ const durationLabels: Record<number, string> = {
 };
 
 type SelectedSlot = { iso: string; label: string } | null;
+
+type SlotGroup = {
+  label: string;
+  dateKey: string;
+  slots: PublicSlot[];
+};
 
 type DoneState = {
   reference: string;
@@ -38,7 +45,7 @@ export function BookPageView({ catalog }: { catalog: PublicBookCatalog }) {
   const [step, setStep] = useState<"choose" | "details">("choose");
   const [tableId, setTableId] = useState<string | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
-  const [slots, setSlots] = useState<PublicSlot[] | null>(null);
+  const [slotGroups, setSlotGroups] = useState<SlotGroup[] | null>(null);
   const [slot, setSlot] = useState<SelectedSlot>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -46,27 +53,49 @@ export function BookPageView({ catalog }: { catalog: PublicBookCatalog }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [done, setDone] = useState<DoneState>(null);
   const [payment, setPayment] = useState<PaymentState>(null);
-  const TODAY_KEY = useMemo(() => toLocalDateKey(new Date()), []);
 
   async function pickTable(nextTableId: string) {
     setTableId(nextTableId);
     setDuration(null);
-    setSlots(null);
+    setSlotGroups(null);
     setSlot(null);
   }
 
   async function pickDuration(minutes: number) {
     setDuration(minutes);
-    setSlots(null);
+    setSlotGroups(null);
     setSlot(null);
     if (tableId) {
       setLoadingSlots(true);
-      const result = await listBookableSlotsAction({
-        tableId,
-        dateKey: TODAY_KEY,
-        durationMinutes: minutes
-      });
-      setSlots(result.slots);
+      const now = new Date();
+      const [activeWindow, nextWindow] = getActiveAndNextBusinessWindows(
+        now,
+        catalog.bookingOpenHour,
+        catalog.bookingCloseHour,
+        catalog.bookingCloseNextDay
+      );
+
+      const [activeResult, nextResult] = await Promise.all([
+        listBookableSlotsAction({
+          tableId,
+          dateKey: activeWindow.dateKey,
+          durationMinutes: minutes
+        }),
+        listBookableSlotsAction({
+          tableId,
+          dateKey: nextWindow.dateKey,
+          durationMinutes: minutes
+        })
+      ]);
+
+      const groups: SlotGroup[] = [];
+      if (activeResult.slots.length > 0) {
+        groups.push({ label: activeWindow.label, dateKey: activeWindow.dateKey, slots: activeResult.slots });
+      }
+      if (nextResult.slots.length > 0) {
+        groups.push({ label: nextWindow.label, dateKey: nextWindow.dateKey, slots: nextResult.slots });
+      }
+      setSlotGroups(groups);
       setLoadingSlots(false);
     }
   }
@@ -321,38 +350,45 @@ export function BookPageView({ catalog }: { catalog: PublicBookCatalog }) {
                   );
                 })}
               </div>
-              <p className="mt-2 text-[11px] text-slate-500">Available today only.</p>
+              <p className="mt-2 text-[11px] text-slate-500">Choose a start time within business hours.</p>
 
               <div className="mt-5">
                 <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Available start times</p>
                 {loadingSlots ? (
                   <p className="mt-3 text-sm text-slate-400">Checking availability…</p>
-                ) : slots ? (
-                  slots.length > 0 ? (
-                    <div className="mt-3 grid max-h-60 grid-cols-3 gap-2 overflow-y-auto">
-                      {slots.map((s) => {
-                        const selected = slot?.iso === s.iso;
-                        return (
-                          <button
-                            key={s.iso}
-                            type="button"
-                            disabled={!s.available}
-                            onClick={() => setSlot({ iso: s.iso, label: s.label })}
-                            className={`h-11 rounded-xl border text-xs font-bold transition ${
-                              selected
-                                ? "border-emerald-400/70 bg-emerald-500/15 text-white ring-2 ring-emerald-400/30"
-                                : s.available
-                                  ? "border-slate-700 bg-slate-900 text-slate-200 hover:border-emerald-400/50"
-                                  : "cursor-not-allowed border-slate-800/60 bg-slate-950 text-slate-600 line-through"
-                            }`}
-                          >
-                            {s.label}
-                          </button>
-                        );
-                      })}
+                ) : slotGroups ? (
+                  slotGroups.some((g) => g.slots.length > 0) ? (
+                    <div className="mt-3 space-y-5">
+                      {slotGroups.map((group) => (
+                        <div key={group.dateKey}>
+                          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{group.label}</p>
+                          <div className="mt-2 grid grid-cols-3 gap-2">
+                            {group.slots.map((s) => {
+                              const selected = slot?.iso === s.iso;
+                              return (
+                                <button
+                                  key={s.iso}
+                                  type="button"
+                                  disabled={!s.available}
+                                  onClick={() => setSlot({ iso: s.iso, label: s.label })}
+                                  className={`h-11 rounded-xl border text-xs font-bold transition ${
+                                    selected
+                                      ? "border-emerald-400/70 bg-emerald-500/15 text-white ring-2 ring-emerald-400/30"
+                                      : s.available
+                                        ? "border-slate-700 bg-slate-900 text-slate-200 hover:border-emerald-400/50"
+                                        : "cursor-not-allowed border-slate-800/60 bg-slate-950 text-slate-600 line-through"
+                                  }`}
+                                >
+                                  {s.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
-                    <p className="mt-3 text-sm text-amber-200/80">No slots left for today. Try another time.</p>
+                    <p className="mt-3 text-sm text-amber-200/80">No slots left. Try another time.</p>
                   )
                 ) : (
                   <p className="mt-3 text-sm text-slate-500">Pick a duration to see open slots.</p>

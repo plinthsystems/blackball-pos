@@ -45,8 +45,10 @@ export default async function SettingsPage() {
               bookingEnabled: settings.bookingEnabled,
               requireConfirmation: settings.requireConfirmation,
               bookingBufferMinutes: settings.bookingBufferMinutes,
+              bookingMinLeadMinutes: settings.bookingMinLeadMinutes,
               bookingOpenHour: settings.bookingOpenHour,
               bookingCloseHour: settings.bookingCloseHour,
+              bookingCloseNextDay: settings.bookingCloseNextDay,
               paymentProvider: settings.paymentProvider,
               bookingAdvanceAmount: Number(settings.bookingAdvanceAmount),
               availablePaymentProviders: [

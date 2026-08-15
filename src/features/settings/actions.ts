@@ -5,17 +5,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/server/db/prisma";
 import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
 import { requirePermission } from "@/server/auth/permissions";
+import { bookingSettingsSchema } from "@/server/domain/booking-settings";
 import { brandingFormSchema, productFormSchema } from "@/features/sessions/schemas";
-
-const bookingSettingsSchema = z.object({
-  bookingEnabled: z.boolean(),
-  requireConfirmation: z.boolean(),
-  bookingBufferMinutes: z.number().int().min(0).max(120),
-  bookingOpenHour: z.number().int().min(6).max(14),
-  bookingCloseHour: z.number().int().min(14).max(24),
-  paymentProvider: z.enum(["NONE", "RAZORPAY", "STRIPE"]),
-  bookingAdvanceAmount: z.number().min(0).max(100000)
-});
 
 export async function updateBookingSettingsAction(input: unknown): Promise<ActionResult> {
   try {
@@ -31,8 +22,14 @@ export async function updateBookingSettingsAction(input: unknown): Promise<Actio
 
     revalidatePath("/settings");
     return { ok: true, message: "Booking preferences saved." };
-  } catch {
-    return { ok: false, message: "Booking preferences could not be saved." };
+  } catch (error) {
+    // Surface validation errors in dev; generic message in production.
+    if (error instanceof z.ZodError) {
+      const issue = error.issues[0];
+      return { ok: false, message: issue ? `${issue.path.join(".")}: ${issue.message}` : "Invalid booking settings." };
+    }
+    const message = error instanceof Error ? error.message : "Booking preferences could not be saved.";
+    return { ok: false, message };
   }
 }
 

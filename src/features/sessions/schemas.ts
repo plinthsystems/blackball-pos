@@ -64,7 +64,7 @@ export const brandingFormSchema = z.object({
 
 export const tableStatusSchema = z.object({
   tableId: z.string().min(1),
-  status: z.literal("AVAILABLE")
+  status: z.enum(["AVAILABLE", "RESERVED", "CLEANING", "MAINTENANCE", "BLOCKED"])
 });
 
 export const bookableItemFormSchema = z.object({

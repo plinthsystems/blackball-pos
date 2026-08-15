@@ -84,7 +84,12 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
         <Badge tone={statusTone[table.status]}>{statusLabel[table.status]}</Badge>
       </div>
       {table.upcomingBooking ? (
-        <BookingCountdown startsAt={table.upcomingBooking.startsAt} endsAt={table.upcomingBooking.endsAt} />
+        <BookingCountdown
+          startsAt={table.upcomingBooking.startsAt}
+          endsAt={table.upcomingBooking.endsAt}
+          customerName={table.upcomingBooking.customerName}
+          status={table.upcomingBooking.status}
+        />
       ) : null}
       <div className={session ? "mt-4 min-h-24 text-sm text-slate-200" : "mt-4 min-h-24 text-sm text-slate-300"}>
         {session ? (
