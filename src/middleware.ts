@@ -25,6 +25,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/book/") ||
     pathname.startsWith("/qr/") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/integrations") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon")
   ) {
@@ -40,6 +41,9 @@ export async function middleware(request: NextRequest) {
 
   // 1. AUTHENTICATION GUARD: Protect all non-public routes
   if (!isAuthenticated) {
+    if (pathname.startsWith("/api/") && pathname !== "/api/") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

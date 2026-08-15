@@ -187,15 +187,18 @@ export function MagicLoginBuilderUI({ error = null }: { error?: string | null })
         </div>
         <p className="mt-1.5 text-xs text-slate-300 leading-relaxed">
           One-click login ab email-only nahi hai — har magic-login request ko access key chahiye.
-          Dev default: <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-amber-200">local-dev-key</code>.
-          Production environment me kabhi default nahi hota — <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-amber-200">DEV_ACCESS_KEY</code> env variable se set hota hai
-          (agar <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-amber-200">MAGIC_LOGIN_ENABLED=true</code> karo).
+          Magic login ab <strong className="text-amber-200">sirf tab hai</strong> jab
+          <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-amber-200">MAGIC_LOGIN_ENABLED=true</code> ho
+          aur <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-amber-200">DEV_ACCESS_KEY</code> set ho
+          — production me nahi, dev me bhi nahi, default key kabhi nahi hoti. Set karo.env me:{" "}
+          <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-amber-200">MAGIC_LOGIN_ENABLED=true</code>{" "}
+          + <code className="rounded bg-slate-950 px-1.5 py-0.5 font-mono text-amber-200">DEV_ACCESS_KEY=&lt;kam-se-kam-12-chars&gt;</code>.
         </p>
         <input
           type="password"
           value={accessKey}
           onChange={(event) => setAccessKey(event.target.value)}
-          placeholder="Agar blank hai to 'local-dev-key' input karo (local)"
+          placeholder="DEV_ACCESS_KEY env variable ka value (har environment me)"
           className="mt-3 w-full rounded-xl border border-amber-400/40 bg-slate-950 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none"
         />
         {error && (

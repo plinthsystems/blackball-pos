@@ -10,7 +10,9 @@ import { headers } from "next/headers";
 import {
   ACTIVE_BOOKING_STATUSES,
   addMinutes,
-  isIntervalOverlapping
+  formatSlotTime,
+  isIntervalOverlapping,
+  toLocalDateKey
 } from "@/server/domain/booking-slots";
 import {
   createBookingPaymentLink,
@@ -97,8 +99,28 @@ export async function createPublicBookingAction(input: unknown): Promise<PublicB
 
     const startsAt = new Date(parsed.startsAt);
     const endsAt = addMinutes(startsAt, parsed.durationMinutes);
-    if (Number.isNaN(startsAt.getTime()) || endsAt.getTime() <= Date.now()) {
+    const now = new Date();
+    if (Number.isNaN(startsAt.getTime()) || endsAt.getTime() <= now.getTime()) {
       return { ok: false, message: "That slot has already passed. Please pick another time." };
+    }
+
+    // Server-side window enforcement (mirrors the public UI + slot generator):
+    // 1. same-day only; 2. minimum 90-minute lead time; 3. within business hours.
+    if (toLocalDateKey(startsAt) !== toLocalDateKey(now)) {
+      return { ok: false, message: "Online bookings are only open for today. Please pick a valid slot." };
+    }
+    if (startsAt.getTime() < now.getTime() + 90 * 60_000) {
+      return { ok: false, message: "Please pick a slot at least 90 minutes from now." };
+    }
+    const openHour = new Date(now);
+    openHour.setHours(settings.bookingOpenHour, 0, 0, 0);
+    const closeHour = new Date(now);
+    closeHour.setHours(settings.bookingCloseHour, 0, 0, 0);
+    if (startsAt.getTime() < openHour.getTime() || endsAt.getTime() > closeHour.getTime()) {
+      return {
+        ok: false,
+        message: `Bookings are only open ${formatSlotTime(openHour, true)} to ${formatSlotTime(closeHour, true)}.`
+      };
     }
 
     const phone = parsed.phone;
