@@ -11,8 +11,8 @@
 | Check | Result |
 |---|---|
 | `npm run typecheck` | OK — 0 errors |
-| `npx vitest run tests/unit tests/components` (gate) | OK — **30 files / 140 tests passed** (3.5s, jsdom) |
-| `tests/unit` | 19 files / **101 tests** |
+| `npx vitest run tests/unit tests/components` (gate) | OK — **30 files / 143 tests passed** (3.9s, jsdom; DB-free) |
+| `tests/unit` | 19 files / **104 tests** |
 | `tests/components` | 11 files / **39 tests** |
 | `tests/integration` (real Neon DB — *not* a gate) | 2 files / 5 tests, state-dependent |
 | `tests/e2e` (playwright) | 2 spec files / 3 scenarios (not run here) |
@@ -20,10 +20,11 @@
 | Source files directly imported by gate tests | ~35 (~32%) |
 | Source files with **zero** unit/component coverage | **~74 (68%)**; ~54 contain real logic (actions/queries/services/routes/utils), the rest are thin page shells |
 
-> Warning found while verifying: `tests/unit/hq-analytics.test.ts` looks like a unit test but
-> hits the real seeded Neon DB (`org-blackball-franchise`). It passes today only because that
-> seed exists — it is effectively an integration test sitting inside the unit gate, same risk
-> class as `tests/integration/*`. Suggest moving it to `tests/integration/` (phase 2).
+> Phase-1.5 follow-up (branch `wt/test-enrichment/fix-hq-analytics-db`): the warning below is
+> **resolved** — `tests/unit/hq-analytics.test.ts` no longer touches Neon. The service's prisma
+> calls are mocked (`vi.mock("@/server/db/prisma")` with in-memory fixtures), so the gate
+> (`tests/unit` + `tests/components`) is now 100% DB-free and standalone-green; only
+> `tests/integration/*` still hit the real Neon DB.
 
 > **Phase-2 update (2026-08-17, `wt/test-enrichment/test-routes-middleware-actions`):** the
 > whole P0 route/middleware band (Section 3.1) is now covered with prisma/rate-limit mocked —
@@ -43,7 +44,7 @@ Priority: **P0** security/payment/money-critical · **P1** core domain & feature
 | **Middleware** (`src/middleware.ts`) | `tests/unit/middleware.test.ts` (31): public passthrough, authn (401 JSON vs /login redirect), authz guards, /login role redirects, password-change guard, demo-identity dev-only | none | P0 |
 | **server/auth** | auth-service (7), authorization (3), current-employee (3), routes (1) | `rate-limit.ts` (2 fns: checkRateLimit, clientIpFromRequest), `permissions.ts` (requirePermission) untested | P0 |
 | **server/integrations** | base-url (10) | `payments.ts` (7 fns incl. webhook signatures), `qr.ts`, `whatsapp.ts` (5 fns) | P0 |
-| **server/services** | table-service (2), session-service (4), hq-analytics (1, DB-backed) | `pricing-service.ts` (estimateTableCharge) | P0 |
+| **server/services** | table-service (2), session-service (4), hq-analytics (4, prisma-mocked) | `pricing-service.ts` (estimateTableCharge) | P0 |
 | **server/repositories** | interfaces exercised via in-memory harnesses | prisma adapters (table/session/pricing/audit-log) never tested directly | P1 |
 | **server/domain** | bill-summary (2), booking-settings (22), booking-slots (15), session-calculations (5), table-transitions (2) | `errors.ts`, `events.ts` (noop publisher) trivial gaps | P2 |
 | **server/db** | prisma-schema (7, schema-file assertions) | `connection.ts` (getDatabaseParts/buildDatabaseUrl), `prisma.ts` bootstrap | P3 |
@@ -60,7 +61,7 @@ Priority: **P0** security/payment/money-critical · **P1** core domain & feature
 | **features/rates** | mapRateSettings (1), RatesPage (2) | updateHourlyRateAction, getRateSettings, error/empty states | P1 |
 | **features/platform** | 3 page components (3) | 2 setup actions (createSaasSetupAction/createFranchiseSetupAction), TemporaryCredential | P1 |
 | **features/dashboard** | buildOwnerDashboardData (2), OwnerDashboardPage (1) | getOwnerDashboardData wrapper; empty dashboard state | P2 |
-| **features/hq + docs** | hq-analytics service (1, DB-backed) | HqMasterDashboard (151 ln), DocsViewer (481 ln) | P2 |
+| **features/hq + docs** | hq-analytics service (4, prisma-mocked) | HqMasterDashboard (151 ln), DocsViewer (481 ln) | P2 |
 | **Whole-tree totals** | 140 tests (phase 1) → **221 tests** (38 files, after phase-2 routes/middleware); route/middleware/api band fully covered | ~70 files uncovered (actions/queries/UI still DB- or UI-gated); zero **action** tests at unit level | — |
 
 ## 3. File-by-file gap registry (concrete suggested cases)
@@ -184,12 +185,13 @@ actions/queries are prisma-importing modules, so today they are covered **only**
    (`authorization.test.ts`).
 
 **Gaps in conventions**
-- There is **no unit-level mock of `@/server/db/prisma` anywhere** — all prisma-touching
-  feature layer (actions/queries) is only exercised by Neon integration tests. Phase 2 should
-  introduce `mockPrisma` helpers (per-module `vi.mock("@/server/db/prisma")`) so every action
-  gets `{ok:false}`-path tests without a DB. *(Route phase-2 already applies per-module
-  `vi.mock("@/server/db/prisma")` + `vi.mock("@/server/auth/rate-limit")` with `vi.hoisted`
-  fns — see `tests/unit/routes/*`.)*
+- **Still no shared unit-level mock of `@/server/db/prisma`** — all prisma-touching feature
+  layer (actions/queries) is only exercised by Neon integration tests. Phase 1.5 gave
+  `hq-analytics.test.ts` the first module-mocked prisma (in-memory fixtures); route phase-2
+  applies per-module `vi.mock("@/server/db/prisma")` + `vi.mock("@/server/auth/rate-limit")`
+  with `vi.hoisted` fns (see `tests/unit/routes/*`). Phase 2 should extract a shared
+  `mockPrisma` helper (per-module `vi.mock("@/server/db/prisma")`) so every action gets
+  `{ok:false}`-path tests without a DB.
 - `request`/`NextRequest` in route tests: no helper exists yet. Suggest `tests/unit/support/`
   additions: `makeRequest(url, {headers, body, method})` + cookie assertion helper
   (`response.headers.getSetCookie()`). — **DONE:** `tests/unit/support/request-helpers.ts`
@@ -202,9 +204,10 @@ actions/queries are prisma-importing modules, so today they are covered **only**
   shared, so env must be reset in `afterEach`.
 - Locale/scheduler sensitivity: `money.ts`/`time.ts` use `Intl` (en-IN) — fine in tests only
   if the runner locale is stable; pin `process.env.TZ` in setup for `booking-slots`/clock tests.
-- `tests/unit/hq-analytics.test.ts` and `tests/integration/*` hit the real Neon DB and are
-  state-dependent (seed `org-blackball-franchise`); never trust them as a pass/fail gate.
-  The hq-analytics test should move out of the gate folder.
+- Only `tests/integration/*` hit the real Neon DB and are state-dependent (seed
+  `org-blackball-franchise`); never trust them as a pass/fail gate. The hq-analytics test was
+  the last DB-toucher inside the gate — fixed in phase 1.5 by mocking `@/server/db/prisma`
+  (unit gate is now verifiably DB-free).
 
 ## 5. Suggested phase-2 plan (test-writing, not done here)
 
@@ -222,8 +225,8 @@ actions/queries are prisma-importing modules, so today they are covered **only**
 5. **P2 UI**: ui/badge|button|field|menu, store/demo switchers, HqMasterDashboard, docs-viewer,
    magic-login-builder, persona-selector, home/login pages.
 6. **P3 plumbing**: lib (cn/money/time), db/connection, qr/whatsapp, repository adapters.
-7. **Housekeeping**: move `hq-analytics.test.ts` to `tests/integration/`; extract shared
-   `mockPrisma` + `makeRequest` support helpers; add `withEnv()` helper.
+7. **Housekeeping**: hq-analytics unit test converted to prisma-mocked (done, phase 1.5);
+   extract shared `mockPrisma` + `makeRequest` support helpers; add `withEnv()` helper.
 
 Target after phase 2: every `src/features/*` action & query with ≥1 happy + ≥1 failure case,
 every route with status-code assertions, every ui component with a render test — i.e. the
