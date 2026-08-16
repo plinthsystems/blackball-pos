@@ -3,19 +3,19 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { textInputProps } from "@/components/ui/field";
-import { Snackbar } from "@/components/ui/snackbar";
+import { useToast } from "@/components/ui/toast";
 import { formatMoney } from "@/lib/money";
 import { updateHourlyRateAction } from "../actions";
 import type { RateSetting } from "../types";
 
 export function RatesPage({ rates }: { rates: RateSetting[] }) {
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [isPending, startTransition] = useTransition();
 
   function updateRate(rate: RateSetting, hourlyRate: number) {
     startTransition(async () => {
       const result = await updateHourlyRateAction({ id: rate.id, hourlyRate });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
     });
   }
 
@@ -34,7 +34,6 @@ export function RatesPage({ rates }: { rates: RateSetting[] }) {
           <RateRow key={rate.id} rate={rate} disabled={isPending} onUpdate={updateRate} />
         ))}
       </div>
-      <Snackbar message={message} tone={message?.includes("could not") ? "danger" : "success"} />
     </section>
   );
 }

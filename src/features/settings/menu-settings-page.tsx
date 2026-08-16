@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, textInputProps } from "@/components/ui/field";
-import { Snackbar } from "@/components/ui/snackbar";
+import { useToast } from "@/components/ui/toast";
 import { formatMoney } from "@/lib/money";
 import { createOrUpdateProductAction, deactivateProductAction, updateBookingSettingsAction, updateBrandingAction } from "./actions";
 import type { ProductCategory } from "@/features/live-tables/types";
@@ -71,7 +71,7 @@ export function MenuSettingsPage({
   const [logoInitials, setLogoInitials] = useState(branding.logoInitials);
   const [brandColor, setBrandColor] = useState(branding.brandColor);
   const [accentColor, setAccentColor] = useState(branding.accentColor);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [isPending, startTransition] = useTransition();
   const [bookingEnabled, setBookingEnabled] = useState(booking?.bookingEnabled ?? true);
   const [requireConfirmation, setRequireConfirmation] = useState(booking?.requireConfirmation ?? false);
@@ -86,7 +86,7 @@ export function MenuSettingsPage({
   function addItem() {
     startTransition(async () => {
       const result = await createOrUpdateProductAction({ name, category, priceAmount });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
       if (result.ok) {
         setName("");
         setPriceAmount(0);
@@ -102,21 +102,21 @@ export function MenuSettingsPage({
         category: product.category === "CAFE" ? "FOOD" : product.category,
         priceAmount: nextPrice
       });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
     });
   }
 
   function removeItem(product: SettingsProduct) {
     startTransition(async () => {
       const result = await deactivateProductAction({ id: product.id });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
     });
   }
 
   function saveBranding() {
     startTransition(async () => {
       const result = await updateBrandingAction({ appName, logoInitials, brandColor, accentColor });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
     });
   }
 
@@ -133,7 +133,7 @@ export function MenuSettingsPage({
         paymentProvider,
         bookingAdvanceAmount: Number(advanceAmount)
       });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
     });
   }
 
@@ -372,7 +372,6 @@ export function MenuSettingsPage({
           <ProductRow key={product.id} product={product} disabled={isPending} onUpdate={updateItem} onRemove={removeItem} />
         ))}
       </div>
-      <Snackbar message={message} tone={message?.includes("could not") ? "danger" : "success"} />
     </section>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, textInputProps } from "@/components/ui/field";
-import { Snackbar } from "@/components/ui/snackbar";
+import { useToast } from "@/components/ui/toast";
 import { formatMoney } from "@/lib/money";
 import { createBookableItemAction, setBookableItemActiveAction, updateBookableItemAction } from "../actions";
 import { GAME_TYPE_LABELS, STATUS_LABELS, gameTypeIcon, pricingGroupLabel, pricingGroupOptions } from "../pricing-groups";
@@ -15,7 +15,7 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
   const [number, setNumber] = useState("");
   const [gameType, setGameType] = useState<BookableGameType>("POOL");
   const [pricingGroup, setPricingGroup] = useState("standard");
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [isPending, startTransition] = useTransition();
 
   const activeCount = items.filter((item) => item.active).length;
@@ -23,7 +23,7 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
   function addItem() {
     startTransition(async () => {
       const result = await createBookableItemAction({ number, gameType, pricingGroup });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
       if (result.ok) {
         setNumber("");
       }
@@ -117,7 +117,12 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
               <span>Actions</span>
             </div>
             {items.map((item) => (
-              <BookableItemRow key={item.id} item={item} isPending={isPending} onChanged={(result) => setMessage(result.message)} />
+              <BookableItemRow
+                key={item.id}
+                item={item}
+                isPending={isPending}
+                onChanged={(result) => toast.show({ message: result.message, tone: result.ok ? "success" : "danger" })}
+              />
             ))}
             <div className="grid gap-3 border-t border-lime-300/10 px-4 py-3 text-xs text-slate-500 md:grid-cols-[1fr_150px_140px_110px_120px_160px]">
               <span>Items shown here are addable by customers on the public booking page.</span>
@@ -125,8 +130,6 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
           </div>
         </div>
       ) : null}
-
-      <Snackbar message={message} tone={message?.includes("could not") ? "danger" : "success"} />
     </section>
   );
 }
