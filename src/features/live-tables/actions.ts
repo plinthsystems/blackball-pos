@@ -28,7 +28,7 @@ import {
 type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 
 function services() {
-  const transaction = <T,>(callback: (tx: unknown) => Promise<T>) => prisma.$transaction((tx) => callback(tx));
+  const transaction = <T,>(callback: (tx: Prisma.TransactionClient) => Promise<T>) => prisma.$transaction((tx) => callback(tx));
   return {
     sessions: new SessionService(
       prismaTableRepository,

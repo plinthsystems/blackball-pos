@@ -1,5 +1,5 @@
 import type { GameType, SessionStatus, TableStatus } from "@prisma/client";
-import type { ConflictRecord, SessionRecord, TableRecord } from "@/server/repositories/types";
+import type { ConflictRecord, SessionRecord, TableRecord, TransactionClient } from "@/server/repositories/types";
 
 export type InMemoryStore = {
   tables: Map<string, TableRecord>;
@@ -143,6 +143,19 @@ export function createHarnessRepositories(store: InMemoryStore) {
         store.events.push({ name, entityId });
       }
     },
-    transaction: async <T>(callback: (tx: unknown) => Promise<T>) => callback({})
+    transaction: async <T>(callback: (tx: TransactionClient) => Promise<T>): Promise<T> =>
+      callback({
+        session: {
+          findFirst: (args: { where: { businessId: string; tableId: string; status: string } }) => {
+            const session = [...store.sessions.values()].find(
+              (s) =>
+                s.businessId === args.where.businessId &&
+                s.tableId === args.where.tableId &&
+                s.status === args.where.status
+            );
+            return Promise.resolve(session ? { id: session.id } : null);
+          }
+        }
+      } as unknown as TransactionClient)
   };
 }
