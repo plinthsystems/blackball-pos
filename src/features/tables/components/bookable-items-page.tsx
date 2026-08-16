@@ -58,7 +58,13 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
         </p>
       </div>
 
-      <div className="grid gap-3 rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material md:grid-cols-[1fr_200px_200px_auto]">
+      <form
+        className="grid gap-3 rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material md:grid-cols-[1fr_200px_200px_auto]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          addItem();
+        }}
+      >
         <Field label="Item name">
           <input
             {...textInputProps()}
@@ -98,11 +104,11 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
           </select>
         </Field>
         <div className="flex items-end">
-          <Button type="button" variant="primary" disabled={isPending || !number.trim()} onClick={addItem}>
+          <Button type="submit" variant="primary" disabled={isPending || !number.trim()}>
             Add item
           </Button>
         </div>
-      </div>
+      </form>
 
       {items.length > 0 ? (
         <div>
@@ -157,7 +163,13 @@ function BookableItemRow({
   const statusTone = item.status === "AVAILABLE" ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-amber-500/15 text-amber-300 border-amber-500/30";
 
   return (
-    <div className={`grid gap-3 border-b border-lime-300/10 px-4 py-3 text-sm text-slate-200 last:border-b-0 md:grid-cols-[1fr_150px_140px_110px_120px_160px] md:items-center ${item.active ? "" : "opacity-60"}`}>
+    <form
+      className={`grid gap-3 border-b border-lime-300/10 px-4 py-3 text-sm text-slate-200 last:border-b-0 md:grid-cols-[1fr_150px_140px_110px_120px_160px] md:items-center ${item.active ? "" : "opacity-60"}`}
+      onSubmit={(event) => {
+        event.preventDefault();
+        save();
+      }}
+    >
       <input {...textInputProps()} aria-label={`Name for ${item.number}`} value={number} onChange={(event) => setNumber(event.target.value)} disabled={!item.active} />
       <select
         className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-3 text-sm text-slate-100"
@@ -202,13 +214,13 @@ function BookableItemRow({
         </span>
       </span>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" className="h-9 px-3" disabled={isPending || !item.active || !number.trim()} onClick={save}>
+        <Button type="submit" className="h-9 px-3" disabled={isPending || !item.active || !number.trim()}>
           Save
         </Button>
         <Button type="button" variant="ghost" className="h-9 px-3" disabled={isPending} onClick={toggleActive}>
           {item.active ? "Remove" : "Restore"}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }

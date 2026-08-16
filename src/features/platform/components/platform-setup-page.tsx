@@ -144,7 +144,7 @@ export function PlatformSetupPage({ organizations, summary }: PlatformSetupPageP
 
   return (
     <div className="space-y-6 text-slate-100">
-      <section className="rounded-[8px] border border-cyan-300/20 bg-slate-950 p-5 shadow-[0_0_38px_rgba(34,211,238,0.08)]">
+      <section className="rounded-material border border-cyan-300/20 bg-slate-950 p-5 shadow-[0_0_38px_rgba(34,211,238,0.08)]">
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-end">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">Platform operations</p>
@@ -162,7 +162,7 @@ export function PlatformSetupPage({ organizations, summary }: PlatformSetupPageP
         </div>
       </section>
 
-      <section className="rounded-[8px] border border-slate-700 bg-slate-950 p-5">
+      <section className="rounded-material border border-slate-700 bg-slate-950 p-5">
         <SectionHeader
           icon="conversion_path"
           eyebrow="Commercial model"
@@ -171,9 +171,9 @@ export function PlatformSetupPage({ organizations, summary }: PlatformSetupPageP
         />
         <div className="mt-5 grid gap-4 xl:grid-cols-3">
           {operatingModels.map((model) => (
-            <article key={model.title} className="rounded-[8px] border border-slate-800 bg-slate-900 p-4">
+            <article key={model.title} className="rounded-material border border-slate-800 bg-slate-900 p-4">
               <div className="flex items-start gap-3">
-                <span className="material-symbols-outlined rounded-[8px] border border-cyan-300/25 bg-cyan-300/10 p-2 text-[22px] text-cyan-300">
+                <span className="material-symbols-outlined rounded-material border border-cyan-300/25 bg-cyan-300/10 p-2 text-[22px] text-cyan-300">
                   {model.icon}
                 </span>
                 <div>
@@ -187,7 +187,7 @@ export function PlatformSetupPage({ organizations, summary }: PlatformSetupPageP
               </dl>
               <Link
                 href={model.href}
-                className="mt-5 inline-flex h-10 items-center justify-center rounded-[8px] bg-lime-300 px-4 text-sm font-black text-slate-950 transition hover:bg-lime-200"
+                className="mt-5 inline-flex h-10 items-center justify-center rounded-material bg-lime-300 px-4 text-sm font-black text-slate-950 transition hover:bg-lime-200"
               >
                 {model.action}
               </Link>
@@ -197,19 +197,19 @@ export function PlatformSetupPage({ organizations, summary }: PlatformSetupPageP
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <div className="rounded-[8px] border border-slate-700 bg-slate-950 p-5">
+        <div className="rounded-material border border-slate-700 bg-slate-950 p-5">
           <SectionHeader
             icon="lan"
             eyebrow="Tenant hierarchy"
             title="Hierarchy and data scope"
             text="Every record belongs to a level. Higher levels can supervise lower levels; store teams only operate their assigned outlet."
           />
-          <div className="mt-5 rounded-[8px] border border-cyan-300/20 bg-cyan-300/10 p-4">
+          <div className="mt-5 rounded-material border border-cyan-300/20 bg-cyan-300/10 p-4">
             <p className="text-sm font-black text-cyan-100">Platform Owner -&gt; Organization/Brand -&gt; Franchisee -&gt; Outlet -&gt; Store Team</p>
           </div>
           <div className="mt-5 grid gap-2">
             {["Platform Owner", "Organization/Brand", "Franchisee", "Outlet", "Store Team"].map((level, index) => (
-              <div key={level} className="flex items-center gap-3 rounded-[8px] border border-slate-800 bg-slate-900 px-3 py-2">
+              <div key={level} className="flex items-center gap-3 rounded-material border border-slate-800 bg-slate-900 px-3 py-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-xs font-black text-cyan-200">
                   {index + 1}
                 </span>
@@ -219,14 +219,14 @@ export function PlatformSetupPage({ organizations, summary }: PlatformSetupPageP
           </div>
         </div>
 
-        <div className="rounded-[8px] border border-slate-700 bg-slate-950 p-5">
+        <div className="rounded-material border border-slate-700 bg-slate-950 p-5">
           <SectionHeader
             icon="admin_panel_settings"
             eyebrow="Access matrix"
             title="Who sees what"
             text="Use this as the demo answer when someone asks how SaaS tenants, franchisees, managers, and staff are separated."
           />
-          <div className="mt-5 overflow-hidden rounded-[8px] border border-slate-800">
+          <div className="mt-5 overflow-hidden rounded-material border border-slate-800">
             {accessRows.map(([role, scope]) => (
               <div key={role} className="grid gap-2 border-b border-slate-800 bg-slate-900 p-3 last:border-b-0 md:grid-cols-[180px_1fr]">
                 <p className="text-sm font-black text-white">{role}</p>
@@ -329,7 +329,7 @@ export function PlatformFranchiseSetupPage({
 function SetupFlowShell({ eyebrow, title, text, children }: { eyebrow: string; title: string; text: string; children: ReactNode }) {
   return (
     <div className="space-y-6 text-slate-100">
-      <section className="rounded-[8px] border border-cyan-300/20 bg-slate-950 p-5 shadow-[0_0_38px_rgba(34,211,238,0.08)]">
+      <section className="rounded-material border border-cyan-300/20 bg-slate-950 p-5 shadow-[0_0_38px_rgba(34,211,238,0.08)]">
         <Link href="/platform/setup" className="inline-flex items-center gap-2 text-sm font-black text-cyan-200 hover:text-cyan-100">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to setup home
@@ -360,7 +360,7 @@ function SuccessPanel(props: {
   const title = mode === "saas" ? `${outlet.name} is ready` : `${outlet.name} franchise outlet is ready`;
 
   return (
-    <section className="rounded-[8px] border border-lime-300/30 bg-lime-300/10 p-5">
+    <section className="rounded-material border border-lime-300/30 bg-lime-300/10 p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">Setup completed</p>
@@ -371,13 +371,13 @@ function SuccessPanel(props: {
         </div>
         <Link
           href={`/dashboard?store=${outlet.slug}`}
-          className="inline-flex h-10 items-center justify-center rounded-[8px] bg-lime-300 px-4 text-sm font-black text-slate-950 transition hover:bg-lime-200"
+          className="inline-flex h-10 items-center justify-center rounded-material bg-lime-300 px-4 text-sm font-black text-slate-950 transition hover:bg-lime-200"
         >
           Open Tenant Dashboard
         </Link>
       </div>
       {temporaryCredentials ? (
-        <div className="mt-4 rounded-[8px] border border-amber-400/40 bg-amber-400/10 p-4">
+        <div className="mt-4 rounded-material border border-amber-400/40 bg-amber-400/10 p-4">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
             One-time temporary passwords (auto-expire in 30 min)
           </p>
@@ -413,14 +413,14 @@ function SuccessPanel(props: {
 
 function RecentOutletsPanel({ title, outlets, emptyText }: { title: string; outlets: SetupOutletSummary[]; emptyText: string }) {
   return (
-    <aside className="rounded-[8px] border border-slate-800 bg-slate-900 p-4">
+    <aside className="rounded-material border border-slate-800 bg-slate-900 p-4">
       <h2 className="text-lg font-black text-white">{title}</h2>
       <div className="mt-4 space-y-3">
         {outlets.length === 0 ? (
-          <p className="rounded-[8px] border border-slate-800 bg-slate-950 p-3 text-sm font-medium text-slate-400">{emptyText}</p>
+          <p className="rounded-material border border-slate-800 bg-slate-950 p-3 text-sm font-medium text-slate-400">{emptyText}</p>
         ) : (
           outlets.map((outlet) => (
-            <div key={outlet.id} className="rounded-[8px] border border-slate-800 bg-slate-950 p-3">
+            <div key={outlet.id} className="rounded-material border border-slate-800 bg-slate-950 p-3">
               <p className="text-sm font-black text-white">{outlet.name}</p>
               <p className="mt-1 text-xs font-semibold text-cyan-200">{outlet.organization?.name ?? "No organization"}</p>
               <p className="mt-2 text-xs font-medium text-slate-400">{formatDate(outlet.createdAt)}</p>
@@ -434,7 +434,7 @@ function RecentOutletsPanel({ title, outlets, emptyText }: { title: string; outl
 
 function NextSteps() {
   return (
-    <section className="rounded-[8px] border border-slate-700 bg-slate-950 p-5">
+    <section className="rounded-material border border-slate-700 bg-slate-950 p-5">
       <SectionHeader
         icon="key"
         eyebrow="Handoff"
@@ -454,7 +454,7 @@ function NextSteps() {
 function SectionHeader({ icon, eyebrow, title, text }: { icon: string; eyebrow: string; title: string; text: string }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="material-symbols-outlined mt-0.5 rounded-[8px] border border-lime-300/25 bg-lime-300/10 p-2 text-[22px] text-lime-300">
+      <span className="material-symbols-outlined mt-0.5 rounded-material border border-lime-300/25 bg-lime-300/10 p-2 text-[22px] text-lime-300">
         {icon}
       </span>
       <div>
@@ -468,7 +468,7 @@ function SectionHeader({ icon, eyebrow, title, text }: { icon: string; eyebrow: 
 
 function Metric({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="rounded-[8px] border border-cyan-300/20 bg-cyan-300/10 px-3 py-2">
+    <div className="rounded-material border border-cyan-300/20 bg-cyan-300/10 px-3 py-2">
       <p className="text-[10px] font-black uppercase text-cyan-200">{label}</p>
       <p className="mt-1 text-xl font-black text-white">{value}</p>
     </div>
@@ -486,14 +486,14 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 function PlaybookPanel({ title, icon, checklist, children }: { title: string; icon: string; checklist: string[]; children: ReactNode }) {
   return (
-    <article className="rounded-[8px] border border-slate-800 bg-slate-900 p-4">
+    <article className="rounded-material border border-slate-800 bg-slate-900 p-4">
       <div className="flex items-center gap-3">
-        <span className="material-symbols-outlined rounded-[8px] border border-amber-300/25 bg-amber-300/10 p-2 text-[22px] text-amber-300">
+        <span className="material-symbols-outlined rounded-material border border-amber-300/25 bg-amber-300/10 p-2 text-[22px] text-amber-300">
           {icon}
         </span>
         <h2 className="text-lg font-black text-white">{title}</h2>
       </div>
-      <div className="mt-4 rounded-[8px] border border-slate-800 bg-slate-950 p-4">
+      <div className="mt-4 rounded-material border border-slate-800 bg-slate-950 p-4">
         <h3 className="text-sm font-black text-white">What this creates</h3>
         <ul className="mt-3 grid gap-2 text-sm font-medium text-slate-300 sm:grid-cols-2">
           {checklist.map((item) => (
@@ -516,7 +516,7 @@ function Field({ label, name, type = "text", ...props }: { label: string; name: 
       <input
         name={name}
         type={type}
-        className="h-11 rounded-[8px] border border-slate-700 bg-slate-950 px-3 text-sm font-bold text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300"
+        className="h-11 rounded-material border border-slate-700 bg-slate-950 px-3 text-sm font-bold text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300"
         {...props}
       />
     </label>
@@ -529,7 +529,7 @@ function SelectField({ label, name, options }: { label: string; name: string; op
       {label}
       <select
         name={name}
-        className="h-11 rounded-[8px] border border-slate-700 bg-slate-950 px-3 text-sm font-bold text-white outline-none transition focus:border-cyan-300"
+        className="h-11 rounded-material border border-slate-700 bg-slate-950 px-3 text-sm font-bold text-white outline-none transition focus:border-cyan-300"
         defaultValue={options[0]?.id ?? ""}
         required
       >
@@ -548,7 +548,7 @@ function SubmitButton({ children }: { children: ReactNode }) {
   return (
     <button
       type="submit"
-      className="inline-flex h-11 items-center justify-center rounded-[8px] bg-lime-300 px-5 text-sm font-black text-slate-950 shadow-[0_0_22px_rgba(190,242,100,0.18)] transition hover:bg-lime-200"
+      className="inline-flex h-11 items-center justify-center rounded-material bg-lime-300 px-5 text-sm font-black text-slate-950 shadow-[0_0_22px_rgba(190,242,100,0.18)] transition hover:bg-lime-200"
     >
       {children}
     </button>
@@ -557,7 +557,7 @@ function SubmitButton({ children }: { children: ReactNode }) {
 
 function FlowStep({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-[8px] border border-slate-800 bg-slate-900 p-4">
+    <div className="rounded-material border border-slate-800 bg-slate-900 p-4">
       <p className="text-sm font-black text-white">{title}</p>
       <p className="mt-2 text-xs font-medium leading-5 text-slate-400">{text}</p>
     </div>
@@ -567,7 +567,7 @@ function FlowStep({ title, text }: { title: string; text: string }) {
 function HandoffItem({ label, value, copyable = false }: { label: string; value: string; copyable?: boolean }) {
   if (!copyable) {
     return (
-      <div className="rounded-[8px] border border-lime-300/20 bg-slate-950/80 p-3">
+      <div className="rounded-material border border-lime-300/20 bg-slate-950/80 p-3">
         <p className="text-[11px] font-black uppercase tracking-wide text-lime-200">{label}</p>
         <p className="mt-1 break-words text-sm font-black text-white">{value}</p>
       </div>
