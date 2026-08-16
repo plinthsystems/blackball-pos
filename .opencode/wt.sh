@@ -79,7 +79,8 @@ case "$cmd" in
     if [ "${SWARM_NO_WINDOW:-0}" = "1" ]; then
       echo "WT:$WT_DIR/$task (window suppressed)"
     else
-      osascript -e "tell application \"Terminal\" to do script \"cd '$WT_DIR/$task' && clear && printf '\\x1b]0;SWARM: $task\\a' && exec opencode\"" >/dev/null
+      osascript -e "tell application \"Terminal\" to do script \"cd '$WT_DIR/$task' && clear && exec opencode\"" >/dev/null 2>&1 \
+        || { echo "WARN: could not open Terminal window (osascript failed) — worktree ready at $WT_DIR/$task, commander ko batana"; exit 0; }
       echo "WINDOW:$WT_DIR/$task (session '$task' khol di — nayi Terminal window + nayi opencode conversation)"
     fi
     ;;
