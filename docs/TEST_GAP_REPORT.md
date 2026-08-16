@@ -99,26 +99,43 @@ Priority: **P0** security/payment/money-critical · **P1** core domain & feature
 
 ### 3.4 Features — actions/queries (all server-side, DB-touching) (P0/P1)
 
-The single biggest structural gap: **no gate test mocks `@/server/db/prisma`**. All feature
-actions/queries are prisma-importing modules, so today they are covered **only** by
-`tests/integration/*` (real Neon) or by component tests that mock them away entirely.
+> **Phase-2 status (P1 scope, 2026-08-17):** the structural gap is closed — every gate test
+> below now mocks `@/server/db/prisma` via a `vi.hoisted()` prisma fake plus
+> `vi.mock("@/server/auth/current-employee")`, `next/cache`, and (where used) `next/headers`,
+> `next/navigation`, `rate-limit`, `payments`, `whatsapp`, and the service modules. Shared
+> helper: `tests/unit/support/employee-context.ts` (`makeEmployeeContext`). Each action is
+> tested for: success path, `{ok:false}` path, zod validation failure, and permission check.
+> Slot/date math is pinned with `process.env.TZ` + `vi.useFakeTimers()`.
+>
+> New files: `tests/unit/rates-actions|queries`, `tables-actions|queries`,
+> `settings-actions`, `booking-actions|queries`, `live-tables-actions|queries`,
+> `platform-actions`, `dashboard-queries` (+157 unit tests).
+>
+> **Behavioural findings (not fixed — documented in the tests):** `updateBookableItemAction`
+> returns `{ok:false, ...}` from inside the `$transaction` callback, which does not escape the
+> callback — an unknown item id therefore still reports `ok:true` (covered as-is in
+> `tables-actions.test.ts`). And `settings/actions.ts` surfaces zod issue paths while
+> `booking/actions.ts updateBookingSettingsAction` collapses everything to a generic message —
+> both covered.
 
-| Feature file | Exports | Coverage | Suggested cases |
-|---|---|---|---|
-| `features/auth/actions.ts` | `changePasswordAction` | none (mocked in page test) | wrong current password → `{ok:false}`, success path sets `mustChangePassword=false` + session cookie, prisma error → failure result not throw, zod reject |
-| `features/booking/actions.ts` (380 ln) | `createPublicBookingAction`, `listBookableSlotsAction`, `confirmBookingAction`, `cancelBookingAction`, `markBookingPaidAction`, `updateBookingSettingsAction` | none | per action: happy path, invalid input (zod), missing business/slug, booking disabled, conflict slot, payment-link creation when advance>0 & provider configured, whatsapp notify failure tolerated, permission errors |
-| `features/booking/queries.ts` (267 ln) | `ensureBookingSettingsFor`, `getPublicBookCatalog`, `listBookableSlots`, `getUpcomingBookings`, `getUpcomingBookingBadges`, `toLocalDateKey` re-export | type-only import in one test | catalog null for unknown slug; disabled/closed windows; slot list ordering & boundary times; badge counts by status |
-| `features/booking/components/staff-bookings.tsx` (155) | `StaffBookingsPanel` | none | renders list; empty state; cancel/confirm buttons callbacks; badges |
-| `features/live-tables/actions.ts` (415 ln) | 10 actions (startWalkIn, extend, end, addBillItem, addSessionItem, removeBillItem, closeBill+continue, startCounterBill, closeCounterBill, updateTableStatus) | none | mirror `SessionService` tests: each action zod-validates, calls service, maps `DomainError`→`{ok:false,message}`, propagates unexpected errors; session-not-found, table-occupied conflict, paused/end edge cases |
-| `features/live-tables/queries.ts` (181 ln) | `getLiveTableBoard`, `getOpenCounterBills`, `getProductOptions` | integration only (getLiveTableBoard) | empty business (no tables/bills); ordering by gameType/number; recentBills cap 25; bill summary math per table |
-| `features/tables/actions.ts` | create/update/setActive bookable item | integration only | duplicate number; unknown id; inactive item reactivation; zod reject |
-| `features/tables/queries.ts` | `getBookableItems` | integration only | active/inactive filtering, ordering |
-| `features/tables/components/bookable-items-page.tsx` (229) | `BookableItemsPage` | none | render table rows; empty state; add/edit form validation display; active toggle |
-| `features/rates/actions.ts` | `updateHourlyRateAction` | none | invalid rule id, missing rule row, success result |
-| `features/rates/queries.ts` | `mapRateSettings` (tested 1), `getRateSettings` | map only | `getRateSettings` with no rules → defaults; unknown gameType/pricingGroup ordering |
-| `features/settings/actions.ts` | updateBookingSettings, createOrUpdateProduct, deactivateProduct, updateBranding | none | each: zod reject, not-found, success; deactivate on product with open bill items |
-| `features/platform/actions.ts` (522 ln) | `createSaasSetupAction`, `createFranchiseSetupAction` | none | form parsing, transaction failure rollback, slug uniqueness conflict, temporary credential generation |
-| `features/dashboard/queries.ts` | `getOwnerDashboardData` | wrapper untested (build fn tested) | DB fetch + `buildOwnerDashboardData` composition; empty day |
+| Feature file | Exports | Coverage | Suggested cases | Phase-2 status |
+|---|---|---|---|---|
+| `features/auth/actions.ts` | `changePasswordAction` | none (mocked in page test) | wrong current password → `{ok:false}`, success path sets `mustChangePassword=false` + session cookie, prisma error → failure result not throw, zod reject | **not in P1 scope** (P0) — still untested |
+| `features/booking/actions.ts` (380 ln) | `createPublicBookingAction`, `listBookableSlotsAction`, `confirmBookingAction`, `cancelBookingAction`, `markBookingPaidAction`, `updateBookingSettingsAction` | none | per action: happy path, invalid input (zod), missing business/slug, booking disabled, conflict slot, payment-link creation when advance>0 & provider configured, whatsapp notify failure tolerated, permission errors | ✅ `booking-actions.test.ts` (35) — happy/error/validation/permission, rate-limit, windows/lead, payment-link success + tolerated failure, cancel not-found & no-phone |
+| `features/booking/queries.ts` (267 ln) | `ensureBookingSettingsFor`, `getPublicBookCatalog`, `listBookableSlots`, `getUpcomingBookings`, `getUpcomingBookingBadges`, `toLocalDateKey` re-export | type-only import in one test | catalog null for unknown slug; disabled/closed windows; slot list ordering & boundary times; badge counts by status | ✅ `booking-queries.test.ts` (13) — catalog null/mapping, ensure create-vs-existing, slot availability/blocks (fake timers), badges dedupe/window filter |
+| `features/booking/components/staff-bookings.tsx` (155) | `StaffBookingsPanel` | none | renders list; empty state; cancel/confirm buttons callbacks; badges | component — P1 UI phase, not this one |
+| `features/live-tables/actions.ts` (415 ln) | 10 actions (startWalkIn, extend, end, addBillItem, addSessionItem, removeBillItem, closeBill+continue, startCounterBill, closeCounterBill, updateTableStatus) | none | mirror `SessionService` tests: each action zod-validates, calls service, maps `DomainError`→`{ok:false,message}`, propagates unexpected errors; session-not-found, table-occupied conflict, paused/end edge cases | ✅ `live-tables-actions.test.ts` (39) — SessionService/TableService mocked; DomainError mapping, PS5 group resolution, end-session final-total math, close-bill totals, share-link best-effort |
+| `features/live-tables/queries.ts` (181 ln) | `getLiveTableBoard`, `getOpenCounterBills`, `getProductOptions` | integration only (getLiveTableBoard) | empty business (no tables/bills); ordering by gameType/number; recentBills cap 25; bill summary math per table | ✅ `live-tables-queries.test.ts` (8) — empty board, active-session summary math, PS5 fallback rates, recentBill+badge attach, counter bills, product options |
+| `features/tables/actions.ts` | create/update/setActive bookable item | integration only | duplicate number; unknown id; inactive item reactivation; zod reject | ✅ `tables-actions.test.ts` (17) — tx success (rate-rule create/reuse), P2002 duplicate, missing id, unknown item, permission, unexpected error |
+| `features/tables/queries.ts` | `getBookableItems` | integration only | active/inactive filtering, ordering | ✅ `tables-queries.test.ts` (3) — rate join, missing-rule → 0, empty list |
+| `features/tables/components/bookable-items-page.tsx` (229) | `BookableItemsPage` | none | render table rows; empty state; add/edit form validation display; active toggle | component — P1 UI phase, not this one |
+| `features/rates/actions.ts` | `updateHourlyRateAction` | none | invalid rule id, missing rule row, success result | ✅ `rates-actions.test.ts` (6) — success + revalidate, coerce, permission, mustChangePassword, validation, prisma throw |
+| `features/rates/queries.ts` | `mapRateSettings` (tested 1), `getRateSettings` | map only | `getRateSettings` with no rules → defaults; unknown gameType/pricingGroup ordering | ✅ `rates-queries.test.ts` (3) — empty rules, ordering, non-hourly rows ignored |
+| `features/settings/actions.ts` | updateBookingSettings, createOrUpdateProduct, deactivateProduct, updateBranding | none | each: zod reject, not-found, success; deactivate on product with open bill items | ✅ `settings-actions.test.ts` (18) — zod issue-path messages, upsert create/update branches, create-vs-update product, missing id, invalid hex colors, permission |
+| `features/platform/actions.ts` (522 ln) | `createSaasSetupAction`, `createFranchiseSetupAction` | none | form parsing, transaction failure rollback, slug uniqueness conflict, temporary credential generation | ✅ `platform-actions.test.ts` (12) — full provisioning call graph, OTP cookie + redirect, staff-skipping, non-admin reject, inactive plan, tx failure propagation, royalty basis points |
+| `features/dashboard/queries.ts` | `getOwnerDashboardData` | wrapper untested (build fn tested) | DB fetch + `buildOwnerDashboardData` composition; empty day | ✅ `dashboard-queries.test.ts` (3) — day-window prisma args, composition, all-zeros empty day |
+| `features/sessions` | schemas only (8 of 14 tested) | — | remaining 6 schemas | no `actions.ts`/`queries.ts` exist in this feature — nothing to add in this phase |
+| `features/hq` | components only | — | — | no `actions.ts`/`queries.ts` exist in this feature — nothing to add in this phase |
 
 ### 3.5 Features — client components lacking coverage (P1/P2)
 
