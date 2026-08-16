@@ -4,11 +4,11 @@ node_modules
 .next
 coverage
 .env
+.vercel
 playwright-report
 test-results
 *.tsbuildinfo
 .tmp_screenshots
 .worktrees/
 docs/handbook
-src/app/docs
-src/features/docs
+.worktrees/
