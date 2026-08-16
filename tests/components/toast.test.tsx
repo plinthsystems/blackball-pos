@@ -1,9 +1,14 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ToastProvider, useToast } from "@/components/ui/toast";
+import { ToastProvider, useToast, type ToastTone } from "@/components/ui/toast";
 
-function Harness() {
+const LONG_TOAST_MESSAGE =
+  "This is a deliberately long toast message that keeps going far beyond any single line " +
+  "so we can verify the layout wraps the full text on multiple lines instead of clipping or " +
+  "truncating it for the manager reading the notification tray.";
+
+function Harness({ tone }: { tone?: ToastTone }) {
   const toast = useToast();
   return (
     <div>
@@ -11,12 +16,14 @@ function Harness() {
       <button type="button" onClick={() => toast.show({ message: "Second toast" })}>Show second</button>
       <button type="button" onClick={() => toast.show({ message: "Danger toast", tone: "danger" })}>Show danger</button>
       <button type="button" onClick={() => toast.show({ message: "Short toast", durationMs: 250 })}>Show short</button>
+      <button type="button" onClick={() => toast.show({ message: "Themed toast", tone })}>Show themed</button>
+      <button type="button" onClick={() => toast.show({ message: LONG_TOAST_MESSAGE })}>Show long</button>
     </div>
   );
 }
 
-function renderWithProvider(ui = <Harness />) {
-  return render(<ToastProvider>{ui}</ToastProvider>);
+function renderWithProvider(tone?: ToastTone) {
+  return render(<ToastProvider><Harness tone={tone} /></ToastProvider>);
 }
 
 afterEach(() => {
@@ -149,5 +156,43 @@ describe("toast system", () => {
     await user.click(screen.getByRole("button", { name: "Show first" }));
 
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["neutral", "info", "border-outline", "status"],
+    ["success", "check_circle", "border-lime-300/40", "status"],
+    ["danger", "error", "border-rose-400/40", "alert"]
+  ] as const)("renders the %s tone with its icon and tone styling", async (tone, icon, toneClass, role) => {
+    const user = userEvent.setup();
+    renderWithProvider(tone);
+
+    await user.click(screen.getByRole("button", { name: "Show themed" }));
+
+    const card = screen.getByRole(role);
+    expect(card).toHaveTextContent("Themed toast");
+    expect(card).toHaveClass(toneClass);
+    expect(card.querySelector(".material-symbols-outlined")).toHaveTextContent(icon);
+  });
+
+  it("keeps visible toasts across a provider re-render", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderWithProvider();
+
+    await user.click(screen.getByRole("button", { name: "Show first" }));
+    expect(screen.getByText("First toast")).toBeInTheDocument();
+
+    rerender(<ToastProvider><div>Replaced page content</div></ToastProvider>);
+    expect(screen.getByRole("status")).toHaveTextContent("First toast");
+  });
+
+  it("renders long messages in full instead of truncating them", async () => {
+    const user = userEvent.setup();
+    renderWithProvider();
+
+    await user.click(screen.getByRole("button", { name: "Show long" }));
+
+    const card = screen.getByRole("status");
+    expect(card).toHaveTextContent(LONG_TOAST_MESSAGE);
+    expect(card.querySelector("p")).not.toHaveClass("truncate", "line-clamp-1");
   });
 });
