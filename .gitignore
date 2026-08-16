@@ -9,5 +9,4 @@ test-results
 *.tsbuildinfo
 .tmp_screenshots
 docs/handbook
-src/app/docs
-src/features/docs
+.worktrees/

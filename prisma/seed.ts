@@ -109,11 +109,6 @@ async function main() {
     }
   });
 
-  // Ensure all employees have default password set
-  await prisma.employee.updateMany({
-    data: { passwordHash: defaultPasswordHash }
-  });
-
   // 1. FRANCHISE GROUP 1: BlackBall Franchise Group (3 Stores)
   // -------------------------------------------------------------
   const blackballOrg = await prisma.organization.upsert({

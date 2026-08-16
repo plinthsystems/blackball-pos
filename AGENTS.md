@@ -23,21 +23,47 @@ Tailwind, Vitest (unit/integration), Playwright (e2e).
 - `docs/` — design/notes (docs/handbook excluded)
 - `tests/` — e2e specs; `prisma/` — schema + seed
 
-## Multi-agent workflow (swarm)
+## Multi-window workflow (swarm)
 
-When a task is handed off to multiple agents, or the user asks to run several
-issues at once, the orchestrator agent drives git worktrees:
+The user runs several opencode windows on purpose — every large problem is a
+"stream", every task gets its own window/worktree/conversation:
 
-1. `./.opencode/wt.sh create <task-name>` — branch `wt/<task-name>` + worktree in
-   `.worktrees/` (node_modules/.env are symlinked; never touch those symlinks).
-2. Workers implement and commit inside their worktree, running typecheck + tests there.
-3. `./.opencode/wt.sh merge <task-name>` — sequential no-ff merges into the current
-   branch; conflicts surface in the main tree (exit 4) and are resolved by the
-   orchestrator, never by a worker.
-4. `./.opencode/wt.sh cleanup <name>` — remove worktree + branch.
-5. Full verification (`npm run typecheck` + `npm test`) happens on the merged MAIN tree.
+```
+Window 0: commander  — main tree. Spawns sessions, monitors, integrates, promotes.
+Window N: dev-lead   — one per task, inside `<repo>/.worktrees/<task>`.
+```
+
+Agent-facing commands (`./.opencode/wt.sh`, the user never runs these):
+
+- `base [name]` — show/set integration base branch (currently `fix/change-password-nav-and-rate-tests`)
+- `stream <name>` — create a stream branch for one big problem
+- `open <task> [--stream <s>]` — create worktree+branch `wt/<task>` and open a
+  new Terminal window with a fresh opencode conversation there
+- `status` — per-task dashboard (ahead, mergeable, dirty)
+- `sync <task>` — pull newest stream/base into a task worktree
+- `integrate [task...]` — merge open tasks into stream/base: no-ff + conflict
+  auto-resolve (headless agent, ≤3 attempts) + deterministic gate
+- `promote <stream> [--pr]` — merge a stream into base, optionally open a PR
+- `cleanup <task|stream>` — remove worktree + branch (refuses dirty)
+
+Non-negotiables:
+
+- Sessions (dev-lead) only commit; integration/merging happens via `wt.sh`
+  from the commander window. Never push/pull/force.
+- Test gate inside `wt.sh`: typecheck + `npx vitest run tests/unit tests/components`.
+  Full `npm test` includes integration tests that hit the real Neon DB
+  (`seed-business` shared state) and are state-dependent/flaky standalone —
+  never use them as a pass/fail gate; DB cleanliness is handled separately.
+- `.worktrees/` is gitignored AND excluded from vitest (`vitest.config.ts`) —
+  do not add worktree test files to suites.
+- Symlinks (node_modules, .env) inside worktrees must never be modified.
+- Migrations are only ever created in the MAIN tree, never inside a worktree.
+- When tests fail, fix or report precisely — never fake success.
 
 Rules every agent obeys:
-- never push/pull/force; never commit the user's unrelated uncommitted changes
-- never edit code in a worktree you weren't assigned
+- never push/pull/force — except the commander pushing a stream branch once per
+  user-requested `promote <stream> --pr`; never commit the user's unrelated
+  uncommitted changes
+- never edit code in a worktree you weren't assigned (commander may edit main
+  tree only to resolve integrate conflicts)
 - when tests fail, fix or report precisely — never fake success

@@ -1,0 +1,20 @@
+name: swarm-checks
+
+on:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run typecheck
+      # DB-free deterministic suites only. Integration tests need the Neon DB
+      # and shared seed-business state — kept out of CI by design (see AGENTS.md).
+      - run: npx vitest run tests/unit tests/components
