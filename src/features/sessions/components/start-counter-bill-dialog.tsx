@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -15,7 +15,11 @@ export function StartCounterBillDialog() {
   const [label, setLabel] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  function startBill() {
+  function startBill(event?: FormEvent) {
+    event?.preventDefault();
+    if (!label.trim()) {
+      return;
+    }
     startTransition(async () => {
       const result = await startCounterBillAction({ label });
       toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
@@ -31,15 +35,15 @@ export function StartCounterBillDialog() {
     <>
       <Button type="button" variant="primary" onClick={() => setOpen(true)}>Start counter bill</Button>
       <Dialog open={open} title="Start counter bill" onOpenChange={setOpen}>
-        <div className="space-y-4">
+        <form className="space-y-4" onSubmit={startBill}>
           <Field label="Bill label">
             <input {...textInputProps()} value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Food parcel, regular customer" />
           </Field>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="button" variant="primary" disabled={isPending} onClick={startBill}>Start bill</Button>
+            <Button type="submit" variant="primary" disabled={isPending || !label.trim()}>Start bill</Button>
           </div>
-        </div>
+        </form>
       </Dialog>
     </>
   );

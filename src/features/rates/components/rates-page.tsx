@@ -50,7 +50,13 @@ function RateRow({
   const [hourlyRate, setHourlyRate] = useState(rate.hourlyRate);
 
   return (
-    <div className="grid gap-3 border-b border-lime-300/10 px-4 py-3 text-sm text-slate-200 last:border-b-0 md:grid-cols-[1fr_180px_160px] md:items-center">
+    <form
+      className="grid gap-3 border-b border-lime-300/10 px-4 py-3 text-sm text-slate-200 last:border-b-0 md:grid-cols-[1fr_180px_160px] md:items-center"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onUpdate(rate, hourlyRate);
+      }}
+    >
       <div>
         <strong>{rate.label}</strong>
         <p className="text-xs text-slate-400">{formatMoney(rate.hourlyRate)}/hr current</p>
@@ -63,9 +69,9 @@ function RateRow({
         value={hourlyRate}
         onChange={(event) => setHourlyRate(Number(event.target.value))}
       />
-      <Button type="button" className="h-9 px-3" disabled={disabled} onClick={() => onUpdate(rate, hourlyRate)}>
+      <Button type="submit" className="h-9 px-3" disabled={disabled}>
         Update rate
       </Button>
-    </div>
+    </form>
   );
 }
