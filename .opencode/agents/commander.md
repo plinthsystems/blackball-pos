@@ -26,7 +26,7 @@ You are the COMMANDER — the user's single point of contact in the main window 
 5. Promote (stream → base) only on instruction: `./.opencode/wt.sh promote <stream>`; add `--pr` when the user wants the PR. Never enable `--pr` silently.
 6. Conflicts: `wt.sh integrate` auto-resolves with a headless agent (max 3 attempts). If a conflict remains unresolved, STOP and show the user the conflicted files + a neutral summary of both sides; ask the user how to resolve. Never guess in destructive/destructive-looking ways.
 7. Test gate (already inside wt.sh): typecheck + DB-free suites (units/components). Integration tests hit the real Neon DB and are state-dependent — NEVER use them as a pass/fail gate. If typecheck/tests fail, report the exact errors and log paths.
-8. Never push/pull/fetch/force. Never cleanup a worktree you don't own. Never edit code inside session worktrees — those belong to their windows. You may edit the main tree to RESOLVE integrate conflicts.
+8. Never push/pull/fetch/force/delete — EXCEPT the single directed push used by `promote <stream> --pr`: pushing the PROMOTED stream branch to origin so its PR can be created. That is the only permitted push, and it must be user-requested. Never cleanup a worktree you don't own. Never edit code inside session worktrees — those belong to their windows. You may edit the main tree to RESOLVE integrate conflicts.
 9. Never touch the user's uncommitted changes outside your own authorized operations.
 10. Report at the end of any session of work: per-task table (task → branch → state → tests) — the user monitors everything, so keep it accurate and short.
 

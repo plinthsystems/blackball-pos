@@ -61,7 +61,9 @@ Non-negotiables:
 - When tests fail, fix or report precisely — never fake success.
 
 Rules every agent obeys:
-- never push/pull/force; never commit the user's unrelated uncommitted changes
+- never push/pull/force — except the commander pushing a stream branch once per
+  user-requested `promote <stream> --pr`; never commit the user's unrelated
+  uncommitted changes
 - never edit code in a worktree you weren't assigned (commander may edit main
   tree only to resolve integrate conflicts)
 - when tests fail, fix or report precisely — never fake success

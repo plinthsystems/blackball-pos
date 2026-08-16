@@ -252,9 +252,10 @@ case "$cmd" in
     fi
     if [ "$pr_flag" = "--pr" ]; then
       if git remote get-url origin >/dev/null 2>&1; then
+        git push -u origin "stream/$s" >/dev/null 2>&1 || echo "NOTE: push failed — remote/stream check karo"
         gh pr create --base "$BASE" --head "stream/$s" \
           --title "promote: stream/$s" --body "Promoted by swarm integrate — full typecheck + vitest passed." || \
-          echo "NOTE: PR create failed (stream branch ko push karna hoga pehle — main agent se kehna)"
+          echo "NOTE: PR create failed — details upar dekho"
       else
         echo "NOTE: no remote origin — PR skip"
       fi
