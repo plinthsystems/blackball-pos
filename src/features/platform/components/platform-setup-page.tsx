@@ -2,6 +2,13 @@ import Link from "next/link";
 import type { InputHTMLAttributes, ReactNode } from "react";
 import { TemporaryCredential } from "./temporary-credential";
 
+export type TemporaryCredentials = {
+  ownerEmail: string;
+  ownerPassword: string;
+  staffEmail: string | null;
+  staffPassword: string | null;
+};
+
 export type PlatformSetupPlan = {
   id: string;
   name: string;
@@ -67,13 +74,6 @@ type FranchiseSetupPageProps = {
   createdOutlet?: SetupOutletSummary | null;
   temporaryCredentials?: TemporaryCredentials | null;
   createFranchiseAction?: (formData: FormData) => void | Promise<void>;
-};
-
-type TemporaryCredentials = {
-  ownerEmail: string;
-  ownerPassword: string;
-  staffEmail: string | null;
-  staffPassword: string | null;
 };
 
 const noopAction = async () => undefined;
@@ -255,7 +255,8 @@ export function PlatformSaasSetupPage({
       title="SaaS Club Setup"
       text="Create a sellable software tenant for one snooker club. The outlet is ready with default tables, PS5 stations, rates, food items, and logins."
     >
-      {createdOutlet ? <SuccessPanel outlet={createdOutlet} mode="saas" temporaryCredentials={temporaryCredentials} /> : null}
+      {createdOutlet ? <SuccessPanel outlet={createdOutlet} mode="saas" password={temporaryCredentials?.ownerPassword} /> : null}
+      {temporaryCredentials ? <TemporaryCredentialsPanel credentials={temporaryCredentials} /> : null}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <PlaybookPanel title="Create SaaS club" icon="add_business" checklist={saasCreates}>
           <form action={createSaasAction} className="grid gap-4 md:grid-cols-2">
@@ -293,7 +294,8 @@ export function PlatformFranchiseSetupPage({
       title="Franchise Outlet Setup"
       text="Create the franchisor brand, franchisee owner, outlet, subscription, and royalty rule in one controlled flow."
     >
-      {createdOutlet ? <SuccessPanel outlet={createdOutlet} mode="franchise" temporaryCredentials={temporaryCredentials} /> : null}
+      {createdOutlet ? <SuccessPanel outlet={createdOutlet} mode="franchise" password={temporaryCredentials?.ownerPassword} /> : null}
+      {temporaryCredentials ? <TemporaryCredentialsPanel credentials={temporaryCredentials} /> : null}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <PlaybookPanel title="Create franchise outlet" icon="hub" checklist={franchiseCreates}>
           <form action={createFranchiseAction} className="grid gap-4 md:grid-cols-2">
@@ -343,17 +345,15 @@ function SetupFlowShell({ eyebrow, title, text, children }: { eyebrow: string; t
   );
 }
 
-function SuccessPanel(props: {
+function SuccessPanel({
+  outlet,
+  mode,
+  password
+}: {
   outlet: SetupOutletSummary;
   mode: "saas" | "franchise";
-  temporaryCredentials?: {
-    ownerEmail: string;
-    ownerPassword: string;
-    staffEmail: string | null;
-    staffPassword: string | null;
-  } | null;
+  password?: string;
 }) {
-  const { outlet, mode, temporaryCredentials } = props;
   const owner = outlet.employees.find((employee) => employee.accountType === "STORE_OWNER");
   const staff = outlet.employees.find((employee) => employee.accountType === "STORE_USER");
   const plan = outlet.subscriptions[0]?.plan.name ?? "Subscription";
@@ -366,7 +366,7 @@ function SuccessPanel(props: {
           <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">Setup completed</p>
           <h2 className="mt-1 text-2xl font-black text-white">{title}</h2>
           <p className="mt-2 text-sm font-semibold text-slate-300">
-            {outlet.organization?.name ?? "Tenant"} is on {plan}. Share the one-time passwords below — every account must change its password at first login.
+            {outlet.organization?.name ?? "Tenant"} is on {plan}. Use the owner password shown below (or the default password) for first login and change it after handoff.
           </p>
         </div>
         <Link
@@ -376,36 +376,28 @@ function SuccessPanel(props: {
           Open Tenant Dashboard
         </Link>
       </div>
-      {temporaryCredentials ? (
-        <div className="mt-4 rounded-[8px] border border-amber-400/40 bg-amber-400/10 p-4">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
-            One-time temporary passwords (auto-expire in 30 min)
-          </p>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <HandoffItem
-              label={`Owner — ${temporaryCredentials.ownerEmail}`}
-              value={temporaryCredentials.ownerPassword}
-              copyable
-            />
-            {temporaryCredentials.staffEmail && temporaryCredentials.staffPassword ? (
-              <HandoffItem
-                label={`Staff — ${temporaryCredentials.staffEmail}`}
-                value={temporaryCredentials.staffPassword}
-                copyable
-              />
-            ) : null}
-          </div>
-        </div>
-      ) : null}
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <HandoffItem label="Owner login" value={owner?.email ?? outlet.email ?? "Not provided"} />
         <HandoffItem label="Staff login" value={staff?.email ?? "Not created"} />
-        {temporaryCredentials ? (
-          <HandoffItem label="Access" value="Change password at first login" />
-        ) : (
-          <HandoffItem label="Default password" value="Password@123" />
-        )}
+        <HandoffItem label="Owner password" value={password ?? "Password@123"} />
         {outlet.franchisee ? <HandoffItem label="Franchisee" value={outlet.franchisee.name} /> : null}
+      </div>
+    </section>
+  );
+}
+
+function TemporaryCredentialsPanel({ credentials }: { credentials: TemporaryCredentials }) {
+  return (
+    <section className="rounded-[8px] border border-amber-400/30 bg-amber-400/5 p-5">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">One-time credentials</p>
+      <p className="mt-1 text-sm font-semibold text-slate-300">
+        Copy these now — they are shown only once and expire in 30 minutes.
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <TemporaryCredential label={`Owner login · ${credentials.ownerEmail}`} value={credentials.ownerPassword} />
+        {credentials.staffEmail && credentials.staffPassword ? (
+          <TemporaryCredential label={`Staff login · ${credentials.staffEmail}`} value={credentials.staffPassword} />
+        ) : null}
       </div>
     </section>
   );
@@ -564,16 +556,13 @@ function FlowStep({ title, text }: { title: string; text: string }) {
   );
 }
 
-function HandoffItem({ label, value, copyable = false }: { label: string; value: string; copyable?: boolean }) {
-  if (!copyable) {
-    return (
-      <div className="rounded-[8px] border border-lime-300/20 bg-slate-950/80 p-3">
-        <p className="text-[11px] font-black uppercase tracking-wide text-lime-200">{label}</p>
-        <p className="mt-1 break-words text-sm font-black text-white">{value}</p>
-      </div>
-    );
-  }
-  return <TemporaryCredential label={label} value={value} />;
+function HandoffItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[8px] border border-lime-300/20 bg-slate-950/80 p-3">
+      <p className="text-[11px] font-black uppercase tracking-wide text-lime-200">{label}</p>
+      <p className="mt-1 break-words text-sm font-black text-white">{value}</p>
+    </div>
+  );
 }
 
 function formatDate(value: Date | string) {
