@@ -1,6 +1,7 @@
+import type { Prisma } from "@prisma/client";
 import type { GameType, SessionStatus, TableStatus } from "@prisma/client";
 
-export type TransactionClient = unknown;
+export type TransactionClient = Prisma.TransactionClient;
 
 export type TableRecord = {
   id: string;
