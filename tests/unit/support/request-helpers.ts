@@ -1,3 +1,5 @@
+import { NextRequest } from "next/server";
+
 /**
  * Shared request/response helpers for route + middleware tests.
  * (See docs/TEST_GAP_REPORT.md — Section 4 "Gaps in conventions".)
@@ -7,17 +9,24 @@ export function makeRequest(url: string, init: RequestInit = {}): Request {
   return new Request(url, init);
 }
 
+/** Like makeRequest but for handlers typed with NextRequest (webhooks etc.). */
+export function makeNextRequest(url: string, init: RequestInit = {}): NextRequest {
+  return new NextRequest(url, init as ConstructorParameters<typeof NextRequest>[1]);
+}
+
 export function getSetCookies(response: Response): string[] {
   return response.headers.getSetCookie();
 }
 
-/** Returns the value of a Set-Cookie header, or null when the cookie was not set. */
+/** Returns the decoded value of a Set-Cookie header, or null when the cookie was not set. */
 export function cookieValue(response: Response, name: string): string | null {
   for (const cookie of getSetCookies(response)) {
     const [pair] = cookie.split(";");
     const [key, ...rest] = pair.split("=");
     if (key.trim() === name) {
-      return rest.join("=");
+      // Cookie values are URI-encoded by the ResponseCookies serializer.
+      const raw = rest.join("=");
+      return raw ? decodeURIComponent(raw) : raw;
     }
   }
   return null;
