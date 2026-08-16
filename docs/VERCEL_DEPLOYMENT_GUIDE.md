@@ -1,163 +1,166 @@
 # Vercel Deployment Walkthrough — BlackBall POS (Beginner Edition)
 
-Yeh guide tumhe `BlackBall POS` app ko **Vercel** pe deploy karne ka pura raasta
-sikhayegi — step by step, zero experience ke saath bhi chal jayegi. Har command ka
-matlab, har setting kya karti hai — sab likha hai.
+This guide shows you how to deploy the `BlackBall POS` app on **Vercel**,
+step by step. You do not need any experience. Every command is explained.
+Every setting is explained.
 
-> **Simple words mein overview:** Tumhare paas code ek GitHub repo mein hai
-> (`plinthsystems/blackball-pos`). **Vercel** ek hosting service hai jo us code ko
-> internet pe chala degi (https://tumhara-domain.com). App ka data (login, tables,
-> bookings) ek **Postgres database** mein store hota hai. Database ke liye hum
-> **Neon** ka sirf database service use karenge. Vercel har baar jab tum GitHub pe
-> code `push` karo to naya build banakar deploy kar degi — isi ko "GitHub
-> auto-deploy" kehte hain.
+> **Overview in simple words:** Your code lives in a GitHub repository
+> (`plinthsystems/blackball-pos`). **Vercel** is a hosting service. It runs
+> your code on the internet (https://your-domain.com). Your app data (login,
+> tables, bookings) is stored in a **Postgres database**. For the database we
+> use only the database service from **Neon**. Every time you `push` code to
+> GitHub, Vercel builds the app again and deploys it. This is called "GitHub
+> auto-deploy".
 
 ---
 
 ## Table of Contents
 
-1. [Samjho: Kya kya cheezein chahiye](#1-samjho-kya-kya-cheezein-chahiye)
-2. [Phase 0 — Pre-flight: pehle sab check kar lo](#2-phase-0--pre-flight-pehle-sab-check-kar-lo)
-3. [Phase 1 — Neon: database banao aur migrations chalao](#3-phase-1--neon-database-banao-aur-migrations-chalao)
-4. [Phase 2 — Vercel: project import karo](#4-phase-2--vercel-project-import-karo)
-5. [Phase 3 — Environment variables (env vars) daalo](#5-phase-3--environment-variables-env-vars-daalo)
-6. [Phase 4 — Pehla deploy + domain](#6-phase-4--pehla-deploy--domain)
-7. [Phase 5 — Post-deploy: sab kaam karta hai ya nahi (smoke test)](#7-phase-5--post-deploy-sab-kaam-karta-hai-ya-nahi-smoke-test)
-8. [Phase 6 — Updatess & daily operations](#8-phase-6--updates--daily-operations)
-9. [Troubleshooting — aam galatiyan aur unka ilaaj](#9-troubleshooting--aam-galatiyan-aur-unka-ilaaj)
-10. [Glossary — chhota shabdkosh](#10-glossary--chhota-shabdkosh)
+1. [What You Need](#1-what-you-need)
+2. [Phase 0 — Pre-flight: check everything first](#2-phase-0--pre-flight-check-everything-first)
+3. [Phase 1 — Neon: create the database and run migrations](#3-phase-1--neon-create-the-database-and-run-migrations)
+4. [Phase 2 — Vercel: import the project](#4-phase-2--vercel-import-the-project)
+5. [Phase 3 — Add environment variables (env vars)](#5-phase-3--add-environment-variables-env-vars)
+6. [Phase 4 — First deploy and your domain](#6-phase-4--first-deploy-and-your-domain)
+7. [Phase 5 — Post-deploy smoke test](#7-phase-5--post-deploy-smoke-test)
+8. [Phase 6 — Updates and daily operations](#8-phase-6--updates-and-daily-operations)
+9. [Troubleshooting — common problems and fixes](#9-troubleshooting--common-problems-and-fixes)
+10. [Glossary — a small dictionary](#10-glossary--a-small-dictionary)
 
 ---
 
-## 1. Samjho: Kya kya cheezein chahiye
+## 1. What You Need
 
-| Cheez | Kahan milegi | Kya karti hai |
+| Item | Where to get it | What it does |
 | :--- | :--- | :--- |
-| GitHub repo | Kya tumhare paas already hai | Code store karta hai |
-| Vercel account | https://vercel.com (free signup) | Code ko internet pe deploy karta hai |
-| Neon account | https://console.neon.tech | Database (Postgres) deta hai — **sirf database** |
-| Domain (optional) | Namecheap / GoDaddy / .vercel.app | Thoda baad mein, chinta mat karo |
+| GitHub repo | You already have it | Stores your code |
+| Vercel account | https://vercel.com (free signup) | Deploys your code on the internet |
+| Neon account | https://console.neon.tech | Gives you a database (Postgres) — **database only** |
+| Domain (optional) | Namecheap / GoDaddy / .vercel.app | We will handle this later, no need to worry now |
 
-**Important note:** Hum Neon ka SIRF database use karenge. Neon Auth, Neon SDK,
-neon CLI — kuch bhi code mein add nahi hoga. Sirf provider ki tarah
-`DATABASE_URL` naam ki ek connection string use hogi, jaise kisi bhi Postgres
-provider ki hoti hai.
+**Important note:** We use Neon only for the database. We do not add Neon
+Auth, Neon SDK, or the Neon CLI to the code. The app uses one connection
+string named `DATABASE_URL`, exactly like with any Postgres provider.
 
 ---
 
-## 2. Phase 0 — Pre-flight: pehle sab check kar lo
+## 2. Phase 0 — Pre-flight: check everything first
 
-Deploy karne se pehle confirm kar lo ki code safe hai. Apne laptop ke repo
-folder mein (`/Users/purusottamkhedre/Dev/projects/github/Business`) yeh 3
-commands chalao, ek ek karke:
+Before you deploy, confirm that your code is safe. Run these 3 commands one
+by one inside your repo folder on your laptop
+(`/Users/purusottamkhedre/Dev/projects/github/Business`):
 
 ```bash
 npm run typecheck
 ```
 
-- **Matlab:** TypeScript ke type errors check karta hai. Kaam nahi kiya to
-  errors dikhayega — pehle wo fix karo, aage mat badho.
-- **Sahi result:** koi red error nahi dikhta.
+- **What it does:** Checks the TypeScript code for type errors. If something
+  is wrong, it shows errors — fix them first, do not move on.
+- **Good result:** no red errors.
 
 ```bash
 npm test
 ```
 
-- **Matlab:** Saare unit + integration tests chala deta hai (122 tests).
-- **Sahi result:** `122 passed`, `0 failed`.
+- **What it does:** Runs all unit and integration tests (122 tests).
+- **Good result:** `122 passed`, `0 failed`.
 
 ```bash
 npm run build
 ```
 
-- **Matlab:** Production-ready bundle banata hai. Yehi build Vercel pe banega.
-- **Sahi result:** `Compiled successfully` jaisa kuch.
+- **What it does:** Creates a production-ready bundle. This is the same
+  build that Vercel will run.
+- **Good result:** something like `Compiled successfully`.
 
-> **Beginners ke liye:** Agar yeh teeno commands successful hain to tumhara code
-> deploy ke layak hai. Agar koi fail ho, to error padho, fix karo, dobara chalao.
+> **For beginners:** If all 3 commands pass, your code is ready to deploy.
+> If one fails, read the error, fix it, and run the command again.
 
 ---
 
-## 3. Phase 1 — Neon: database banao aur migrations chalao
+## 3. Phase 1 — Neon: create the database and run migrations
 
-App ko **database** chahiye. Hum Neon pe ek project + usme database banayenge.
+The app needs a **database**. We will create a project and a database on
+Neon.
 
-### Step 1.1 — Neon console kholo
+### Step 1.1 — Open the Neon console
 
-1. Browser mein https://console.neon.tech pe jao aur login karo.
-2. Ya to existing project **"Blackball POS"** use karo, ya naya project banao
-   ("Create project" → name do, region `US East (N. Virginia)` choose karo —
-   baad mein Vercel bhi isi region mein rakhenge taaki speed acchi rahe).
+1. Open https://console.neon.tech in your browser and log in.
+2. Use the existing project **"Blackball POS"**, or create a new one
+   ("Create project" → give a name, choose the region
+   `US East (N. Virginia)` — we will keep Vercel in the same region, so the
+   app stays fast).
 
-### Step 1.2 — Databases banao
+### Step 1.2 — Create the databases
 
-Tumhe **do** databases chahiye (do alag environments ke liye):
+You need **two** databases (for two different environments):
 
-| Environment | Kaun use karega | Database naam (suggested) |
+| Environment | Who uses it | Database name (suggested) |
 | :--- | :--- | :--- |
 | Production | Live customers | `blackball` |
-| Preview | PR/branch testing (tumhare liye safe place) | `blackball_preview` |
+| Preview | PR/branch testing (a safe place for you) | `blackball_preview` |
 
-Neon mein database banane ke liye: project kholo → **Databases** tab → **Create
-database** → naam likho (`blackball`) → Create.
+To create a database in Neon: open your project → **Databases** tab →
+**Create database** → type the name (`blackball`) → Create.
 
-> **Simple words mein:** Production = asli duniya ka data. Preview = testing ka
-> data jo udta-firta hai, koi farak nahi padta. Dono alag rakhne se koi galti
-> se bhi customers ka data kharab nahi hoga.
+> **In simple words:** Production holds real data. Preview holds test data
+> that changes all the time. Keeping them apart protects customer data from
+> mistakes.
 
-### Step 1.3 — Connection string copy karo
+### Step 1.3 — Copy the connection strings
 
-1. **Branches** tab pe jao → default branch (**production** branch, naam might
-   already be "production") kholo.
-2. **Connect** button dabao → **Connection strings** section mein **Pooled
-   connection string** copy karo. Kuch aisa dikhega:
+1. Go to the **Branches** tab → open the default branch (the production
+   branch is usually named "production").
+2. Click **Connect** → under **Connection strings**, copy the **Pooled
+   connection string**. It looks like this:
 
    ```
    postgresql://neondb_owner:password@ep-abc-123-pooler.us-east-1.aws.neon.tech/blackball?sslmode=require
    ```
 
-3. Is URL mein `/neondb` ki jagah apne database name (`/blackball`) bhejo —
-   ya database me create karte waqt Neon khud URL dega.
-4. Isi tarah `blackball_preview` ka pooled URL bhi copy karke kahin safe jagah
-   note kar lo. **(URL mein password hai — ise kisi ko mat bhejna, aur code mein
-   commit mat karna.)**
+3. Replace `/neondb` in the URL with your database name (`/blackball`).
+   Neon may also give the full URL when you create the database.
+4. Do the same for `blackball_preview`, and save the pooled URL in a safe
+   place. **(The URL contains a password — never share it, and never commit
+   it to code.)**
 
-> **Beginner note — "Pooled" kya hota hai?** Jab bahut saare log app use karte
-> hain, Vercel ka server kai baar database se connect hota hai. Pooled URL ek
-> gateway se yeh connections manage karta hai. Isi liye hum `-pooler` wala URL
-> use karte hain. Dhyan raho: URL mein `sslmode=require` hona chahiye (iska
-> matlab: connection encrypted hai — safe hai).
+> **Beginner note — what is "Pooled"?** When many people use the app,
+> Vercel's server connects to the database many times. A pooled URL uses a
+> gateway to manage these connections. That is why we use the `-pooler` URL.
+> Important: the URL must contain `sslmode=require`. This means the
+> connection is encrypted and safe.
 
-### Step 1.4 — Migrations chalao (tables banate hain)
+### Step 1.4 — Run the migrations (create the tables)
 
-App chalaane ke liye database mein **tables** chahiye (Users, Tables, Bookings
-etc.). Yeh tables banane ka kaam **prisma migrations** karte hain.
+The app needs **tables** in the database (Users, Tables, Bookings, etc.).
+**Prisma migrations** create these tables.
 
 ```bash
 DATABASE_URL="postgresql://neondb_owner:...@...pooler...us-east-1.aws.neon.tech/blackball?sslmode=require" npx prisma migrate deploy
 ```
 
-- `DATABASE_URL="..."` — yeh app ko batata hai ki kaunse database se baat karni hai
-  (PROD wala URL yahan lagao, `...` ko apne actual URL se replace karo).
-- `npx prisma migrate deploy` — saari pending migrations database pe apply karta hai.
-- **Sahi output:** `All migrations have been successfully applied.` (12 migrations
-  lagenge).
+- `DATABASE_URL="..."` — this tells the app which database to talk to. Put
+  the PROD URL here (replace `...` with your actual URL).
+- `npx prisma migrate deploy` — applies all pending migrations to the
+  database.
+- **Good output:** `All migrations have been successfully applied.` (12
+  migrations will run).
 
-Preview database ke liye bhi yehi command chalao, bas URL badal ke
-`blackball_preview` wala.
+Run the same command for the preview database, but use the `blackball_preview`
+URL instead.
 
-> **Bahut IMPORTANT — kabhi bhi production mein SEED mat chalao:**
-> `npm run prisma:seed` sirf DEMO data banata hai (`Password@123` wale demo
-> users). Production pe yeh bilkul nahi chalana — agla step dekho, wahan first
-> admin banane ka sahi tareeka hai.
+> **Very IMPORTANT — never run SEED in production:**
+> `npm run prisma:seed` only creates DEMO data (demo users with
+> `Password@123`). Do not run it on production. The next step shows the
+> right way to create your first admin.
 
-### Step 1.5 — First Platform Admin banao (ek baar ka kaam)
+### Step 1.5 — Create your first Platform Admin (one-time task)
 
-App mein sabse pehle login kaun karega? Seed nahi chalana, isliye hum ek
-one-time script se ek **PLATFORM_ADMIN** bana denge (yehi Tum hoge).
+Who logs in first? We do not run seed, so we create one **PLATFORM_ADMIN**
+with a one-time script. This admin is you.
 
-Ek nayi file banao: `scripts/bootstrap-admin.ts` (agar `scripts/` folder nahi hai
-to bana lo), aur yeh paste karo:
+Create a new file: `scripts/bootstrap-admin.ts` (create the `scripts/`
+folder if it does not exist), and paste this:
 
 ```ts
 import "dotenv/config";
@@ -167,7 +170,7 @@ import { hashPassword } from "../src/server/auth/auth-service";
 
 async function main() {
   const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL env var nahi hai — is command ke saath do: DATABASE_URL=...");
+  if (!url) throw new Error("DATABASE_URL env var missing — pass it with the command: DATABASE_URL=...");
 
   const email = process.env.BOOTSTRAP_ADMIN_EMAIL ?? "platform@blackball.example";
   const password = process.env.BOOTSTRAP_ADMIN_PASSWORD ?? randomBytes(6).toString("base64url");
@@ -196,7 +199,7 @@ async function main() {
     console.log("Platform admin ready!");
     console.log("  Email:", admin.email);
     console.log("  Password:", password);
-    console.log("  (Password sirf ab dikha — ise abhi note kar lo, phir login karke change kar dena)");
+    console.log("  (Password shown once — note it now, then change it after login)");
   } finally {
     await prisma.$disconnect();
   }
@@ -208,246 +211,256 @@ main().catch((error) => {
 });
 ```
 
-Phir run karo (PROD URL ke saath):
+Then run it (with the PROD URL):
 
 ```bash
 DATABASE_URL="postgresql://.../blackball?sslmode=require" npx tsx scripts/bootstrap-admin.ts
 ```
 
-- **Matlab:** Ek `PLATFORM_ADMIN` account banata hai + `platform.setup.manage`
-  permission add karta hai (yeh permission seed se aati thi, isliye manually
-  daalni padti hai).
-- **Socho, script `email` pe nahi, ek fixed `id` ("platform-admin-prod") pe
-  upsert karti hai** — kyunki schema mein Employee.email unique hai nahi. Isliye
-  script dobaara bhi chala sakte ho: password update hoga, duplicate account
-  nahi banega.
-- Output mein email + password dikhega — abhi note kar lo.
-- Deploy ke baad isi email/password se
-  `https://tumhara-domain.com/login` pe login karna hai. (Bootstrap script tumne
-  banayi hai to usko seed ki tarah treat karo — **deploy ke baad is file ko repo
-  se hata dena** is safe, warna koi dekh sakta hai. Ya isse commit hi mat karo.)
+- **What it does:** Creates one `PLATFORM_ADMIN` account and adds the
+  `platform.setup.manage` permission (this permission used to come from
+  seed, so we add it manually).
+- **Note:** the script upserts on a fixed `id` ("platform-admin-prod"), not
+  on the email — because `Employee.email` is not unique in the schema. So
+  you can run the script again: the password updates, and no duplicate
+  account is created.
+- The output shows the email and password — note them down now.
+- After the deploy, log in at `https://your-domain.com/login` with this
+  email and password. (You created this bootstrap script yourself, so treat
+  it like seed — **remove this file from the repo after the deploy**, or
+  better, do not commit it at all. Otherwise someone might see it.)
 
 ---
 
-## 4. Phase 2 — Vercel: project import karo
+## 4. Phase 2 — Vercel: import the project
 
-1. https://vercel.com pe jao → GitHub se sign up/login karo.
-2. **Add New... → Project** dabao.
-3. Vercel tumhara GitHub account dikhayega → **plinthsystems/blackball-pos**
-   repo ke saamne **Import** dabao.
-4. Ab ek settings page khulega — yeh rakho:
+1. Go to https://vercel.com → sign up or log in with GitHub.
+2. Click **Add New... → Project**.
+3. Vercel shows your GitHub account → click **Import** next to the
+   **plinthsystems/blackball-pos** repo.
+4. A settings page opens — use these values:
 
-   | Setting | Value | Matlab |
+   | Setting | Value | What it means |
    | :--- | :--- | :--- |
-   | Framework Preset | **Next.js** (auto detected) | Vercel ko pata hai kaise build karna hai |
-   | Root Directory | `/` (default, box empty) | Code repo ke root mein hai |
-   | Build Command | `npx prisma generate && next build` | Prisma client banata hai, phir app banata hai |
-   | Install Command | `npm install` (auto) | Saare packages install hote hain |
-   | Node.js Version | **22.x** (default/current) | Code kis Node version pe chalega |
+   | Framework Preset | **Next.js** (auto detected) | Vercel knows how to build the app |
+   | Root Directory | `/` (default, box empty) | The code sits at the root of the repo |
+   | Build Command | `npx prisma generate && next build` | Creates the Prisma client, then builds the app |
+   | Install Command | `npm install` (auto) | Installs all packages |
+   | Node.js Version | **22.x** (default/current) | Which Node version runs your code |
 
-   > **Build command mein `npx prisma generate` kyun?**
-   > Prisma tumhare database "schema" se code banata hai (client). GitHub se Vercel
-   > pe fresh code aata hai, isliye build se pehle client regenerate karna zaroori
-   > hai. Phir `next build` app ko bundle karta hai.
+   > **Why `npx prisma generate` in the build command?**
+   > Prisma creates code (the client) from your database "schema". Vercel
+   > gets fresh code from GitHub, so the client must be regenerated before
+   > the build. Then `next build` bundles the app.
 
-5. **Environment Variables** section abhi khaali chhodo — wo agle phase mein
-   add karenge (pehle project ban jaye). **Deploy** button dabao.
+5. Leave the **Environment Variables** section empty for now — we will add
+   them in the next phase (after the project exists). Click **Deploy**.
 
-> **Pehla deploy kaise hota hai?** Vercel tumhara code uthata hai, build karta
-> hai (2-4 minute lagte hain), aur `https://blackball-pos-xyz.vercel.app` jaisa
-> ek FREE URL deta hai. Pehli baar ya to green tick aayegi ya red cross — red ho
-> to "Deployments" tab mein error log padho (Troubleshooting section bhi dekho).
+> **How does the first deploy work?** Vercel picks up your code, builds it
+> (takes 2-4 minutes), and gives you a FREE URL like
+> `https://blackball-pos-xyz.vercel.app`. The first result is a green tick
+> or a red cross. If it is red, read the error log in the "Deployments" tab
+> (the Troubleshooting section also helps).
 
 ---
 
-## 5. Phase 3 — Environment variables (env vars) daalo
+## 5. Phase 3 — Add environment variables (env vars)
 
-**Simple words mein:** Env var = aise secret/config values jo `.env` file ki
-tarah hoti hain, lekin Vercel ke dashboard mein. Code unhe `process.env.NAAM`
-se padhta hai. **Yahan secrets rakhe jaate hain — YE KABHI CODE MEIN NAHI
-DAALNE KE.**
+**In simple words:** An env var is a secret or config value. It works like a
+`.env` file, but it lives in the Vercel dashboard. The code reads it with
+`process.env.NAME`. **Secrets live here — NEVER put them in code.**
 
-Vercel dashboard mein: apna project kholo → **Settings → Environment Variables**.
-Phir ek ek karke yeh add karo:
+In the Vercel dashboard: open your project → **Settings → Environment
+Variables**. Then add these one by one:
 
-| Variable | Value | Kahan se | Scope |
+| Variable | Value | Where from | Scope |
 | :--- | :--- | :--- | :--- |
-| `DATABASE_URL` | Neon wala pooled URL (`.../blackball?sslmode=require`) | Neon console se copy | Production, Preview, **Build-time** |
-| `AUTH_SECRET` | `openssl rand -hex 32` chalao jo mile (ek long random string) | Apne laptop pe command chalao | Production, Preview (Runtime) |
-| `NEXT_PUBLIC_APP_NAME` | `Cue Club Admin` | Tum | All |
-| `APP_BASE_URL` | `https://<tumhara-domain>` | deploy ke baad domain jaan kar daalna | All (Runtime) |
+| `DATABASE_URL` | The Neon pooled URL (`.../blackball?sslmode=require`) | Copy from Neon console | Production, Preview, **Build-time** |
+| `AUTH_SECRET` | The output of `openssl rand -hex 32` (a long random string) | Run the command on your laptop | Production, Preview (Runtime) |
+| `NEXT_PUBLIC_APP_NAME` | `Cue Club Admin` | You | All |
+| `APP_BASE_URL` | `https://<your-domain>` | Add after you know your domain | All (Runtime) |
 
-**Add karna (detaial mein):**
+**How to add (in detail):**
 
-1. **Name** box mein `DATABASE_URL` likho.
-2. **Value** box mein Neon ka production pooled URL paste karo.
- 3. **Environment** dropdown mein **Production** + **Preview** dono tick karo.
-    - `DATABASE_URL` build-time pe bhi chahiye hai (build `prisma generate` chalata
-      hai). Env var ka "Advanced" section khula ho to **Expose to build-time** pe
-      tick rakho — taaki build ke waqt bhi mile.
-4. **Add** dabao.
+1. Type `DATABASE_URL` in the **Name** box.
+2. Paste the Neon production pooled URL in the **Value** box.
+3. In the **Environment** dropdown, tick both **Production** and **Preview**.
+   - `DATABASE_URL` is also needed at build-time (the build runs `prisma
+     generate`). If the "Advanced" section is open, keep **Expose to
+     build-time** ticked — so the build can use it.
+4. Click **Add**.
 
-Aise hi: `AUTH_SECRET` (1-2 min: pehle apne laptop pe `openssl rand -hex 32` chalao,
-output ko Value mein daalo), `NEXT_PUBLIC_APP_NAME`, `APP_BASE_URL`.
+Do the same for: `AUTH_SECRET` (1-2 min: first run `openssl rand -hex 32`
+on your laptop and put the output in the Value), `NEXT_PUBLIC_APP_NAME`,
+`APP_BASE_URL`.
 
-**Preview ke liye alag DATABASE_URL:** Add new variable `DATABASE_URL` ke naam se,
-par value mein `blackball_preview` wala URL daalo, aur **sirf Preview**
-environment tick karo. Iska result: jab tum koi PR/branch push karoge to preview
-deployment naye preview database se baat karegi — production data safe rahega.
+**Separate DATABASE_URL for Preview:** Add another variable named
+`DATABASE_URL`, but put the `blackball_preview` URL in the value, and tick
+**only Preview**. Result: when you push a PR or branch, the preview
+deployment talks to the preview database — production data stays safe.
 
-**Yeh variable kabhi mat daalna:**
+**Never add these variables:**
 
-| Mat daalo | Kyun |
+| Do not add | Why |
 | :--- | :--- |
-| `MAGIC_LOGIN_ENABLED=true` | Isse bina password ke login khul jayega — unsafe |
-| `DEV_ACCESS_KEY` | Yehi key paper hai magic login ki — prod mein nahi |
-| `DOCS_ENABLED` | `/docs` handbook externally khulta hai — sirf isliye daalo agar tumhe do | 
+| `MAGIC_LOGIN_ENABLED=true` | It opens login without a password — unsafe |
+| `DEV_ACCESS_KEY` | This is the key for magic login — not for prod |
+| `DOCS_ENABLED` | It opens the `/docs` handbook to the public — only if you really want it |
 
 ---
 
-## 6. Phase 4 — Pehla deploy + domain
+## 6. Phase 4 — First deploy and your domain
 
-### Yahan tak ho chuka hai...
+### What is done so far...
 
-- Vercel pe project bana hai, env vars daal chuke ho.
+- The project exists on Vercel, and the env vars are set.
 
-### 6.1 Har naya change deploy karne ke liye (sirf yaad rakho)
+### 6.1 Deploy every new change (just remember this)
 
-**Bas `git push` karo — Vercel khud redeploy kar degi.** Abhi ek naya test
-deploy bhi chala kar dekh sakte ho:
-- Abhi `PRODUCTION` deployment chaalu karo: **Deployments** tab → dots
-  menu → **Redeploy** (ya ek baar `git push` karke dekho).
+**Just `git push` — Vercel redeploys automatically.** You can also run a
+new test deploy now:
+- Start a `PRODUCTION` deployment now: **Deployments** tab → dots
+  menu → **Redeploy** (or just `git push` once and watch it build).
 
-### 6.2 Custom domain lagao (optional, recommended)
+### 6.2 Add a custom domain (optional, recommended)
 
-Abhi app `https://project.vercel.app` pe hai. Apna domain (jaise
-`blackball.example.com`) lagane ke liye:
+The app is now at `https://project.vercel.app`. To use your own domain
+(like `blackball.example.com`):
 
-1. Vercel → **Settings → Domains** → apna domain likho → **Add**.
-2. Vercel tumhe 2 DNS records batayegi:
-   - **Agar subdomain** (jaise `app.tumharadomain.com`): DNS pe **CNAME** record
-     banao → `app` → `cname.vercel-dns.com`.
-   - **Agar root domain** (`tumharadomain.com`): **A** record → `76.76.21.21`.
-     (DNS records tumhare domain provider ke dashboard pe banate ho — Namecheap,
-     GoDaddy, Cloudflare — wahan "DNS" section hota hai.)
-3. Record bante hi Vercel automatic TLS (SSL certificate) lagayega — URL `https://`
-   se chalegi. Kuch minutes lage; status green ho jaye to done.
+1. Vercel → **Settings → Domains** → type your domain → **Add**.
+2. Vercel tells you the DNS records to create:
+   - **For a subdomain** (like `app.yourdomain.com`): create a **CNAME**
+     record on your DNS → `app` → `cname.vercel-dns.com`.
+   - **For a root domain** (`yourdomain.com`): an **A** record →
+     `76.76.21.21`.
+     (You create DNS records in your domain provider's dashboard —
+     Namecheap, GoDaddy, Cloudflare — in their "DNS" section.)
+3. As soon as the records exist, Vercel sets up TLS (SSL certificate)
+   automatically — the URL will run on `https://`. It takes a few minutes;
+   when the status turns green, you are done.
 
-> **TLS/HTTPS kya hai?** Browser wale `lock` icon wali safe connection — Vercel
-> free mein automatically de deta hai custom domain pe. Kabhi khud certificate
-> nahi lagana padta.
+> **What is TLS/HTTPS?** It is the secure connection shown by the browser
+> `lock` icon. Vercel gives it for free on custom domains. You never have
+> to set up a certificate yourself.
 
 ---
 
-## 7. Phase 5 — Post-deploy: sab kaam karta hai ya nahi (smoke test)
+## 7. Phase 5 — Post-deploy smoke test
 
-Deploy hone ke baad browser mein kholo aur yeh sab check karo (isise order mein):
+After the deploy, open the app in the browser and check all of this (in
+this order):
 
-1. **URL khulo** — `https://app.tumharadomain.com` (ya vercel.app wala URL).
-   → Login page khulna chahiye.
-2. **Platform admin login karo** — wohi email/password jo bootstrap script se
-   mile the. → `/platform/setup` pe land hona chahiye.
-3. **Ek test karo:** `/login` pe galt password daalo → error aana chahiye.
-   `/dashboard` pe bina login ke jaane ki koshish karo → `/login` pe bhej dena
-   chahiye.
-4. **Booking link check:** settings/online booking se kisi store ka booking link
-   kholo (`/book/<slug>`) → page khulna chahiye, booking form dikhna chahiye.
-5. **Headers check** (command-line se): apne laptop pe run karo:
+1. **Open the URL** — `https://app.yourdomain.com` (or the vercel.app URL).
+   → The login page should open.
+2. **Log in as platform admin** — with the email/password from the
+   bootstrap script. → You should land on `/platform/setup`.
+3. **Run a test:** enter a wrong password at `/login` → an error should
+   appear. Try to open `/dashboard` without logging in → you should be
+   sent to `/login`.
+4. **Check the booking link:** open a store's booking link from
+   settings/online booking (`/book/<slug>`) → the page should open and show
+   the booking form.
+5. **Check the headers** (from the command line): run this on your laptop:
    ```bash
-   curl -I https://app.tumharadomain.com/login
+   curl -I https://app.yourdomain.com/login
    ```
-   → Output mein `Strict-Transport-Security`, `X-Frame-Options: DENY`,
-   `Content-Security-Policy` dikhna chahiye. (Yeh security headers code mein
-   `next.config.ts` se aate hain — kuch change nahi karna.)
-6. **Webhooks (optional):** Tumne Razorpay/Stripe nahi wire kiye to webhook URLs
-   missing-secret pe 503 lote hain — designed behavior, no issue.
+   → The output should show `Strict-Transport-Security`,
+   `X-Frame-Options: DENY`, and `Content-Security-Policy`. (These security
+   headers come from `next.config.ts` — you do not need to change
+   anything.)
+6. **Webhooks (optional):** If you have not wired Razorpay or Stripe, the
+   webhook URLs return 503 because their secret is missing. This is
+   expected behavior, not a problem.
 
-> **Pehli baar jo 2-3 cheezon mein problem aa sakti hai:**
-> - Login redirect loop → `AUTH_SECRET` ka deploy purana/chhuta hai → Settings →
->   Environment Variables check karo, deploy ko Redploy karo.
-> - "Database connection failed" → `DATABASE_URL` ka spelling/scope check karo.
-> - "Please set AUTH_SECRET" jaisa error → AUTH_SECRET missing/empty hai.
+> **Things that often go wrong the first time:**
+> - Login redirect loop → the deployed `AUTH_SECRET` is old or missing →
+>   check Settings → Environment Variables, then Redeploy.
+> - "Database connection failed" → check the spelling and scope of
+>   `DATABASE_URL`.
+> - An error like "Please set AUTH_SECRET" → `AUTH_SECRET` is missing or
+>   empty.
 
 ---
 
-## 8. Phase 6 — Updates & daily operations
+## 8. Phase 6 — Updates and daily operations
 
-Tumhara app ab LIVE hai. Ab regularly hota kya hai:
+Your app is now LIVE. Here is what happens regularly:
 
-### 8.1 Naya feature/schema change
+### 8.1 New feature or schema change
 
-1. Koi bhi `schema.prisma` change → **sabse pehle** `npx prisma migrate dev`
-   chalao (local mein isse nayi migration file banti hai).
-2. Us nayi migration file ko commit + push karo.
-3. **Database pe migrate prod:** (apne laptop se, prod URL ke saath)
+1. Any `schema.prisma` change → **first** run `npx prisma migrate dev`
+   (locally this creates a new migration file).
+2. Commit the new migration file and push it.
+3. **Migrate the prod database:** (from your laptop, with the prod URL)
    ```bash
    DATABASE_URL="postgresql://.../blackball?sslmode=require" npx prisma migrate deploy
    ```
-4. Code push karo → Vercel build (generate + next build) → app live.
-   > **Order important hai:** pehle migration deploy, phir code deploy, taki
-   > naya code chalta waqt tables already exist karen.
+4. Push the code → Vercel builds (generate + next build) → app is live.
+   > **Order matters:** run the migration first, then deploy the code, so
+   > the tables already exist when the new code runs.
 
 ### 8.2 Backups
 
-Neon automatically backups rakhta hai (point-in-time restore — kisi bhi time pe
-database restore kar sakte ho, Neon ke "Branching" feature se bhi). Weekly ek baar
-Neon console kholkar health check karlo.
+Neon keeps backups automatically (point-in-time restore — you can restore
+the database to any point in time, also with Neon's "Branching" feature).
+Once a week, open the Neon console and do a health check.
 
-### 8.3 Logs dekho
+### 8.3 View logs
 
-Vercel dashboard → apna project → **Logs** tab → saare errors/traffic wahan
-dikhte hain.
+Vercel dashboard → your project → **Logs** tab → all errors and traffic
+show there.
 
-### 8.4 Secret rotate karna
+### 8.4 Rotate a secret
 
-Agar `AUTH_SECRET` leak ho jaye to: naya `openssl rand -hex 32` banao, Vercel pe
-update karo, redeploy karo. Warning: isse saare logged-in users ka session khatam
-ho jayega (wo dobara login karenge) — incidents mein yehi chahiye hota hai.
+If `AUTH_SECRET` leaks: generate a new `openssl rand -hex 32`, update it on
+Vercel, and redeploy. Warning: this ends the session of every logged-in
+user (they log in again). This is exactly what you want during incidents.
 
 ---
 
-## 9. Troubleshooting — aam galatiyan aur unka ilaaj
+## 9. Troubleshooting — common problems and fixes
 
-| Problem | Likely cause | Ilaaj |
+| Problem | Likely cause | Fix |
 | :--- | :--- | :--- |
-| Vercel build fail hota hai `prisma generate` pe | `DATABASE_URL` build time pe nahi mili | Env var mein DATABASE_URL "Production + Preview" + Build-time scope ke saath rakho |
-| "Missing database env: DATABASE_*" | Build ke waqt prisma ko parts nahi mile | Bas `DATABASE_URL` daalo (wo override hota hai parts ke) |
-| "AUTH_SECRET is required" | AUTH_SECRET empty/missing | Settings → env vars → add → redeploy |
-| Login ke baad wapas /login pe aata hai | Purana session ya AUTH_SECRET mismatch | Browser ki cookies clear karo; AUTH_SECRET set hi ho to redeploy karo |
-| "Can't reach database" / 500 errors | DATABASE_URL galat/spelling | Neon URL dobara copy karo, `sslmode=require` check karo |
-| Migration `channel_binding` parameter error | Prisma kuch version is URL param ko na maane | URL se `&channel_binding=require` hatao (sslmode rakho) |
-| Webhooks 503 | Payment/WhatsApp secrets nahi diye | Integration enable karo tabhi set karo |
-| Preview bhi prod data dikha raha hai | Preview env mein prod DATABASE_URL | Preview mein `blackball_preview` URL daalo |
-| `npm run build` locally fail | Type errors ya missing deps | `npm install` karo, typecheck + build fix karo |
-| Domain resolve nahi ho raha | DNS propagation ya galat record type | CNAME vs A record verify karo, 15-60 min wait karo |
+| Vercel build fails at `prisma generate` | `DATABASE_URL` not available at build-time | Give DATABASE_URL a "Production + Preview" scope with Build-time enabled |
+| "Missing database env: DATABASE_*" | Prisma did not get the parts at build time | Just add `DATABASE_URL` (it overrides the parts) |
+| "AUTH_SECRET is required" | `AUTH_SECRET` empty or missing | Settings → env vars → add → redeploy |
+| Login sends you back to /login | Old session or `AUTH_SECRET` mismatch | Clear browser cookies; if `AUTH_SECRET` is set, redeploy |
+| "Can't reach database" / 500 errors | `DATABASE_URL` wrong or misspelled | Copy the Neon URL again, check `sslmode=require` |
+| Migration `channel_binding` parameter error | Some Prisma versions reject this URL parameter | Remove `&channel_binding=require` from the URL (keep sslmode) |
+| Webhooks 503 | Payment/WhatsApp secrets not provided | Set them only when you enable the integration |
+| Preview shows prod data | Preview env has the prod DATABASE_URL | Put the `blackball_preview` URL in the Preview env |
+| `npm run build` fails locally | Type errors or missing dependencies | Run `npm install`, then fix typecheck and build |
+| Domain does not resolve | DNS propagation or wrong record type | Verify CNAME vs A record, wait 15-60 min |
 
-Yeh sab ke siway agar kuch aur atke, to:
-- Vercel → Deployment → error log kholo (red cross wale deploy pe).
-- Neon console → database ka "compute" active hai check karo (0 CU wale suspend ho
-  jaate hain par request aate hi start ho jate hain).
+If anything else gets stuck:
+- Vercel → Deployment → open the error log (on the red-cross deployment).
+- Neon console → check that the database "compute" is active (instances
+  with 0 CU suspend, but they start automatically when a request comes in).
 
 ---
 
-## 10. Glossary — chhota shabdkosh
+## 10. Glossary — a small dictionary
 
-| Word | Matlab (simple) |
+| Word | Meaning (simple) |
 | :--- | :--- |
-| **Deploy** | Code ko internet pe chala dena |
-| **Build** | Code ko production-ready bundle banane ka process |
-| **Repository (repo)** | Code ki folder jo GitHub pe hai |
-| **Environment** | Production / Preview / Development — alag modes |
-| **Env var** | `process.env.X` se milne wali config/secret values |
-| **Connection string / URL** | Database tak pahunchne ka pata + password (jaise address) |
-| **Pooled URL** | Multiple connections ke liye gateway wali URL (`-pooler`) |
-| **Migration** | Database schema change ki file + usse apply karne ka process |
-| **Schema** | Database ki structure definition (prisma/schema.prisma) |
-| **Seed** | DEMO data banane wala script — production mein kabhi nahi |
-| **CLI** | Terminal (command line) se run hone wale commands |
+| **Deploy** | Put the code on the internet so users can reach it |
+| **Build** | The process of turning code into a production-ready bundle |
+| **Repository (repo)** | The folder of code that lives on GitHub |
+| **Environment** | Production / Preview / Development — separate modes |
+| **Env var** | Config or secret values read from `process.env.X` |
+| **Connection string / URL** | The address of the database + password (like an address) |
+| **Pooled URL** | A gateway URL for multiple connections (`-pooler`) |
+| **Migration** | A file describing a database schema change + the process of applying it |
+| **Schema** | The definition of the database structure (prisma/schema.prisma) |
+| **Seed** | A script that creates DEMO data — never in production |
+| **CLI** | Commands run in the Terminal (command line) |
 | **TLS/HTTPS** | Secure internet connection (browser lock icon) |
-| **CNAME / A record** | DNS settings jo domain ko Vercel se jodte hain |
-| **Redirect loop** | URL ek se dusre pe bhejta rahe, page kabhi khule na — aam AUTH_SECRET issue |
+| **CNAME / A record** | DNS settings that connect a domain to Vercel |
+| **Redirect loop** | The URL keeps sending you from one page to another, so the page never opens — a common `AUTH_SECRET` issue |
 
 ---
 
-**Ab tumhara app LIVE hai. 🎉** Koi bhi step pe atko to Troubleshooting section
-(§9) pehle dekho, phir is guide ki env var table (§5) verify karo. Happy shipping!
+**Your app is now LIVE. 🎉** If you get stuck at any step, check the
+Troubleshooting section (§9) first, then verify your env vars in the table
+in §5. Happy shipping!
