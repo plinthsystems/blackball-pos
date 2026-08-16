@@ -47,7 +47,7 @@ link_worktree() { # <wt>
 case "$cmd" in
   base)
     if [ -n "${1:-}" ]; then
-      valid_name "$1"
+      [[ "$1" =~ ^[a-z0-9][a-z0-9/_-]*$ ]] || die "invalid base branch: $1"
       git rev-parse --verify -q "refs/heads/$1" >/dev/null || die "branch does not exist: $1"
       mkdir -p "$WT_DIR"
       echo "$1" > "$BASE_FILE"
