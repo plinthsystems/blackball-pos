@@ -25,6 +25,13 @@
 > seed exists — it is effectively an integration test sitting inside the unit gate, same risk
 > class as `tests/integration/*`. Suggest moving it to `tests/integration/` (phase 2).
 
+> **Phase-2 update (2026-08-17, `wt/test-enrichment/test-routes-middleware-actions`):** the
+> whole P0 route/middleware band (Section 3.1) is now covered with prisma/rate-limit mocked —
+> see the status column below. New shared support helpers exist
+> (`tests/unit/support/request-helpers.ts`: `makeRequest`/`makeNextRequest`/`getSetCookies`/
+> `cookieValue`/`withEnv`). Gate now: 38 files / 221 tests green. Rate limiting itself was
+> deliberately left untested (out of scope for phase 2).
+
 ## 2. Coverage matrix — area vs existing tests vs gaps vs priority
 
 Priority: **P0** security/payment/money-critical · **P1** core domain & feature logic ·
@@ -32,8 +39,8 @@ Priority: **P0** security/payment/money-critical · **P1** core domain & feature
 
 | Area | Existing tests (gate) | Gaps | Priority |
 |---|---|---|---|
-| **API routes** (`src/app/api/*`) | none | login, logout, magic-login, razorpay/stripe webhooks, qr image route — zero route tests | P0 |
-| **Middleware** (`src/middleware.ts`) | none | authn/authz guard, password-change guard, demo-identity logic | P0 |
+| **API routes** (`src/app/api/*`) | all covered: login (12), logout (2), magic-login (11), razorpay webhook (7), stripe webhook (7) — `tests/unit/routes/*` | qr image route + docs page covered too; only the 429/rate-limit responses are untested by design | P0 |
+| **Middleware** (`src/middleware.ts`) | `tests/unit/middleware.test.ts` (31): public passthrough, authn (401 JSON vs /login redirect), authz guards, /login role redirects, password-change guard, demo-identity dev-only | none | P0 |
 | **server/auth** | auth-service (7), authorization (3), current-employee (3), routes (1) | `rate-limit.ts` (2 fns: checkRateLimit, clientIpFromRequest), `permissions.ts` (requirePermission) untested | P0 |
 | **server/integrations** | base-url (10) | `payments.ts` (7 fns incl. webhook signatures), `qr.ts`, `whatsapp.ts` (5 fns) | P0 |
 | **server/services** | table-service (2), session-service (4), hq-analytics (1, DB-backed) | `pricing-service.ts` (estimateTableCharge) | P0 |
@@ -54,21 +61,26 @@ Priority: **P0** security/payment/money-critical · **P1** core domain & feature
 | **features/platform** | 3 page components (3) | 2 setup actions (createSaasSetupAction/createFranchiseSetupAction), TemporaryCredential | P1 |
 | **features/dashboard** | buildOwnerDashboardData (2), OwnerDashboardPage (1) | getOwnerDashboardData wrapper; empty dashboard state | P2 |
 | **features/hq + docs** | hq-analytics service (1, DB-backed) | HqMasterDashboard (151 ln), DocsViewer (481 ln) | P2 |
-| **Whole-tree totals** | 140 tests on ~35 of 109 files | ~74 files uncovered; zero route/middleware/action tests at unit level | — |
+| **Whole-tree totals** | 140 tests (phase 1) → **221 tests** (38 files, after phase-2 routes/middleware); route/middleware/api band fully covered | ~70 files uncovered (actions/queries/UI still DB- or UI-gated); zero **action** tests at unit level | — |
 
 ## 3. File-by-file gap registry (concrete suggested cases)
 
 ### 3.1 API routes + middleware — all untested (P0)
 
-| File | Exports | Suggested cases |
-|---|---|---|
-| `src/app/api/auth/login/route.ts` | `POST` | happy path sets `auth_session` cookie + redirectUrl per accountType (PLATFORM_ADMIN→/platform/setup, HQ_ADMIN→/hq/dashboard, mustChangePassword→/change-password, else /dashboard); 400 missing email/password; 401 inactive employee / no passwordHash / wrong password; 429 after 10 attempts (rate-limit); 500 on prisma throw; demo cookies only when `NODE_ENV !== "production"`; email matched case-insensitively + trimmed |
-| `src/app/api/auth/logout/route.ts` | `POST` | clears `auth_session` (and demo cookies); returns success JSON |
-| `src/app/api/auth/magic-login/route.ts` | `GET` (module-private helpers `devAccessKey`/`isMagicLoginEnabled`/`matchesAccessKey` — exercise through GET) | disabled → redirect `?error=disabled`; wrong key → `?error=invalid_key`; timing-safe compare equal-length requirement; rate-limit `?error=rate_limited`; missing email → /magic-login; unknown/inactive employee → `?error=user_not_found`; success sets cookie + redirects to role route; store override param used |
-| `src/app/api/integrations/razorpay/webhook/route.ts` | `POST` | missing/bad signature → 503 (must not touch DB); valid sig + `payment_link.paid` → booking with matching `paymentExternalId` marked PAID; unknown event → `{received:true}` no DB write; invalid JSON body → handled 503/error path |
-| `src/app/api/integrations/stripe/webhook/route.ts` | `POST` | 503 on missing/bad sig; `checkout.session.completed` matches by `paymentExternalId`/`id`/`id.endsWith(reference)`; unknown type no-op; malformed body |
-| `src/app/qr/book/[slug]/route.ts` | `GET` | 404 unknown slug; 200 image/png + `Cache-Control: public, max-age=3600`; base-url resolution from request host |
-| `src/middleware.ts` | `middleware` | public routes pass through (`/login`, `/book/*`, `/qr/*`, `/docs`, `/api/auth`, `/api/integrations`); unauthenticated API → 401 JSON vs page → redirect /login; valid token → pass; `/login` while authenticated → redirect by role (incl. demo-email platform/hq detection in dev); mustChangePassword guard → /change-password (except `/api/`); `/platform` guard → non-admin to /dashboard; `/hq` guard allows HQ+PLATFORM; invalid/tampered token treated as unauthenticated |
+> Phase-2 status: every row below is now covered in the gate (prisma + rate limiter mocked,
+> real HMAC signature checks, real edge token verification). Remaining suggested cases from
+> the original table that were NOT written are listed per row.
+
+| File | Exports | Suggested cases | Coverage (phase 2) |
+|---|---|---|---|
+| `src/app/api/auth/login/route.ts` | `POST` | happy path sets `auth_session` cookie + redirectUrl per accountType (PLATFORM_ADMIN→/platform/setup, HQ_ADMIN→/hq/dashboard, mustChangePassword→/change-password, else /dashboard); 400 missing email/password; 401 inactive employee / no passwordHash / wrong password; 429 after 10 attempts (rate-limit); 500 on prisma throw; demo cookies only when `NODE_ENV !== "production"`; email matched case-insensitively + trimmed | `tests/unit/routes/login-route.test.ts` (12 tests) — 429/rate-limit response skipped by design |
+| `src/app/api/auth/logout/route.ts` | `POST` | clears `auth_session` (and demo cookies); returns success JSON | `tests/unit/routes/logout-route.test.ts` (2 tests) |
+| `src/app/api/auth/magic-login/route.ts` | `GET` (module-private helpers `devAccessKey`/`isMagicLoginEnabled`/`matchesAccessKey` — exercise through GET) | disabled → redirect `?error=disabled`; wrong key → `?error=invalid_key`; timing-safe compare equal-length requirement; rate-limit `?error=rate_limited`; missing email → /magic-login; unknown/inactive employee → `?error=user_not_found`; success sets cookie + redirects to role route; store override param used | `tests/unit/routes/magic-login-route.test.ts` (11 tests) — `?error=rate_limited` skipped by design |
+| `src/app/api/integrations/razorpay/webhook/route.ts` | `POST` | missing/bad signature → 503 (must not touch DB); valid sig + `payment_link.paid` → booking with matching `paymentExternalId` marked PAID; unknown event → `{received:true}` no DB write; invalid JSON body → handled 503/error path | `tests/unit/routes/razorpay-webhook-route.test.ts` (7 tests); real HMAC verification with env secret, no network |
+| `src/app/api/integrations/stripe/webhook/route.ts` | `POST` | 503 on missing/bad sig; `checkout.session.completed` matches by `paymentExternalId`/`id`/`id.endsWith(reference)`; unknown type no-op; malformed body | `tests/unit/routes/stripe-webhook-route.test.ts` (7 tests) |
+| `src/app/qr/book/[slug]/route.ts` | `GET` | 404 unknown slug; 200 image/png + `Cache-Control: public, max-age=3600`; base-url resolution from request host | `tests/unit/routes/qr-book-route.test.ts` (5 tests); QR module mocked |
+| `src/middleware.ts` | `middleware` | public routes pass through (`/login`, `/book/*`, `/qr/*`, `/docs`, `/api/auth`, `/api/integrations`); unauthenticated API → 401 JSON vs page → redirect /login; valid token → pass; `/login` while authenticated → redirect by role (incl. demo-email platform/hq detection in dev); mustChangePassword guard → /change-password (except `/api/`); `/platform` guard → non-admin to /dashboard; `/hq` guard allows HQ+PLATFORM; invalid/tampered token treated as unauthenticated | `tests/unit/middleware.test.ts` (31 tests); real HMAC edge token verification in jsdom |
+| `src/app/docs/page.tsx` (server page) | `default` | production without `DOCS_ENABLED=true` → notFound; README-first sort + `.md` filter; H1 title extraction w/ slug fallback; missing docs dir → empty list | `tests/unit/docs-page.test.tsx` (5 tests); fs + DocsViewer mocked |
 
 ### 3.2 App pages — change-password (3 tests) is the only covered page (P1/P2)
 
@@ -175,10 +187,14 @@ actions/queries are prisma-importing modules, so today they are covered **only**
 - There is **no unit-level mock of `@/server/db/prisma` anywhere** — all prisma-touching
   feature layer (actions/queries) is only exercised by Neon integration tests. Phase 2 should
   introduce `mockPrisma` helpers (per-module `vi.mock("@/server/db/prisma")`) so every action
-  gets `{ok:false}`-path tests without a DB.
+  gets `{ok:false}`-path tests without a DB. *(Route phase-2 already applies per-module
+  `vi.mock("@/server/db/prisma")` + `vi.mock("@/server/auth/rate-limit")` with `vi.hoisted`
+  fns — see `tests/unit/routes/*`.)*
 - `request`/`NextRequest` in route tests: no helper exists yet. Suggest `tests/unit/support/`
   additions: `makeRequest(url, {headers, body, method})` + cookie assertion helper
-  (`response.headers.getSetCookie()`).
+  (`response.headers.getSetCookie()`). — **DONE:** `tests/unit/support/request-helpers.ts`
+  provides `makeRequest`, `makeNextRequest`, `getSetCookies`, `cookieValue` (decodes the
+  URI-encoded value), and `withEnv` (save/restore patch, also on throw).
 - **No `next/headers`, `next/cache`, or `next/server` mocks centralized**; integration tests
   mock `next/cache` locally — should move to `tests/setup.ts` or a shared support file.
 - Deterministic env: tests toggle `process.env` (webhook secrets, NODE_ENV) inline — consider
@@ -195,6 +211,9 @@ actions/queries are prisma-importing modules, so today they are covered **only**
 1. **P0 security layer (highest ROI)**: middleware guard tests; login/magic-login/webhook
    route tests with prisma mock; `rate-limit.ts`, `permissions.ts`, `payments.ts` signature
    verifiers; `changePasswordAction` (3 new files, ~40 cases).
+   **DONE (middleware + login/logout/magic-login + razorpay/stripe webhooks + qr-book
+   route + /docs page — 81 tests, see §3.1).** Still open: `rate-limit.ts` (deliberately
+   skipped in phase 2), `permissions.ts`, `payments.ts` verifiers, `changePasswordAction`.
 2. **P0 money paths**: `booking/actions.ts` (± payment-link + whatsapp branches),
    `live-tables/actions.ts` via SessionService/TableService mocks (~35 cases).
 3. **P1 feature logic**: `settings/actions.ts`, `rates/actions.ts`, `tables/actions.ts`,
