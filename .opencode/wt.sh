@@ -189,6 +189,7 @@ case "$cmd" in
         else
           git worktree add "$INTEG" "$stream" >/dev/null
         fi
+        link_worktree "$INTEG"
         pre="$(git -C "$INTEG" rev-parse HEAD)"
         if ! do_one_merge "$INTEG" "$stream" "$branch"; then
           if auto_resolve "$INTEG" "$task"; then

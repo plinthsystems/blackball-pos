@@ -1,14 +1,14 @@
 # Deployment Guide — BlackBall POS
 
-Step-by-step production deployment (Vercel + managed PostgreSQL) with the
-security requirements from `docs/SECURITY_AUDIT.md` baked in.
+Step-by-step production deployment (Vercel + managed PostgreSQL). It
+includes the security requirements from `docs/SECURITY_AUDIT.md`.
 
 ---
 
 ## 1. Pre-Flight (Command-Line on Prod-Ready Machine)
 
 ```bash
-# Audit deps (no high left ideally)
+# Audit dependencies (aim for no HIGH issues left)
 npm audit
 
 # Clean build + tests
@@ -33,7 +33,7 @@ npm run typecheck && npm run test && npm run build
 | Variable | Value |
 | :--- | :--- |
 | `DATABASE_URL` | Prod Postgres URL (with SSL query if required) |
-| `AUTH_SECRET` | `openssl rand -hex 32` — app **refuses to boot** without it |
+| `AUTH_SECRET` | `openssl rand -hex 32` — the app **will not start** without it |
 
 ### Required for integrations (only if you wire them)
 | Variable | Where from |
@@ -49,26 +49,15 @@ npm run typecheck && npm run test && npm run build
 
 ## 4. Security Checklist (mandatory)
 
-- [ ] `AUTH_SECRET` set (64 hex chars) — verify app boots: without it server refuses to start.
+- [ ] `AUTH_SECRET` set (64 hex chars) — verify the app starts: without it the server will not start.
 - [ ] Magic login left **disabled** (default). If you must test remotely, use
       `MAGIC_LOGIN_ENABLED=true` + long `DEV_ACCESS_KEY`, then remove both.
 - [ ] No demo cookies in production (code now guarantees it).
 - [ ] All deployed staff set custom passwords (forced-change flow exists).
 - [ ] `npm audit` — no HIGH remaining (schedule Next 16 upgrade for the full fix).
-- [ ] Security headers still pending (report item #9) — add `next.config.ts` headers before public launch:
-  ```ts
-  async headers() {
-    return [{
-      source: "/(.*)",
-      headers: [
-        { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-        { key: "X-Content-Type-Options", value: "nosniff" },
-        { key: "X-Frame-Options", value: "DENY" },
-        { key: "Referrer-Policy", value: "no-referrer" }
-      ]
-    }];
-  }
-  ```
+- [ ] Security headers configured in `next.config.ts` (report item #9) — CSP,
+      HSTS, `X-Frame-Options: DENY`, `nosniff`, `no-referrer`; browser-verified
+      in the audit.
 - [ ] Rate limiter is in-memory — for multi-instance scaling switch to Redis (upstash).
 
 ## 5. Webhooks (after deploy)
@@ -83,8 +72,8 @@ auto-respond 503 if secrets are missing (safe default).
 
 ## 6. Deploy (Vercel example)
 
-> **Beginner walkthrough (step-by-step, sab details ke saath):**
-> `docs/VERCEL_DEPLOYMENT_GUIDE.md` — entry-level se lekar production tak.
+> **Beginner walkthrough (step-by-step):**
+> `docs/VERCEL_DEPLOYMENT_GUIDE.md` — covers everything from first setup to production.
 
 ```bash
 npm i -g vercel

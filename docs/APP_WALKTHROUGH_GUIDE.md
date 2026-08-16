@@ -1,7 +1,7 @@
 # Application Walkthrough Guide — BlackBall POS
 
-Complete page-by-page, feature-by-feature guide covering every user story and use case.
-Use this as a demo script, test checklist, and onboarding reference.
+A page-by-page, feature-by-feature guide for every user story and use case.
+Use it as a demo script, a test checklist, and an onboarding reference.
 
 ---
 
@@ -119,7 +119,8 @@ Board shows every table with status: `AVAILABLE / RESERVED / OCCUPIED / CLEANING
 **Use case 3.3.7 — Force status changes**
 - AVAILABLE → RESERVED → CLEANING etc. via the status menu (permission `tables.update_status`).
 
-**Staff NOT allowed (expect redirect/error):** rates, settings, tables page, bookings management.
+**Staff cannot access:** rates, settings, the tables page, and bookings
+management (expect a redirect or an error).
 
 ---
 
@@ -156,7 +157,8 @@ Board shows every table with status: `AVAILABLE / RESERVED / OCCUPIED / CLEANING
 1. Incoming bookings list with references (last 6 of id), customer, slot, status.
 2. **Confirm** a `PENDING` booking → `CONFIRMED` (WhatsApp notify if configured).
 3. **Cancel** → `CANCELLED` (WhatsApp notify if configured).
-4. **Mark paid** → `PAID` + a real-time `GET` (webhook) marks paid automatically when payments enabled.
+4. **Mark paid** → `PAID`. When payments are enabled, the provider's webhook
+   marks the booking as paid automatically.
 5. **QR share** — show/share the booking QR used for the store's public page.
 
 ### 4.6 Change password — `/change-password`
@@ -197,8 +199,9 @@ Board shows every table with status: `AVAILABLE / RESERVED / OCCUPIED / CLEANING
 Same as SaaS + franchise brand, franchisee account, royalty rule, and outlet limit.
 
 ### 6.3 Re-run behavior (safe)
-- Re-running the setup for the same outlet **does not reset passwords** anymore (update branch
-  leaves credentials untouched); OTP box only appears for genuinely new accounts.
+- Re-running the setup for the same outlet no longer resets passwords — the
+  update branch leaves credentials untouched. The OTP box appears only for
+  brand-new accounts.
 
 ---
 

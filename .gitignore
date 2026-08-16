@@ -9,5 +9,6 @@ playwright-report
 test-results
 *.tsbuildinfo
 .tmp_screenshots
+.worktrees/
 docs/handbook
 .worktrees/
