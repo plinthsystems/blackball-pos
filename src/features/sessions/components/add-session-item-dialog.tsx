@@ -6,7 +6,7 @@ import { addBillItemAction } from "@/features/live-tables/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, textInputProps } from "@/components/ui/field";
-import { Snackbar } from "@/components/ui/snackbar";
+import { useToast } from "@/components/ui/toast";
 import { formatMoney } from "@/lib/money";
 import type { ProductCategory, ProductOption } from "@/features/live-tables/types";
 
@@ -33,9 +33,9 @@ export function AddSessionItemDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [quantity, setQuantity] = useState(1);
-  const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const selectedProduct = useMemo(() => products.find((product) => product.id === productId), [productId, products]);
@@ -44,7 +44,7 @@ export function AddSessionItemDialog({
   function addItem() {
     startTransition(async () => {
       const result = await addBillItemAction({ billId, productId, quantity });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
       if (result.ok) {
         onOpenChange(false);
         setQuantity(1);
@@ -107,7 +107,6 @@ export function AddSessionItemDialog({
           </div>
         )}
       </Dialog>
-      <Snackbar message={message} tone={message === "Item added to bill." ? "success" : "danger"} />
     </>
   );
 }

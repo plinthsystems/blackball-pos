@@ -5,20 +5,20 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, textInputProps } from "@/components/ui/field";
-import { Snackbar } from "@/components/ui/snackbar";
+import { useToast } from "@/components/ui/toast";
 import { startCounterBillAction } from "@/features/live-tables/actions";
 
 export function StartCounterBillDialog() {
   const router = useRouter();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function startBill() {
     startTransition(async () => {
       const result = await startCounterBillAction({ label });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
       if (result.ok) {
         setOpen(false);
         setLabel("");
@@ -41,7 +41,6 @@ export function StartCounterBillDialog() {
           </div>
         </div>
       </Dialog>
-      <Snackbar message={message} tone={message === "Counter bill started." ? "success" : "danger"} />
     </>
   );
 }
