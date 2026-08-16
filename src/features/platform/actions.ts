@@ -1,7 +1,9 @@
 "use server";
 
+import nodeCrypto from "crypto";
 import { GameType, Prisma, ProductCategory } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
@@ -9,6 +11,10 @@ import { hashPassword } from "@/server/auth/auth-service";
 import { prisma } from "@/server/db/prisma";
 
 const defaultPasswordHash = hashPassword("Password@123");
+
+function generateOneTimePassword(): string {
+  return nodeCrypto.randomBytes(9).toString("base64url");
+}
 
 const saasSchema = z.object({
   organizationName: z.string().trim().min(2),
@@ -85,15 +91,35 @@ export async function createSaasSetupAction(formData: FormData) {
       staffEmail: input.staffEmail || undefined,
       franchiseeId: null
     });
-    createdBusinessSlug = business.slug;
+    createdBusinessSlug = business.business.slug;
 
     await createSubscription(tx, {
-      id: `subscription-${business.slug}`,
+      id: `subscription-${business.business.slug}`,
       organizationId: organization.id,
-      businessId: business.id,
+      businessId: business.business.id,
       planId: input.planId,
       outletLimit: 1
     });
+
+    const cookieStore = await cookies();
+    await cookieStore.set(
+      "provision_otps",
+      JSON.stringify({
+        [business.business.slug]: {
+          ownerEmail: input.ownerEmail,
+          ownerPassword: business.ownerPassword,
+          staffEmail: input.staffEmail || null,
+          staffPassword: business.staffPassword
+        }
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 30 * 60
+      }
+    );
   });
 
   revalidatePath("/platform/setup");
@@ -146,15 +172,35 @@ export async function createFranchiseSetupAction(formData: FormData) {
       ownerEmail: input.ownerEmail,
       ownerName: `${input.franchiseeName} Owner`
     });
-    createdBusinessSlug = business.slug;
+    createdBusinessSlug = business.business.slug;
 
     await createSubscription(tx, {
-      id: `subscription-${business.slug}`,
+      id: `subscription-${business.business.slug}`,
       organizationId: organization.id,
       franchiseeId: franchisee.id,
       planId: input.planId,
       outletLimit: 1
     });
+
+    const cookieStore = await cookies();
+    await cookieStore.set(
+      "provision_otps",
+      JSON.stringify({
+        [business.business.slug]: {
+          ownerEmail: input.ownerEmail,
+          ownerPassword: business.ownerPassword,
+          staffEmail: null,
+          staffPassword: null
+        }
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 30 * 60
+      }
+    );
 
     await tx.royaltyRule.upsert({
       where: { id: `royalty-${franchisee.id}` },
@@ -250,7 +296,7 @@ async function createOperationalOutlet(db: SetupDb, input: {
     }
   });
 
-  await seedOutletRolesAndAccounts(db, {
+  const { ownerPassword, staffPassword } = await seedOutletRolesAndAccounts(db, {
     businessId: business.id,
     organizationId: input.organizationId,
     franchiseeId: input.franchiseeId ?? null,
@@ -260,7 +306,11 @@ async function createOperationalOutlet(db: SetupDb, input: {
   });
   await seedDefaultOutletCatalog(db, business.id);
 
-  return business;
+  return {
+    business,
+    ownerPassword,
+    staffPassword
+  };
 }
 
 async function seedOutletRolesAndAccounts(db: SetupDb, input: {
@@ -271,6 +321,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
   ownerName: string;
   staffEmail?: string;
 }) {
+  const ownerPassword = generateOneTimePassword();
   await Promise.all(
     [...new Set([...operationalPermissions, ...staffPermissions])].map((key) =>
       db.permission.upsert({ where: { key }, update: {}, create: { key } })
@@ -301,7 +352,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: input.ownerName,
       email: input.ownerEmail.toLowerCase(),
-      passwordHash: defaultPasswordHash,
+      passwordHash: hashPassword(ownerPassword),
       accountType: "STORE_OWNER",
       active: true
     },
@@ -312,7 +363,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: input.ownerName,
       email: input.ownerEmail.toLowerCase(),
-      passwordHash: defaultPasswordHash,
+      passwordHash: hashPassword(ownerPassword),
       accountType: "STORE_OWNER",
       active: true,
       roles: { create: { roleId: ownerRole.id } }
@@ -320,7 +371,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
   });
 
   if (!input.staffEmail) {
-    return;
+    return { ownerPassword, staffPassword: null };
   }
 
   const staffRole = await db.role.upsert({
@@ -339,6 +390,8 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
     )
   );
 
+  const staffPassword = generateOneTimePassword();
+
   await db.employee.upsert({
     where: { id: `user-staff-${input.businessId}` },
     update: {
@@ -347,7 +400,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: "Floor Staff",
       email: input.staffEmail.toLowerCase(),
-      passwordHash: defaultPasswordHash,
+      passwordHash: hashPassword(staffPassword),
       accountType: "STORE_USER",
       active: true
     },
@@ -358,12 +411,14 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: "Floor Staff",
       email: input.staffEmail.toLowerCase(),
-      passwordHash: defaultPasswordHash,
+      passwordHash: hashPassword(staffPassword),
       accountType: "STORE_USER",
       active: true,
       roles: { create: { roleId: staffRole.id } }
     }
   });
+
+  return { ownerPassword, staffPassword };
 }
 
 async function seedDefaultOutletCatalog(db: SetupDb, businessId: string) {

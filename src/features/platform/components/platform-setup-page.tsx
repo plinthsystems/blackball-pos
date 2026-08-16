@@ -1,5 +1,13 @@
 import Link from "next/link";
 import type { InputHTMLAttributes, ReactNode } from "react";
+import { TemporaryCredential } from "./temporary-credential";
+
+export type TemporaryCredentials = {
+  ownerEmail: string;
+  ownerPassword: string;
+  staffEmail: string | null;
+  staffPassword: string | null;
+};
 
 export type PlatformSetupPlan = {
   id: string;
@@ -55,6 +63,7 @@ type SaasSetupPageProps = {
   plans: PlatformSetupPlan[];
   recentOutlets: SetupOutletSummary[];
   createdOutlet?: SetupOutletSummary | null;
+  temporaryCredentials?: TemporaryCredentials | null;
   createSaasAction?: (formData: FormData) => void | Promise<void>;
 };
 
@@ -63,6 +72,7 @@ type FranchiseSetupPageProps = {
   organizations: PlatformSetupOrganization[];
   recentOutlets: SetupOutletSummary[];
   createdOutlet?: SetupOutletSummary | null;
+  temporaryCredentials?: TemporaryCredentials | null;
   createFranchiseAction?: (formData: FormData) => void | Promise<void>;
 };
 
@@ -234,6 +244,7 @@ export function PlatformSaasSetupPage({
   plans,
   recentOutlets,
   createdOutlet,
+  temporaryCredentials,
   createSaasAction = noopAction
 }: SaasSetupPageProps) {
   const standardPlans = plans.filter((plan) => !plan.code.includes("franchise"));
@@ -244,7 +255,8 @@ export function PlatformSaasSetupPage({
       title="SaaS Club Setup"
       text="Create a sellable software tenant for one snooker club. The outlet is ready with default tables, PS5 stations, rates, food items, and logins."
     >
-      {createdOutlet ? <SuccessPanel outlet={createdOutlet} mode="saas" /> : null}
+      {createdOutlet ? <SuccessPanel outlet={createdOutlet} mode="saas" password={temporaryCredentials?.ownerPassword} /> : null}
+      {temporaryCredentials ? <TemporaryCredentialsPanel credentials={temporaryCredentials} /> : null}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <PlaybookPanel title="Create SaaS club" icon="add_business" checklist={saasCreates}>
           <form action={createSaasAction} className="grid gap-4 md:grid-cols-2">
@@ -270,6 +282,7 @@ export function PlatformFranchiseSetupPage({
   organizations,
   recentOutlets,
   createdOutlet,
+  temporaryCredentials,
   createFranchiseAction = noopAction
 }: FranchiseSetupPageProps) {
   const franchisePlans = plans.filter((plan) => plan.code.includes("franchise"));
@@ -281,7 +294,8 @@ export function PlatformFranchiseSetupPage({
       title="Franchise Outlet Setup"
       text="Create the franchisor brand, franchisee owner, outlet, subscription, and royalty rule in one controlled flow."
     >
-      {createdOutlet ? <SuccessPanel outlet={createdOutlet} mode="franchise" /> : null}
+      {createdOutlet ? <SuccessPanel outlet={createdOutlet} mode="franchise" password={temporaryCredentials?.ownerPassword} /> : null}
+      {temporaryCredentials ? <TemporaryCredentialsPanel credentials={temporaryCredentials} /> : null}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <PlaybookPanel title="Create franchise outlet" icon="hub" checklist={franchiseCreates}>
           <form action={createFranchiseAction} className="grid gap-4 md:grid-cols-2">
@@ -331,7 +345,15 @@ function SetupFlowShell({ eyebrow, title, text, children }: { eyebrow: string; t
   );
 }
 
-function SuccessPanel({ outlet, mode }: { outlet: SetupOutletSummary; mode: "saas" | "franchise" }) {
+function SuccessPanel({
+  outlet,
+  mode,
+  password
+}: {
+  outlet: SetupOutletSummary;
+  mode: "saas" | "franchise";
+  password?: string;
+}) {
   const owner = outlet.employees.find((employee) => employee.accountType === "STORE_OWNER");
   const staff = outlet.employees.find((employee) => employee.accountType === "STORE_USER");
   const plan = outlet.subscriptions[0]?.plan.name ?? "Subscription";
@@ -344,7 +366,7 @@ function SuccessPanel({ outlet, mode }: { outlet: SetupOutletSummary; mode: "saa
           <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">Setup completed</p>
           <h2 className="mt-1 text-2xl font-black text-white">{title}</h2>
           <p className="mt-2 text-sm font-semibold text-slate-300">
-            {outlet.organization?.name ?? "Tenant"} is on {plan}. Use the default password for first login and change it after handoff.
+            {outlet.organization?.name ?? "Tenant"} is on {plan}. Use the owner password shown below (or the default password) for first login and change it after handoff.
           </p>
         </div>
         <Link
@@ -357,8 +379,25 @@ function SuccessPanel({ outlet, mode }: { outlet: SetupOutletSummary; mode: "saa
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <HandoffItem label="Owner login" value={owner?.email ?? outlet.email ?? "Not provided"} />
         <HandoffItem label="Staff login" value={staff?.email ?? "Not created"} />
-        <HandoffItem label="Default password" value="Password@123" />
+        <HandoffItem label="Owner password" value={password ?? "Password@123"} />
         {outlet.franchisee ? <HandoffItem label="Franchisee" value={outlet.franchisee.name} /> : null}
+      </div>
+    </section>
+  );
+}
+
+function TemporaryCredentialsPanel({ credentials }: { credentials: TemporaryCredentials }) {
+  return (
+    <section className="rounded-[8px] border border-amber-400/30 bg-amber-400/5 p-5">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">One-time credentials</p>
+      <p className="mt-1 text-sm font-semibold text-slate-300">
+        Copy these now — they are shown only once and expire in 30 minutes.
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <TemporaryCredential label={`Owner login · ${credentials.ownerEmail}`} value={credentials.ownerPassword} />
+        {credentials.staffEmail && credentials.staffPassword ? (
+          <TemporaryCredential label={`Staff login · ${credentials.staffEmail}`} value={credentials.staffPassword} />
+        ) : null}
       </div>
     </section>
   );
