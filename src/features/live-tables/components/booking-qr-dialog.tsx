@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 
 export function BookingQrDialog({
   bookingLink,
@@ -40,67 +42,59 @@ export function BookingQrDialog({
     setTimeout(() => win.print(), 400);
   }
 
+  function downloadPng() {
+    const anchor = document.createElement("a");
+    anchor.href = qrPngUrl;
+    anchor.download = `booking-qr-${businessName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.png`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-2xl border border-cyan-300/25 bg-slate-950 p-6 shadow-[0_0_40px_rgba(34,211,238,0.15)]"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-black text-white">Booking QR Code</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Scan kisi se bhi — seedha is store ka booking page khulega.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-sm font-bold text-slate-300 hover:text-white"
-          >
-            ✕
-          </button>
-        </div>
+    <Dialog open title="Booking QR Code" onOpenChange={(next) => !next && onClose()}>
+      <p className="text-sm text-slate-400">
+        Scan kisi se bhi — seedha is store ka booking page khulega.
+      </p>
 
-        <div className="mt-4 rounded-xl border border-white/10 bg-white p-4">
-          <img src={qrPngUrl} alt={`Booking QR for ${businessName}`} className="mx-auto h-64 w-64" />
-        </div>
-
-        <p className="mt-3 break-all rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 font-mono text-[11px] text-cyan-200/90">
-          {bookingLink}
-        </p>
-
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              const anchor = document.createElement("a");
-              anchor.href = qrPngUrl;
-              anchor.download = `booking-qr-${businessName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.png`;
-              document.body.appendChild(anchor);
-              anchor.click();
-              anchor.remove();
-            }}
-            className="rounded-lg bg-cyan-500 px-3 py-2.5 text-xs font-black text-slate-950 hover:bg-cyan-400"
-          >
-            ⬇ Download PNG
-          </button>
-          <button
-            type="button"
-            onClick={printQr}
-            className="rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-3 py-2.5 text-xs font-black text-cyan-200 hover:bg-cyan-500/20"
-          >
-            🖨 Print
-          </button>
-          <button
-            type="button"
-            onClick={copyLink}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-xs font-black text-slate-200 hover:border-emerald-400/50"
-          >
-            {copied ? "✓ Copied" : "Copy link"}
-          </button>
-        </div>
+      <div className="mt-4 rounded-material border border-white/10 bg-white p-4">
+        <img src={qrPngUrl} alt={`Booking QR for ${businessName}`} className="mx-auto h-64 w-64" />
       </div>
-    </div>
+
+      <p className="mt-3 break-all rounded-material border border-slate-800 bg-slate-900 px-3 py-2 font-mono text-[11px] text-cyan-200/90">
+        {bookingLink}
+      </p>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <Button
+          type="button"
+          className="border-cyan-400/50 bg-cyan-500 px-2 text-xs hover:bg-cyan-400"
+          onClick={downloadPng}
+          icon={<span className="material-symbols-outlined text-[16px]" aria-hidden="true">download</span>}
+        >
+          <span className="whitespace-nowrap">Download</span>
+        </Button>
+        <Button
+          type="button"
+          className="border-cyan-400/40 bg-cyan-500/10 px-2 text-xs text-cyan-200 hover:bg-cyan-500/20"
+          onClick={printQr}
+          icon={<span className="material-symbols-outlined text-[16px]" aria-hidden="true">print</span>}
+        >
+          <span className="whitespace-nowrap">Print</span>
+        </Button>
+        <Button
+          type="button"
+          className="px-2 text-xs"
+          onClick={copyLink}
+          icon={
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
+              {copied ? "check" : "content_copy"}
+            </span>
+          }
+        >
+          <span className="whitespace-nowrap">{copied ? "Copied" : "Copy link"}</span>
+        </Button>
+      </div>
+    </Dialog>
   );
 }

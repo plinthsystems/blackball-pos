@@ -83,6 +83,9 @@ auto-respond 503 if secrets are missing (safe default).
 
 ## 6. Deploy (Vercel example)
 
+> **Beginner walkthrough (step-by-step, sab details ke saath):**
+> `docs/VERCEL_DEPLOYMENT_GUIDE.md` — entry-level se lekar production tak.
+
 ```bash
 npm i -g vercel
 vercel login
