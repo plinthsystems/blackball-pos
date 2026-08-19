@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { changePasswordAction } from "@/features/auth/actions";
+import { Button } from "@/components/ui/button";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -12,7 +13,8 @@ export default function ChangePasswordPage() {
   const [message, setMessage] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function submit() {
+  function submit(event?: FormEvent) {
+    event?.preventDefault();
     setMessage(null);
     if (newPassword.length < 8) {
       setMessage({ tone: "err", text: "Naya password kam se kam 8 characters ka hona chahiye." });
@@ -36,21 +38,21 @@ export default function ChangePasswordPage() {
   return (
     <section className="mx-auto max-w-md space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Password Update Required</h1>
+        <h1 className="text-2xl font-black uppercase tracking-normal text-white">Password Update Required</h1>
         <p className="mt-1 text-sm text-slate-400">
           Security policy: is account ka default password hai. Age badhane se pehle apna naya password set karein.
         </p>
       </div>
 
       <div className="rounded-material border border-amber-300/20 bg-slate-950 p-5 shadow-material">
-        <div className="space-y-4">
+        <form className="space-y-4" onSubmit={submit}>
           <label className="block">
             <span className="text-xs font-bold text-slate-300">Current Password</span>
             <input
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-1 h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-white outline-none focus:border-amber-400/60"
+              className="mt-1 h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-400/60 focus:outline-none"
             />
           </label>
           <label className="block">
@@ -60,7 +62,7 @@ export default function ChangePasswordPage() {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Min 8 characters"
-              className="mt-1 h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-white outline-none focus:border-amber-400/60"
+              className="mt-1 h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-400/60 focus:outline-none"
             />
           </label>
           <label className="block">
@@ -69,13 +71,13 @@ export default function ChangePasswordPage() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-white outline-none focus:border-amber-400/60"
+              className="mt-1 h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-400/60 focus:outline-none"
             />
           </label>
 
           {message && (
             <p
-              className={`rounded-lg border p-3 text-sm ${
+              className={`rounded-material border p-3 text-sm ${
                 message.tone === "ok"
                   ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-200"
                   : "border-rose-400/30 bg-rose-500/10 text-rose-200"
@@ -85,15 +87,14 @@ export default function ChangePasswordPage() {
             </p>
           )}
 
-          <button
-            type="button"
+          <Button
+            type="submit"
+            className="h-12 w-full bg-amber-400 text-slate-950 hover:bg-amber-300"
             disabled={isPending || !currentPassword || !newPassword || !confirmPassword}
-            onClick={submit}
-            className="h-12 w-full rounded-xl bg-amber-400 text-sm font-black text-slate-950 hover:bg-amber-300 disabled:opacity-50"
           >
             {isPending ? "Saving…" : "Set New Password"}
-          </button>
-        </div>
+          </Button>
+        </form>
       </div>
     </section>
   );
