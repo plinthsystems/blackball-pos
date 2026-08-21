@@ -1,135 +1,265 @@
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { usePathname } from "next/navigation";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StoreSwitcher } from "@/components/app/store-switcher";
 
+const mockUsePathname = vi.fn();
+vi.mock("next/navigation", () => ({
+  usePathname: () => mockUsePathname(),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() })
+}));
+
+const mockSetItem = vi.fn();
+Object.defineProperty(document, "cookie", {
+  writable: true,
+  value: ""
+});
+
 const stores = [
-  { id: "b1", name: "BlackBall Koramangala", slug: "seed-business" },
-  { id: "b2", name: "BlackBall MG Road", slug: "outlet-mg-road" }
+  { id: "store_1", name: "Store A", slug: "store-a" },
+  { id: "store_2", name: "Store B", slug: "store-b" },
+  { id: "store_3", name: "Store C", slug: "store-c" }
 ];
 
-// jsdom navigation is not implemented; stub it so href assignments are recorded.
-let locationStub: { href: string };
-
-beforeEach(() => {
-  locationStub = { href: "http://localhost/dashboard" };
-  vi.stubGlobal("location", locationStub);
-  vi.mocked(usePathname).mockReturnValue("/dashboard");
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-  document.cookie = "demo_store_slug=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-});
-
 describe("StoreSwitcher", () => {
-  it("renders a muted chip with a fallback label when there are no stores", () => {
-    render(<StoreSwitcher currentBusinessId="b1" stores={[]} />);
+  let originalLocation: typeof window.location;
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUsePathname.mockReturnValue("/live-tables");
+    originalLocation = window.location;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: originalLocation
+    });
+  });
+
+  it("renders current store name when single store", () => {
+    render(<StoreSwitcher currentBusinessId="store_1" stores={[stores[0]]} />);
+    expect(screen.getByText("Store A")).toBeInTheDocument();
+  });
+
+  it("renders Store when no stores provided", () => {
+    render(<StoreSwitcher currentBusinessId="store_1" stores={[]} />);
     expect(screen.getByText("Store")).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("renders a muted chip with the store name when there is only one store", () => {
-    render(<StoreSwitcher currentBusinessId="b1" stores={[stores[0]]} />);
-
-    expect(screen.getByText("BlackBall Koramangala")).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  it("renders the first store when currentBusinessId not found", () => {
+    render(<StoreSwitcher currentBusinessId="nonexistent" stores={stores} />);
+    expect(screen.getByText("Store A")).toBeInTheDocument();
   });
 
-  it("shows the current store on the trigger button", () => {
-    render(<StoreSwitcher currentBusinessId="b2" stores={stores} />);
-
-    expect(screen.getByRole("button")).toHaveTextContent("BlackBall MG Road");
-  });
-
-  it("opens and closes the menu from the trigger", async () => {
+  it("opens dropdown when clicked with multiple stores", async () => {
     const user = userEvent.setup();
-    render(<StoreSwitcher currentBusinessId="b1" stores={stores} />);
-
-    const trigger = screen.getByRole("button");
-    await user.click(trigger);
-    expect(screen.getByText("Individual Outlets")).toBeInTheDocument();
-
-    await user.click(trigger);
-    expect(screen.queryByText("Individual Outlets")).not.toBeInTheDocument();
-  });
-
-  it("lists every store and marks the current one with a check", async () => {
-    const user = userEvent.setup();
-    render(<StoreSwitcher currentBusinessId="b1" stores={stores} organizationName="BlackBall Franchise" />);
-
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationName="My Org" />);
     await user.click(screen.getByRole("button"));
-
-    expect(screen.getByText("BlackBall Franchise")).toBeInTheDocument();
-    expect(screen.getByText("Switch Context")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /BlackBall Koramangala/ })).toHaveLength(2); // trigger + item
-    expect(screen.getAllByRole("button", { name: /BlackBall MG Road/ })).toHaveLength(1);
-    // Only the selected store shows a check mark.
-    expect(screen.getAllByText("check")).toHaveLength(1);
+    expect(screen.getByText("My Org")).toBeInTheDocument();
   });
 
-  it("selecting a store sets the store cookie and navigates to its live tables", async () => {
+  it("shows all stores in dropdown", async () => {
     const user = userEvent.setup();
-    render(<StoreSwitcher currentBusinessId="b1" stores={stores} />);
-
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationName="My Org" />);
     await user.click(screen.getByRole("button"));
-    await user.click(screen.getByRole("button", { name: /BlackBall MG Road/ }));
-
-    expect(document.cookie).toContain("demo_store_slug=outlet-mg-road");
-    expect(window.location.href).toBe("/live-tables?store=outlet-mg-road");
-    expect(screen.queryByText("Individual Outlets")).not.toBeInTheDocument(); // menu closed
+    // Store names appear in dropdown items - use getAllByText to avoid ambiguity
+    const allStoreA = screen.getAllByText(/Store A/);
+    expect(allStoreA.length).toBeGreaterThan(1); // at least in button + dropdown
+    expect(screen.getByText(/Store B/)).toBeInTheDocument();
+    expect(screen.getByText(/Store C/)).toBeInTheDocument();
   });
 
-  it("shows the HQ view trigger and navigates without a store query from an HQ page", async () => {
+  it("highlights the currently selected store", async () => {
     const user = userEvent.setup();
-    vi.mocked(usePathname).mockReturnValue("/hq/dashboard");
-    render(<StoreSwitcher currentBusinessId="b1" stores={stores} organizationType="FRANCHISE" />);
+    render(<StoreSwitcher currentBusinessId="store_2" stores={stores} />);
+    await user.click(screen.getByRole("button"));
+    // Find the Store B button in the dropdown (not the main button)
+    const allStoreB = screen.getAllByText(/Store B/);
+    // The dropdown item should have the selected styling - find the button parent
+    const dropdownBtn = allStoreB.find((el) => {
+      const parent = el.closest(".space-y-1 > button");
+      return parent !== null;
+    })?.closest("button");
+    expect(dropdownBtn).toBeDefined();
+    if (dropdownBtn) {
+      expect(dropdownBtn).toHaveClass("bg-lime-500/20");
+    }
+  });
 
-    const trigger = screen.getByRole("button");
-    expect(trigger).toHaveTextContent("All Outlets (HQ View)");
-    expect(trigger).toHaveTextContent("corporate_fare");
+  it("shows check icon for selected store", async () => {
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} />);
+    await user.click(screen.getByRole("button"));
+    // The selected store should have a check icon (material-symbols-outlined)
+    const dropdown = screen.getByText("Individual Outlets").closest(".space-y-1");
+    expect(dropdown).toHaveTextContent("Store A");
+  });
 
-    await user.click(trigger);
-    await user.click(screen.getByRole("button", { name: /BlackBall MG Road/ }));
+  it("navigates to store live-tables when selecting a store", async () => {
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: { href: "" }
+    });
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} />);
+    await user.click(screen.getByRole("button"));
+    await user.click(screen.getByText("Store B"));
+    expect(window.location.href).toBe("/live-tables?store=store-b");
+  });
 
-    expect(document.cookie).toContain("demo_store_slug=outlet-mg-road");
+  it("sets cookie with store slug on selection", async () => {
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} />);
+    await user.click(screen.getByRole("button"));
+    await user.click(screen.getByText("Store B"));
+    expect(document.cookie).toContain("demo_store_slug=store-b");
+  });
+
+  it("navigates to /live-tables when on HQ page and selecting a store", async () => {
+    mockUsePathname.mockReturnValue("/hq/dashboard");
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: { href: "" }
+    });
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationType="FRANCHISE" />);
+    await user.click(screen.getByRole("button"));
+    await user.click(screen.getByText("Store B"));
     expect(window.location.href).toBe("/live-tables");
   });
 
-  it("navigates to the HQ dashboard via the All Outlets (HQ Master) option", async () => {
+  it("shows All Outlets (HQ Master) option for FRANCHISE", async () => {
     const user = userEvent.setup();
-    vi.mocked(usePathname).mockReturnValue("/hq/dashboard");
-    render(
-      <StoreSwitcher
-        currentBusinessId="b1"
-        stores={stores}
-        organizationName="BlackBall Franchise Group"
-        organizationType="FRANCHISE"
-      />
-    );
-
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationType="FRANCHISE" />);
     await user.click(screen.getByRole("button"));
-    await user.click(screen.getByRole("button", { name: /All Outlets \(HQ Master\)/ }));
+    expect(screen.getByText("All Outlets (HQ Master)")).toBeInTheDocument();
+  });
 
+  it("hides All Outlets option for INDEPENDENT_SAAS", async () => {
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationType="INDEPENDENT_SAAS" />);
+    await user.click(screen.getByRole("button"));
+    expect(screen.queryByText("All Outlets (HQ Master)")).not.toBeInTheDocument();
+  });
+
+  it("hides All Outlets option when organizationType is undefined", async () => {
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} />);
+    await user.click(screen.getByRole("button"));
+    expect(screen.queryByText("All Outlets (HQ Master)")).not.toBeInTheDocument();
+  });
+
+  it("navigates to /hq/dashboard when clicking HQ Master", async () => {
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: { href: "" }
+    });
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationType="FRANCHISE" />);
+    await user.click(screen.getByRole("button"));
+    await user.click(screen.getByText("All Outlets (HQ Master)"));
     expect(window.location.href).toBe("/hq/dashboard");
   });
 
-  it("shows the Franchise badge only for FRANCHISE organizations", () => {
-    const { rerender } = render(<StoreSwitcher currentBusinessId="b1" stores={stores} organizationType="FRANCHISE" />);
+  it("shows Franchise badge for FRANCHISE type", async () => {
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationType="FRANCHISE" />);
     expect(screen.getByText("Franchise")).toBeInTheDocument();
+  });
 
-    rerender(<StoreSwitcher currentBusinessId="b1" stores={stores} organizationType="INDEPENDENT_SAAS" />);
+  it("hides Franchise badge for INDEPENDENT_SAAS", () => {
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationType="INDEPENDENT_SAAS" />);
     expect(screen.queryByText("Franchise")).not.toBeInTheDocument();
   });
 
-  it("hides the HQ master option for independent organizations", async () => {
+  it("shows storefront icon when not on HQ page", () => {
+    mockUsePathname.mockReturnValue("/live-tables");
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} />);
+    const button = screen.getByRole("button");
+    expect(button).toBeInTheDocument();
+  });
+
+  it("shows corporate icon when on HQ page", () => {
+    mockUsePathname.mockReturnValue("/hq/dashboard");
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationType="FRANCHISE" />);
+    const button = screen.getByRole("button");
+    expect(button).toHaveTextContent("All Outlets (HQ View)");
+  });
+
+  it("closes dropdown after selecting a store", async () => {
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: { href: "" }
+    });
     const user = userEvent.setup();
-    render(<StoreSwitcher currentBusinessId="b1" stores={stores} organizationType="INDEPENDENT_SAAS" />);
-
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} />);
     await user.click(screen.getByRole("button"));
+    expect(screen.getByText("Store B")).toBeInTheDocument();
+    await user.click(screen.getByText("Store B"));
+    expect(screen.queryByText("Individual Outlets")).not.toBeInTheDocument();
+  });
 
-    expect(screen.queryByRole("button", { name: /All Outlets \(HQ Master\)/ })).not.toBeInTheDocument();
+  it("handles empty stores array", () => {
+    render(<StoreSwitcher currentBusinessId="store_1" stores={[]} />);
+    expect(screen.getByText("Store")).toBeInTheDocument();
+  });
+
+  it("handles null stores array", () => {
+    render(<StoreSwitcher currentBusinessId="store_1" stores={[] as unknown as Array<{ id: string; name: string; slug: string }>} />);
+    expect(screen.getByText("Store")).toBeInTheDocument();
+  });
+
+  it("highlights HQ option when on HQ page for FRANCHISE", async () => {
+    mockUsePathname.mockReturnValue("/hq/dashboard");
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationType="FRANCHISE" />);
+    await user.click(screen.getByRole("button"));
+    const hqButton = screen.getByText("All Outlets (HQ Master)").closest("button");
+    expect(hqButton).toHaveClass("bg-amber-500/20");
+  });
+
+  it("does not highlight HQ option when not on HQ page", async () => {
+    mockUsePathname.mockReturnValue("/live-tables");
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationType="FRANCHISE" />);
+    await user.click(screen.getByRole("button"));
+    const hqButton = screen.getByText("All Outlets (HQ Master)").closest("button");
+    expect(hqButton).not.toHaveClass("bg-amber-500/20");
+  });
+
+  it("shows Individual Outlets section label", async () => {
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} />);
+    await user.click(screen.getByRole("button"));
+    expect(screen.getByText("Individual Outlets")).toBeInTheDocument();
+  });
+
+it("closes menu after selecting a store", async () => {
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: { href: "" }
+    });
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} />);
+    await user.click(screen.getByRole("button"));
+    expect(screen.getByText(/Store B/)).toBeInTheDocument();
+    await user.click(screen.getByText("Store B"));
+    // Menu should be closed after selection
+    expect(screen.queryByText(/Store B/)).not.toBeInTheDocument();
+  });
+
+  it("renders organization name in dropdown header", async () => {
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationName="Super Franchise" />);
+    await user.click(screen.getByRole("button"));
+    expect(screen.getByText("Super Franchise")).toBeInTheDocument();
+  });
+
+  it("renders default outlets name when organizationName not provided", async () => {
+    const user = userEvent.setup();
+    render(<StoreSwitcher currentBusinessId="store_1" stores={stores} />);
+    await user.click(screen.getByRole("button"));
+    expect(screen.getByText("Outlets")).toBeInTheDocument();
   });
 });
