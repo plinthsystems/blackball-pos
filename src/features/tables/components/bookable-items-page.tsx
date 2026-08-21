@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, textInputProps } from "@/components/ui/field";
-import { useToast } from "@/components/ui/toast";
+import { Snackbar } from "@/components/ui/snackbar";
 import { formatMoney } from "@/lib/money";
 import { createBookableItemAction, setBookableItemActiveAction, updateBookableItemAction } from "../actions";
 import { GAME_TYPE_LABELS, STATUS_LABELS, gameTypeIcon, pricingGroupLabel, pricingGroupOptions } from "../pricing-groups";
@@ -15,7 +15,7 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
   const [number, setNumber] = useState("");
   const [gameType, setGameType] = useState<BookableGameType>("POOL");
   const [pricingGroup, setPricingGroup] = useState("standard");
-  const toast = useToast();
+  const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const activeCount = items.filter((item) => item.active).length;
@@ -23,7 +23,7 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
   function addItem() {
     startTransition(async () => {
       const result = await createBookableItemAction({ number, gameType, pricingGroup });
-      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
+      setMessage(result.message);
       if (result.ok) {
         setNumber("");
       }
@@ -58,13 +58,7 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
         </p>
       </div>
 
-      <form
-        className="grid gap-3 rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material md:grid-cols-[1fr_200px_200px_auto]"
-        onSubmit={(event) => {
-          event.preventDefault();
-          addItem();
-        }}
-      >
+      <div className="grid gap-3 rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material md:grid-cols-[1fr_200px_200px_auto]">
         <Field label="Item name">
           <input
             {...textInputProps()}
@@ -104,11 +98,11 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
           </select>
         </Field>
         <div className="flex items-end">
-          <Button type="submit" variant="primary" disabled={isPending || !number.trim()}>
+          <Button type="button" variant="primary" disabled={isPending || !number.trim()} onClick={addItem}>
             Add item
           </Button>
         </div>
-      </form>
+      </div>
 
       {items.length > 0 ? (
         <div>
@@ -123,12 +117,7 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
               <span>Actions</span>
             </div>
             {items.map((item) => (
-              <BookableItemRow
-                key={item.id}
-                item={item}
-                isPending={isPending}
-                onChanged={(result) => toast.show({ message: result.message, tone: result.ok ? "success" : "danger" })}
-              />
+              <BookableItemRow key={item.id} item={item} isPending={isPending} onChanged={(result) => setMessage(result.message)} />
             ))}
             <div className="grid gap-3 border-t border-lime-300/10 px-4 py-3 text-xs text-slate-500 md:grid-cols-[1fr_150px_140px_110px_120px_160px]">
               <span>Items shown here are addable by customers on the public booking page.</span>
@@ -136,6 +125,8 @@ export function BookableItemsPage({ items, businessName }: { items: BookableItem
           </div>
         </div>
       ) : null}
+
+      <Snackbar message={message} tone={message?.includes("could not") ? "danger" : "success"} />
     </section>
   );
 }
@@ -166,13 +157,7 @@ function BookableItemRow({
   const statusTone = item.status === "AVAILABLE" ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-amber-500/15 text-amber-300 border-amber-500/30";
 
   return (
-    <form
-      className={`grid gap-3 border-b border-lime-300/10 px-4 py-3 text-sm text-slate-200 last:border-b-0 md:grid-cols-[1fr_150px_140px_110px_120px_160px] md:items-center ${item.active ? "" : "opacity-60"}`}
-      onSubmit={(event) => {
-        event.preventDefault();
-        save();
-      }}
-    >
+    <div className={`grid gap-3 border-b border-lime-300/10 px-4 py-3 text-sm text-slate-200 last:border-b-0 md:grid-cols-[1fr_150px_140px_110px_120px_160px] md:items-center ${item.active ? "" : "opacity-60"}`}>
       <input {...textInputProps()} aria-label={`Name for ${item.number}`} value={number} onChange={(event) => setNumber(event.target.value)} disabled={!item.active} />
       <select
         className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-3 text-sm text-slate-100"
@@ -217,13 +202,13 @@ function BookableItemRow({
         </span>
       </span>
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" className="h-9 px-3" disabled={isPending || !item.active || !number.trim()}>
+        <Button type="button" className="h-9 px-3" disabled={isPending || !item.active || !number.trim()} onClick={save}>
           Save
         </Button>
         <Button type="button" variant="ghost" className="h-9 px-3" disabled={isPending} onClick={toggleActive}>
           {item.active ? "Remove" : "Restore"}
         </Button>
       </div>
-    </form>
+    </div>
   );
 }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { extendSessionAction } from "@/features/live-tables/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/toast";
+import { Snackbar } from "@/components/ui/snackbar";
 
 export function ExtendSessionDialog({
   sessionId,
@@ -19,13 +19,13 @@ export function ExtendSessionDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const toast = useToast();
+  const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function extend(addedMinutes: 30 | 60) {
     startTransition(async () => {
       const result = await extendSessionAction({ sessionId, addedMinutes });
-      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
+      setMessage(result.message);
       if (result.ok) {
         onOpenChange(false);
         router.refresh();
@@ -44,6 +44,7 @@ export function ExtendSessionDialog({
           </div>
         </div>
       </Dialog>
+      <Snackbar message={message} tone={message === "Session extended." ? "success" : "danger"} />
     </>
   );
 }

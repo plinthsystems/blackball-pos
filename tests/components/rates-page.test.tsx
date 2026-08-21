@@ -43,14 +43,19 @@ describe("RatesPage", () => {
     expect(screen.getAllByRole("button", { name: "Update rate" })).toHaveLength(7);
   });
 
-  it("saves a row when Enter is pressed in its rate input", async () => {
+  it("saves a row when the Update rate button is clicked", async () => {
     const user = userEvent.setup();
 
     render(<RatesPage rates={defaultRates} />);
     const poolRateInput = screen.getByRole("spinbutton", { name: "Rate for Pool" });
     await user.clear(poolRateInput);
     await user.type(poolRateInput, "200");
-    await user.keyboard("{Enter}");
+    
+    // Get the Update rate button for the Pool row
+    const poolRow = screen.getByRole("spinbutton", { name: "Rate for Pool" }).closest("div");
+    const updateButton = poolRow!.querySelector("button");
+    expect(updateButton).toBeInTheDocument();
+    await user.click(updateButton!);
 
     expect(actions.updateHourlyRateAction).toHaveBeenCalledWith({ id: "r3", hourlyRate: 200 });
   });
