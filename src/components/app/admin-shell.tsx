@@ -113,18 +113,20 @@ export function AdminShell({
               <Link
                 href="/change-password"
                 title="Change password"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-300 hover:border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-300 transition"
+className="flex h-8 items-center gap-1.5 rounded-material border border-slate-700 bg-slate-900 px-2.5 text-xs font-bold text-slate-300 hover:border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-300 transition"
+
               >
                 <span className="material-symbols-outlined text-[16px]">lock</span>
                 <span>Password</span>
               </Link>
-              <button
+<Button
+                type="button"
                 onClick={async () => {
                   await fetch("/api/auth/logout", { method: "POST" });
                   window.location.href = "/login";
                 }}
                 title="Sign Out"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-300 hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-300 transition"
+                className="flex h-8 items-center gap-1.5 rounded-material border border-slate-700 bg-slate-900 px-2.5 text-xs text-slate-300 hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-300 transition"
               >
                 <span className="material-symbols-outlined text-[16px]">logout</span>
                 <span className="hidden sm:inline">Logout</span>

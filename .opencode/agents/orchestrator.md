@@ -58,8 +58,34 @@ Each task group gets its own git worktree + branch (`wt/<name>`), so workers can
 - Run relevant tests for each issue area; only run `npm run test:e2e` when a group plausibly touched UI flows.
 - If failures trace to a worker's change, fix them in the main tree and commit (or hand off to a `worker`/`general` in a new worktree if it's non-trivial).
 
-### 8. Report
-Finish with a per-issue table: issue → worktree/branch → PR URL → commits → test status → merge status (pending/merged by user).
+### 8. Report (MANDATORY FORMAT)
+For EACH PR created, report using this EXACT format:
+
+```
+🔗 PR #[number] — [title]
+URL: https://github.com/[repo]/pull/[number]
+
+📝 Description:
+- What changed: [1-2 lines]
+- Why: [1 line]
+- Files touched: [list]
+
+🔗 Dependencies:
+- [List any PRs that must be merged FIRST, or "None"]
+
+✅ Gate: typecheck [PASS/FAIL] | tests [PASS/FAIL] ([N] tests)
+📊 Status: PENDING MERGE (user must merge on GitHub)
+```
+
+At the end, provide a summary table:
+| PR # | Title | Dependencies | Gate | Status |
+|---|---|---|---|---|
+| #[n] | [title] | [dep1, dep2 or "None"] | ✅✅ | ⏳ Pending |
+
+### 9. Verify the merged result
+- After EACH PR is merged by user: verify with `npm run typecheck` and `npm test` in MAIN tree.
+- Run relevant tests for each issue area; only run `npm run test:e2e` when a group plausibly touched UI flows.
+- If failures trace to a worker's change, fix them in the main tree and commit (or hand off to a `worker`/`general` in a new worktree if it's non-trivial).
 
 ## Hard rules
 - NEVER auto-merge PRs — user merges manually on GitHub

@@ -3,7 +3,6 @@
 import nodeCrypto from "crypto";
 import { GameType, Prisma, ProductCategory } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
@@ -11,10 +10,6 @@ import { hashPassword } from "@/server/auth/auth-service";
 import { prisma } from "@/server/db/prisma";
 
 const defaultPasswordHash = hashPassword("Password@123");
-
-function generateOneTimePassword(): string {
-  return nodeCrypto.randomBytes(9).toString("base64url");
-}
 
 const saasSchema = z.object({
   organizationName: z.string().trim().min(2),
@@ -36,6 +31,7 @@ const franchiseSchema = z.object({
 const operationalPermissions = [
   "dashboard.read",
   "tables.read",
+  "tables.manage",
   "tables.update_status",
   "sessions.start",
   "sessions.pause",
@@ -46,7 +42,8 @@ const operationalPermissions = [
   "bills.manage",
   "products.manage",
   "rates.manage",
-  "settings.update"
+  "settings.update",
+  "bookings.manage"
 ];
 
 const staffPermissions = [
@@ -91,12 +88,12 @@ export async function createSaasSetupAction(formData: FormData) {
       staffEmail: input.staffEmail || undefined,
       franchiseeId: null
     });
-    createdBusinessSlug = business.business.slug;
+    createdBusinessSlug = business.slug;
 
     await createSubscription(tx, {
-      id: `subscription-${business.business.slug}`,
+      id: `subscription-${business.slug}`,
       organizationId: organization.id,
-      businessId: business.business.id,
+      businessId: business.id,
       planId: input.planId,
       outletLimit: 1
     });
@@ -105,11 +102,12 @@ export async function createSaasSetupAction(formData: FormData) {
     await cookieStore.set(
       "provision_otps",
       JSON.stringify({
-        [business.business.slug]: {
+[business.slug]: {
           ownerEmail: input.ownerEmail,
-          ownerPassword: business.ownerPassword,
+          ownerPassword,
           staffEmail: input.staffEmail || null,
-          staffPassword: business.staffPassword
+          staffPassword
+        }
         }
       }),
       {
@@ -172,35 +170,15 @@ export async function createFranchiseSetupAction(formData: FormData) {
       ownerEmail: input.ownerEmail,
       ownerName: `${input.franchiseeName} Owner`
     });
-    createdBusinessSlug = business.business.slug;
+    createdBusinessSlug = business.slug;
 
     await createSubscription(tx, {
-      id: `subscription-${business.business.slug}`,
+      id: `subscription-${business.slug}`,
       organizationId: organization.id,
       franchiseeId: franchisee.id,
       planId: input.planId,
       outletLimit: 1
     });
-
-    const cookieStore = await cookies();
-    await cookieStore.set(
-      "provision_otps",
-      JSON.stringify({
-        [business.business.slug]: {
-          ownerEmail: input.ownerEmail,
-          ownerPassword: business.ownerPassword,
-          staffEmail: null,
-          staffPassword: null
-        }
-      }),
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 30 * 60
-      }
-    );
 
     await tx.royaltyRule.upsert({
       where: { id: `royalty-${franchisee.id}` },
@@ -306,11 +284,7 @@ async function createOperationalOutlet(db: SetupDb, input: {
   });
   await seedDefaultOutletCatalog(db, business.id);
 
-  return {
-    business,
-    ownerPassword,
-    staffPassword
-  };
+return { business, ownerPassword, staffPassword };
 }
 
 async function seedOutletRolesAndAccounts(db: SetupDb, input: {
@@ -320,8 +294,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
   ownerEmail: string;
   ownerName: string;
   staffEmail?: string;
-}) {
-  const ownerPassword = generateOneTimePassword();
+}): Promise<{ ownerPassword: string; staffPassword: string | null }> {
   await Promise.all(
     [...new Set([...operationalPermissions, ...staffPermissions])].map((key) =>
       db.permission.upsert({ where: { key }, update: {}, create: { key } })
@@ -352,7 +325,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: input.ownerName,
       email: input.ownerEmail.toLowerCase(),
-      passwordHash: hashPassword(ownerPassword),
+passwordHash: hashPassword(ownerPassword),
       accountType: "STORE_OWNER",
       active: true,
       mustChangePassword: true
@@ -402,7 +375,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       franchiseeId: input.franchiseeId,
       name: "Floor Staff",
       email: input.staffEmail.toLowerCase(),
-      passwordHash: hashPassword(staffPassword),
+passwordHash: hashPassword(staffPassword),
       accountType: "STORE_USER",
       active: true,
       mustChangePassword: true
@@ -426,15 +399,6 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
 }
 
 async function seedDefaultOutletCatalog(db: SetupDb, businessId: string) {
-  const tables = [
-    { number: "Royal Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "royal" },
-    { number: "Royal Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "royal" },
-    { number: "Mini Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "mini" },
-    { number: "Mini Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "mini" },
-    { number: "Pool Table 1", gameType: GameType.POOL, pricingGroup: "standard" },
-    { number: "PS5 1", gameType: GameType.PS5, pricingGroup: "players-2" },
-    { number: "PS5 2", gameType: GameType.PS5, pricingGroup: "players-4" }
-  ];
   const pricing = [
     { gameType: GameType.SNOOKER, pricingGroup: "royal", durationMinutes: 60, priceAmount: "350.00" },
     { gameType: GameType.SNOOKER, pricingGroup: "mini", durationMinutes: 60, priceAmount: "330.00" },
@@ -451,16 +415,6 @@ async function seedDefaultOutletCatalog(db: SetupDb, businessId: string) {
     { id: `product-${businessId}-classic-cigarette`, name: "Classic Cigarette", category: ProductCategory.CIGARETTES, priceAmount: "20.00" },
     { id: `product-${businessId}-cold-coffee`, name: "Cold Coffee", category: ProductCategory.BEVERAGES, priceAmount: "120.00" }
   ];
-
-  await Promise.all(
-    tables.map((table) =>
-      db.clubTable.upsert({
-        where: { businessId_number: { businessId, number: table.number } },
-        update: { gameType: table.gameType, pricingGroup: table.pricingGroup, status: "AVAILABLE" },
-        create: { businessId, ...table }
-      })
-    )
-  );
 
   await Promise.all(
     pricing.map((rule) =>
