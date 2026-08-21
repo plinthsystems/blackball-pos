@@ -354,8 +354,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       email: input.ownerEmail.toLowerCase(),
       passwordHash: hashPassword(ownerPassword),
       accountType: "STORE_OWNER",
-      active: true,
-      mustChangePassword: true
+      active: true
     },
     create: {
       id: `user-owner-${input.businessId}`,
@@ -367,7 +366,6 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       passwordHash: hashPassword(ownerPassword),
       accountType: "STORE_OWNER",
       active: true,
-      mustChangePassword: true,
       roles: { create: { roleId: ownerRole.id } }
     }
   });
@@ -404,8 +402,7 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       email: input.staffEmail.toLowerCase(),
       passwordHash: hashPassword(staffPassword),
       accountType: "STORE_USER",
-      active: true,
-      mustChangePassword: true
+      active: true
     },
     create: {
       id: `user-staff-${input.businessId}`,
@@ -417,7 +414,6 @@ async function seedOutletRolesAndAccounts(db: SetupDb, input: {
       passwordHash: hashPassword(staffPassword),
       accountType: "STORE_USER",
       active: true,
-      mustChangePassword: true,
       roles: { create: { roleId: staffRole.id } }
     }
   });
