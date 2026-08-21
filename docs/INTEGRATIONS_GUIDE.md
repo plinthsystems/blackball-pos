@@ -1,10 +1,10 @@
 # Integrations Guide (Razorpay · Stripe · WhatsApp)
 
 This guide explains how to set up the third-party integrations used by the
-customer online booking flow. **Every integration is disabled by default.**
-Until you add the required secret keys to your environment, the system
-simply skips that integration (payments fall back to "pay at the counter",
-WhatsApp messages are not sent). A missing key never breaks an integration.
+customer online booking flow. **Every integration is disabled by default** —
+until you add the required secret keys to your environment, the system simply
+skips that integration (payments fall back to "pay at the counter", WhatsApp
+messages are not sent). No integration is ever broken by a missing key.
 
 ---
 
@@ -153,7 +153,7 @@ served by the app itself (`/qr/book/<slug>`), so `APP_BASE_URL` must point to a
 publicly reachable URL for the image to load inside WhatsApp.
 
 **Live floor share:** staff open **Live Floor → "Booking QR"** to display the QR,
-download it as PNG, print it, or copy the link — no integration required,
+ebook download it as PNG, print it, or copy the link — no integration required,
 works for every store.
 
 ---

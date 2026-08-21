@@ -1,5 +1,5 @@
 ---
-description: Plans multi-issue work, delegates to isolated git worktrees, merges and verifies automatically. Use when the user hands you multiple issues/tasks at once.
+description: Plans multi-issue work, delegates to isolated git worktrees, creates conflict-free PRs for user to merge manually. Use when the user hands you multiple issues/tasks at once.
 mode: primary
 permission:
   edit: allow
@@ -39,19 +39,32 @@ Each task group gets its own git worktree + branch (`wt/<name>`), so workers can
 ### 5. Verify worker output
 - After all workers finish: `./.opencode/wt.sh status <name>` must be clean, and each branch must contain at least one new commit (`git log main.wt/<name>`... use `git -C <wt> log --oneline`).
 
-### 6. Merge (sequential, you resolve conflicts)
-- For each group in dependency order (fewest overlapping files first): `./.opencode/wt.sh merge <name>`.
-- If it exits 4 (conflict): the merge stopped mid-way with conflict markers in the MAIN tree. Resolve them yourself with `edit` on the conflicting files (read both sides, keep the correct semantics), then `git add` the files and `git commit` (this completes the merge commit). If resolving is genuinely ambiguous or would lose work, STOP and report to the user — do not guess destructively.
-- After each merge: you may remove the branch with `./.opencode/wt.sh cleanup <name>` once the user has seen the summary, or keep it for review.
+### 6. Create PRs (DO NOT auto-merge)
+- For EACH worktree, create a SEPARATE PR (never merge all worktrees into one PR).
+- BEFORE creating each PR:
+  - `git fetch origin main` to get latest main
+  - Create a reconciliation branch: `git switch -c pr/<worktree-name> origin/main`
+  - Merge the worktree branch into it: `git merge wt/<worktree-name>`
+  - Resolve any conflicts (prefer worktree side for feature code, main side for infra/tooling)
+  - Run gate: `npm run typecheck && npm test` (unit/components only, DB-free)
+  - If gate fails: fix conflicts or ask user — do not proceed
+  - Push: `git push -u origin pr/<worktree-name>`
+  - Create PR: `gh pr create --base main --head pr/<worktree-name> --title "..." --body "..."`
+- NEVER auto-merge any PR. Report PR URL to user and wait for their manual merge.
+- After user confirms merge, clean up remote branch: `git push origin --delete pr/<name>`
 
 ### 7. Verify the merged result
-- Run `npm run typecheck` and `npm test` in the MAIN tree. If failures trace to a worker's change, fix them in the main tree and commit (or hand off to a `worker`/`general` in a new worktree if it's non-trivial).
+- After EACH PR is merged by user: verify with `npm run typecheck` and `npm test` in MAIN tree.
 - Run relevant tests for each issue area; only run `npm run test:e2e` when a group plausibly touched UI flows.
+- If failures trace to a worker's change, fix them in the main tree and commit (or hand off to a `worker`/`general` in a new worktree if it's non-trivial).
 
 ### 8. Report
-Finish with a per-issue table: issue → worktree/branch → commits → test status → done/failed.
+Finish with a per-issue table: issue → worktree/branch → PR URL → commits → test status → merge status (pending/merged by user).
 
 ## Hard rules
+- NEVER auto-merge PRs — user merges manually on GitHub
+- NEVER integrate all worktrees together — each gets its own PR
+- ALWAYS fetch latest main and reconcile before creating PR (to avoid merge conflicts for user)
 - never push, pull, force-push, or change branches of the main tree except in step 6 (orchestration only)
 - never touch the user's uncommitted files in the main tree
 - never run two workers on the same worktree

@@ -1,9 +1,6 @@
 # Multi-Tenancy & Developer Testing Setup Guide
 
-This document explains the testing setup, the multi-tenant architecture,
-and the pre-configured demo accounts. It also covers the 1-click Magic
-Login tools for fast developer iteration, QA testing, and stakeholder
-walkthroughs.
+This document explains the testing setup, multi-tenant architecture, pre-configured demo accounts, and 1-click Magic Login tools created for fast developer iteration, QA testing, and stakeholder walkthroughs.
 
 ---
 
