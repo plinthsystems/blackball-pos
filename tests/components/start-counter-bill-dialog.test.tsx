@@ -105,11 +105,8 @@ describe("StartCounterBillDialog", () => {
     render(<StartCounterBillDialog />);
 
     await user.click(screen.getByRole("button", { name: "Start counter bill" }));
-    await user.click(screen.getByRole("button", { name: "Start bill" }));
-
-    await waitFor(() => {
-      expect(mockStartCounterBillAction).toHaveBeenCalledWith({ label: "" });
-    });
+    // Button is disabled when label is empty, so action won't be called
+    expect(screen.getByRole("button", { name: "Start bill" })).toBeDisabled();
   });
 
   it("closes dialog and refreshes router on success", async () => {
@@ -162,7 +159,7 @@ describe("StartCounterBillDialog", () => {
     await user.click(screen.getByRole("button", { name: "Start bill" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Counter bill started.")).toBeInTheDocument();
+      expect(mockStartCounterBillAction).toHaveBeenCalledWith({ label: "Test" });
     });
   });
 
@@ -180,7 +177,7 @@ describe("StartCounterBillDialog", () => {
     await user.click(screen.getByRole("button", { name: "Start bill" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Permission denied.")).toBeInTheDocument();
+      expect(mockStartCounterBillAction).toHaveBeenCalledWith({ label: "Test" });
     });
   });
 

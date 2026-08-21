@@ -40,6 +40,8 @@ next-env.d.ts
 
 # tmp_screenshots
 .tmp_screenshots
+.test-results/
+.vscode/
 .worktrees/
 docs/handbook
 src/app/docs

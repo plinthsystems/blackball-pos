@@ -15,6 +15,12 @@ vi.mock("marked", () => {
   };
 });
 
+// Mock scrollTo on HTMLElement
+Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+  writable: true,
+  value: vi.fn()
+});
+
 import { DocsViewer } from "@/features/docs/docs-viewer";
 
 const docs = [
