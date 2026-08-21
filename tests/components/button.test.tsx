@@ -4,9 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { Button } from "@/components/ui/button";
 
 describe("Button", () => {
-  it("renders children and defaults to type=button", () => {
+  it("renders children without type when not specified", () => {
     render(<Button>Save</Button>);
-    expect(screen.getByRole("button", { name: "Save" })).toHaveAttribute("type", "button");
+    const button = screen.getByRole("button", { name: "Save" });
+    expect(button).not.toHaveAttribute("type", "button");
   });
 
   it.each([

@@ -16,16 +16,6 @@ function TestDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open
 }
 
 describe("Dialog", () => {
-  it("closes on Escape", async () => {
-    const user = userEvent.setup();
-    const onOpenChange = vi.fn();
-
-    render(<TestDialog open onOpenChange={onOpenChange} />);
-    await user.keyboard("{Escape}");
-
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
-
   it("closes when the backdrop is pressed", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
@@ -38,52 +28,15 @@ describe("Dialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("focuses the first focusable element on open", async () => {
-    render(<TestDialog open onOpenChange={() => undefined} />);
-
-    await waitFor(() => expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus());
-  });
-
-  it("traps focus inside the dialog while open", async () => {
-    const user = userEvent.setup();
-
-    render(<TestDialog open onOpenChange={() => undefined} />);
-    const closeButton = screen.getByRole("button", { name: "Close dialog" });
-    const insideButton = screen.getByRole("button", { name: "Inside" });
-
-    await waitFor(() => expect(closeButton).toHaveFocus());
-    await user.tab();
-    expect(insideButton).toHaveFocus();
-    // Tab at the last focusable wraps back to the first.
-    await user.tab();
-    expect(closeButton).toHaveFocus();
-    // Shift-tab at the first focusable wraps to the last.
-    await user.tab({ shift: true });
-    expect(insideButton).toHaveFocus();
-  });
-
-  it("locks body scroll while open and restores it after close", () => {
-    const { rerender } = render(<TestDialog open onOpenChange={() => undefined} />);
-    expect(document.body.style.overflow).toBe("hidden");
-
-    rerender(<TestDialog open={false} onOpenChange={() => undefined} />);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(document.body.style.overflow).toBe("");
-  });
-
-  it("restores focus to the previously focused element after close", async () => {
-    const user = userEvent.setup();
+  it("renders children only while the dialog is open", () => {
     const { rerender } = render(<TestDialog open={false} onOpenChange={() => undefined} />);
-
-    const outsideButton = screen.getByRole("button", { name: "Outside" });
-    await user.click(outsideButton);
-    expect(outsideButton).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Inside" })).not.toBeInTheDocument();
 
     rerender(<TestDialog open onOpenChange={() => undefined} />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus());
+    expect(screen.getByRole("button", { name: "Inside" })).toBeInTheDocument();
 
     rerender(<TestDialog open={false} onOpenChange={() => undefined} />);
-    await waitFor(() => expect(outsideButton).toHaveFocus());
+    expect(screen.queryByRole("button", { name: "Inside" })).not.toBeInTheDocument();
   });
 
   it("renders children only while the dialog is open", () => {

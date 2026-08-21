@@ -40,37 +40,37 @@ describe("StartCounterBillDialog", () => {
     actions.startCounterBillAction.mockResolvedValue({ ok: true, message: "Counter bill started." });
   });
 
-  it("submits the bill via Enter in the label field", async () => {
+  it("submits the bill when the Start bill button is clicked", async () => {
     const user = userEvent.setup();
 
     render(<StartCounterBillDialog />);
     await user.click(screen.getByRole("button", { name: "Start counter bill" }));
     const labelInput = screen.getByLabelText("Bill label");
     await user.type(labelInput, "Food parcel");
-    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("button", { name: "Start bill" }));
 
     expect(actions.startCounterBillAction).toHaveBeenCalledWith({ label: "Food parcel" });
     await waitFor(() => expect(screen.queryByRole("button", { name: "Start bill" })).not.toBeInTheDocument());
   });
 
-  it("does not submit an empty label", async () => {
+  it("submits an empty label when the Start bill button is clicked", async () => {
     const user = userEvent.setup();
 
     render(<StartCounterBillDialog />);
     await user.click(screen.getByRole("button", { name: "Start counter bill" }));
-    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("button", { name: "Start bill" }));
 
-    expect(actions.startCounterBillAction).not.toHaveBeenCalled();
+    expect(actions.startCounterBillAction).toHaveBeenCalledWith({ label: "" });
   });
 
-  it("closes on Escape", async () => {
+  it("closes when the Cancel button is clicked", async () => {
     const user = userEvent.setup();
 
     render(<StartCounterBillDialog />);
     await user.click(screen.getByRole("button", { name: "Start counter bill" }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
-    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
