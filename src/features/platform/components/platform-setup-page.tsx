@@ -403,7 +403,7 @@ function SuccessPanel(props: {
         {temporaryCredentials ? (
           <HandoffItem label="Access" value="Change password at first login" />
         ) : (
-          <HandoffItem label="Default password" value="Password@123" />
+          <HandoffItem label="Default password" value="Check email / temporary credential" />
         )}
         {outlet.franchisee ? <HandoffItem label="Franchisee" value={outlet.franchisee.name} /> : null}
       </div>
