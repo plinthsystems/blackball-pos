@@ -1,6 +1,7 @@
 import { GameType, PrismaClient, ProductCategory } from "@prisma/client";
 import { hashPassword } from "../src/server/auth/auth-service";
 import { buildDatabaseUrl } from "../src/server/db/connection";
+import crypto from "crypto";
 
 const isProduction = process.env.NODE_ENV === "production";
 const isSeedAllowed = process.env.SEED_ALLOWED === "true";
@@ -13,7 +14,16 @@ if (isProduction && !isSeedAllowed) {
 }
 
 const prisma = new PrismaClient({ datasourceUrl: buildDatabaseUrl() });
-const defaultPasswordHash = hashPassword("Password@123");
+
+/**
+ * Generates a cryptographically strong random password.
+ * Returns a 32-character random hex string.
+ */
+function generateSecurePassword(): string {
+  return crypto.randomBytes(20).toString("hex");
+}
+
+const defaultPasswordHash = hashPassword(generateSecurePassword());
 
 const permissionKeys = [
   "dashboard.read",

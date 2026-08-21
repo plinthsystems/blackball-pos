@@ -1,8 +1,20 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { createPlatformAdminAction } from "@/features/platform/actions/create-platform-admin-action";
-import { prisma } from "@/server/db/prisma";
 
-// Force redirect to throw in tests
+// Mock the entire prisma module before importing the action
+const mockOrgCreate = vi.fn();
+const mockEmployeeCreate = vi.fn();
+
+vi.mock("@/server/db/prisma", () => ({
+  prisma: {
+    $transaction: vi.fn(async (cb) => {
+      return cb({
+        organization: { create: mockOrgCreate },
+        employee: { create: mockEmployeeCreate }
+      });
+    })
+  }
+}));
+
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(() => { throw new Response(null, { status: 307 }); })
 }));
@@ -12,45 +24,37 @@ vi.mock("@/server/auth/auth-service", () => ({
 }));
 
 describe("createPlatformAdminAction", () => {
-  const mockOrgCreate = vi.fn();
-  const mockEmployeeCreate = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockOrgCreate.mockResolvedValue({ id: "org_1" });
     mockEmployeeCreate.mockResolvedValue({ id: "emp_1" });
-    
-    // Spy on prisma.$transaction to intercept calls
-    vi.spyOn(prisma, "$transaction").mockImplementation(async (cb) => {
-      return cb({
-        organization: { create: mockOrgCreate },
-        employee: { create: mockEmployeeCreate }
-      });
-    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("should fail with missing fields", async () => {
+  it("should redirect to setup on missing fields", async () => {
+    const { createPlatformAdminAction } = await import("@/features/platform/actions/create-platform-admin-action");
     const formData = new FormData();
     formData.set("name", "Admin");
     formData.set("email", "a@b.com");
     formData.set("password", "password123");
     formData.set("businessName", "");
 
-    const result = await createPlatformAdminAction(formData);
-    expect(result).toHaveProperty("error");
+    // redirect() throws in tests
+    await expect(createPlatformAdminAction(formData)).rejects.toThrow();
   });
 
   it("should create org and employee on success", async () => {
+    const { createPlatformAdminAction } = await import("@/features/platform/actions/create-platform-admin-action");
     const formData = new FormData();
     formData.set("name", "Test Admin");
     formData.set("email", "admin@test.com");
     formData.set("password", "SecurePass123!");
     formData.set("businessName", "Test Club");
 
+    // redirect() throws in tests, so we expect a throw after successful creation
     await expect(createPlatformAdminAction(formData)).rejects.toThrow();
 
     expect(mockOrgCreate).toHaveBeenCalledWith({
@@ -67,22 +71,25 @@ describe("createPlatformAdminAction", () => {
         email: "admin@test.com",
         passwordHash: "hashed_pass",
         accountType: "PLATFORM_ADMIN",
-        permissions: expect.any(Array),
         businessId: "org_1"
       })
     });
   });
 
-  it("should handle DB errors gracefully", async () => {
-    prisma.$transaction.mockRejectedValueOnce(new Error("DB Error"));
+  it("should redirect to setup on DB errors", async () => {
+    const { prisma } = await import("@/server/db/prisma");
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => {
+      throw new Error("DB Error");
+    });
 
+    const { createPlatformAdminAction } = await import("@/features/platform/actions/create-platform-admin-action");
     const formData = new FormData();
     formData.set("name", "Admin");
     formData.set("email", "admin@test.com");
     formData.set("password", "password123");
     formData.set("businessName", "Test");
 
-    const result = await createPlatformAdminAction(formData);
-    expect(result).toHaveProperty("error");
+    // redirect() throws in tests
+    await expect(createPlatformAdminAction(formData)).rejects.toThrow();
   });
 });

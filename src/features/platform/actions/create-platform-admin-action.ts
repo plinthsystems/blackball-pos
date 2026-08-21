@@ -4,18 +4,20 @@ import { redirect } from "next/navigation";
 import { hashPassword } from "@/server/auth/auth-service";
 import { prisma } from "@/server/db/prisma";
 
-export async function createPlatformAdminAction(formData: FormData) {
+export async function createPlatformAdminAction(formData: FormData): Promise<void> {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const businessName = formData.get("businessName") as string;
 
   if (!name || !email || !password || !businessName) {
-    return { error: "Sab fields required hain" };
+    redirect(`/setup?error=${encodeURIComponent("Sab fields required hain")}`);
   }
 
   try {
     // Transaction ensures atomic creation of Org + User
+    // Note: permissions are granted automatically by accountType "PLATFORM_ADMIN"
+    // in src/server/auth/current-employee.ts — no need to store them separately.
     await prisma.$transaction(async (tx) => {
       // 1. Create the Organization (The SaaS Store)
       const organization = await tx.organization.create({
@@ -37,28 +39,12 @@ export async function createPlatformAdminAction(formData: FormData) {
           name: name,
           businessId: organization.id,
           accountType: "PLATFORM_ADMIN",
-          permissions: [
-            "platform.setup.manage",
-            "platform.admin.manage",
-            "dashboard.read",
-            "dashboard.manage",
-            "tables.read",
-            "tables.manage",
-            "settings.update",
-            "rates.manage",
-            "products.manage",
-            "bookings.manage",
-            "bills.manage",
-            "sessions.start",
-            "sessions.end",
-          ],
         },
       });
     });
-
   } catch (error) {
     console.error("Setup failed:", error);
-    return { error: "Setup failed. Please try again." };
+    redirect(`/setup?error=${encodeURIComponent("Setup failed. Please try again.")}`);
   }
 
   redirect("/login");
