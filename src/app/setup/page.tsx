@@ -1,10 +1,56 @@
 import { prisma } from "@/server/db/prisma";
 import { redirect } from "next/navigation";
-import { createPlatformAdminAction } from "@/features/platform/actions/create-platform-admin-action";
 import { Button } from "@/components/ui/button";
+import { hashPassword } from "@/server/auth/auth-service";
 
-export default async function SetupPage() {
-  // Check if a platform has already been initialized
+async function createPlatformAdminAction(formData: FormData): Promise<void> {
+  "use server";
+
+  const name = formData.get("name") as string;
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+  const businessName = formData.get("businessName") as string;
+
+  if (!name || !email || !password || !businessName) {
+    redirect("/setup?error=All+fields+are+required");
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const organization = await tx.organization.create({
+        data: {
+          name: businessName,
+          slug: businessName
+            .toLowerCase()
+            .replace(/\s+/g, "-")
+            .replace(/[^a-z0-9-]/g, ""),
+          type: "INDEPENDENT_SAAS",
+        },
+      });
+
+      await tx.employee.create({
+        data: {
+          email: email,
+          passwordHash: hashPassword(password),
+          name: name,
+          accountType: "PLATFORM_ADMIN",
+        },
+      });
+    });
+  } catch (error) {
+    console.error("Setup failed:", error);
+    redirect("/setup?error=Setup+failed.+Please+try+again.");
+  }
+
+  redirect("/login");
+}
+
+export default async function SetupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const count = await prisma.organization.count();
   
   if (count > 0) {
@@ -24,6 +70,13 @@ export default async function SetupPage() {
             Create your first Super Admin account to start managing your club or franchise.
           </p>
         </div>
+
+        {/* Error Banner */}
+        {error && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+            <p>{decodeURIComponent(error)}</p>
+          </div>
+        )}
 
         {/* Setup Form */}
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">

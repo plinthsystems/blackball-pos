@@ -34,7 +34,7 @@ describe("SetupPage", () => {
   it("should redirect to /login if organizations already exist", async () => {
     mockPrisma.organization.count.mockResolvedValue(1);
 
-    await SetupPage();
+    await SetupPage({ searchParams: Promise.resolve({}) });
 
     expect(redirect).toHaveBeenCalledWith("/login");
   });
@@ -42,7 +42,7 @@ describe("SetupPage", () => {
   it("should render the form if no organizations exist", async () => {
     mockPrisma.organization.count.mockResolvedValue(0);
 
-    const result = await SetupPage();
+    const result = await SetupPage({ searchParams: Promise.resolve({}) });
 
     // If it didn't redirect, it should return JSX
     expect(redirect).not.toHaveBeenCalled();
