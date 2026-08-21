@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { hashPassword } from "@/server/auth/auth-service";
 
+export const dynamic = 'force-dynamic';
+
 async function createPlatformAdminAction(formData: FormData): Promise<void> {
   "use server";
 
