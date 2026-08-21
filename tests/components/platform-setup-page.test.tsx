@@ -64,7 +64,7 @@ describe("PlatformSaasSetupPage", () => {
     expect(screen.getByText("Cue Club Main is ready")).toBeInTheDocument();
     expect(screen.getByText("owner@cueclub.example")).toBeInTheDocument();
     expect(screen.getByText("staff@cueclub.example")).toBeInTheDocument();
-    expect(screen.getByText("Password@123")).toBeInTheDocument();
+    expect(screen.getByText("Check email / temporary credential")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Tenant Dashboard" })).toHaveAttribute("href", "/dashboard?store=cue-club-main");
     expect(screen.getByLabelText("Club or brand name")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create SaaS setup" })).toBeInTheDocument();
