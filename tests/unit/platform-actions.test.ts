@@ -30,7 +30,9 @@ const mocks = vi.hoisted(() => {
       product: model(),
       subscription: model(),
       franchisee: model(),
-      royaltyRule: model()
+      royaltyRule: model(),
+      clubTable: model(),
+      gamePricing: model()
     },
     context: vi.fn(),
     revalidatePath: vi.fn(),

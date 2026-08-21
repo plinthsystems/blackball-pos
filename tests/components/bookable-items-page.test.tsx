@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { BookableItemsPage } from "@/features/tables/components/bookable-items-page";
@@ -12,6 +12,15 @@ vi.mock("@/features/tables/actions", () => ({
   createBookableItemAction: vi.fn(),
   setBookableItemActiveAction: vi.fn(),
   updateBookableItemAction: vi.fn()
+}));
+
+vi.mock("@/components/ui/toast", () => ({
+  useToast: () => ({
+    show: vi.fn((input) => {
+      (global as any).__lastToast = input;
+    }),
+    dismiss: vi.fn()
+  })
 }));
 
 const sampleItems: BookableItem[] = [
@@ -45,9 +54,10 @@ const sampleItems: BookableItem[] = [
 ];
 
 describe("BookableItemsPage", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+beforeEach(() => {
+  vi.clearAllMocks();
+  (global as any).__lastToast = undefined;
+});
 
   it("renders heading and business name", () => {
     const { container } = render(<BookableItemsPage items={sampleItems} businessName="Royal Snooker Club" />);
@@ -218,7 +228,7 @@ describe("BookableItemsPage", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Add item" }));
 
-    expect(screen.getByText("Item added successfully")).toBeInTheDocument();
+    expect((global as any).__lastToast?.message).toBe("Item added successfully");
   });
 
   it("shows danger snackbar on failure", async () => {
@@ -235,7 +245,8 @@ describe("BookableItemsPage", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Add item" }));
 
-    expect(screen.getByText("could not add item — name already exists")).toBeInTheDocument();
+    expect((global as any).__lastToast?.tone).toBe("danger");
+    expect((global as any).__lastToast?.message).toBe("could not add item — name already exists");
   });
 
   it("calls setBookableItemActiveAction when Restore is clicked", async () => {
