@@ -28,6 +28,10 @@ export default async function SettingsPage() {
     })
   ]);
 
+  if (!business) {
+    redirect("/dashboard");
+  }
+
   const headerStore = await headers();
   const baseUrl = getRequestBaseUrl(headerStore);
   const razorpayReady = isPaymentProviderConfigured("RAZORPAY");

@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => {
       tablePricing: model(),
       bill: model(),
       businessSettings: model(),
+      business: model(),
       booking: model(),
       product: model()
     }
@@ -64,6 +65,8 @@ describe("getLiveTableBoard", () => {
     mocks.prisma.bill.findMany.mockResolvedValue([]);
     mocks.prisma.businessSettings.findUnique.mockReset();
     mocks.prisma.businessSettings.findUnique.mockResolvedValue(settings);
+    mocks.prisma.business.count.mockReset();
+    mocks.prisma.business.count.mockResolvedValue(1);
     mocks.prisma.booking.findMany.mockReset();
     mocks.prisma.booking.findMany.mockResolvedValue([]);
   });

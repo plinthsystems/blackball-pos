@@ -80,7 +80,7 @@ export async function createPublicBookingAction(input: unknown): Promise<PublicB
     }
 
     const settings = await ensureBookingSettingsFor(business.id);
-    if (!settings.bookingEnabled) {
+    if (!settings || !settings.bookingEnabled) {
       return { ok: false, message: "Online booking is currently disabled for this store." };
     }
 
