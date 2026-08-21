@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { LoginForm } from "./LoginForm";
 import { Button } from "@/components/ui/button";
 
+export const dynamic = 'force-dynamic';
+
 export default async function LoginPage() {
   // If no organization exists, show setup button instead of login form
   const count = await prisma.organization.count();
