@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("marked", () => {
   const mockParse = vi.fn((content: string) => `<div class="docs-content">${content}</div>`);
@@ -15,6 +15,51 @@ vi.mock("marked", () => {
   };
 });
 
+// The DocsViewer component calls setTimeout in useEffect to load mermaid from CDN.
+// After test completion, jsdom tears down and the setTimeout callback fires,
+// accessing an undefined `window` → unhandled error.
+// Workaround: intercept setTimeout/setInterval to track timer IDs, then clear
+// them all in afterEach before jsdom teardown.
+const trackedTimers: (ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>)[] = [];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const realSetTimeout: (...args: any[]) => ReturnType<typeof setTimeout> = globalThis.setTimeout;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const realSetInterval: (...args: any[]) => ReturnType<typeof setInterval> = globalThis.setInterval;
+
+beforeEach(() => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  globalThis.setTimeout = ((...args: any[]) => {
+    const id = realSetTimeout(...args);
+    trackedTimers.push(id);
+    return id;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }) as any;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  globalThis.setInterval = ((...args: any[]) => {
+    const id = realSetInterval(...args);
+    trackedTimers.push(id);
+    return id;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }) as any;
+});
+
+afterEach(() => {
+  // Clear all tracked timers before jsdom teardown
+  // Note: setTimeout and setInterval in jsdom both return numbers
+  trackedTimers.forEach((id) => {
+    if (typeof id === "number") {
+      clearTimeout(id);
+    } else {
+      clearInterval(id);
+    }
+  });
+  trackedTimers.length = 0;
+  globalThis.setTimeout = realSetTimeout as typeof globalThis.setTimeout;
+  globalThis.setInterval = realSetInterval as typeof globalThis.setInterval;
+  cleanup();
+});
+
 import { DocsViewer } from "@/features/docs/docs-viewer";
 
 const docs = [
@@ -24,10 +69,6 @@ const docs = [
 ];
 
 describe("DocsViewer", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("renders the first doc as active by default", () => {
     render(<DocsViewer docs={docs} />);
     expect(screen.getByText("Introduction")).toBeInTheDocument();
