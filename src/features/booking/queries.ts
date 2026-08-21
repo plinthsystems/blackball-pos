@@ -44,6 +44,11 @@ export type PublicSlot = {
 };
 
 export async function ensureBookingSettingsFor(businessId: string) {
+  // Skip if business doesn't exist — avoids FK constraint errors
+  const businessExists = await prisma.business.count({ where: { id: businessId } });
+  if (businessExists === 0) {
+    return null;
+  }
   const existing = await prisma.businessSettings.findUnique({ where: { businessId } });
   if (existing) {
     return existing;
@@ -68,6 +73,9 @@ export async function getPublicBookCatalog(businessSlug: string): Promise<Public
   }
 
   const settings = await ensureBookingSettingsFor(business.id);
+  if (!settings) {
+    return null;
+  }
 
   return {
     businessId: business.id,
@@ -99,6 +107,9 @@ export async function listBookableSlots(
   durationMinutes: number
 ): Promise<PublicSlot[]> {
   const settings = await ensureBookingSettingsFor(businessId);
+  if (!settings) {
+    return [];
+  }
 
   if (
     !isBookingWindowDate(
@@ -209,8 +220,16 @@ export async function getUpcomingBookings(businessId: string) {
   }));
 }
 
-export async function getUpcomingBookingBadges(businessId: string) {
+export async function getUpcomingBookingBadges(businessId: string): Promise<Map<string, {
+  startsAt: string;
+  endsAt: string;
+  status: "PENDING" | "CONFIRMED" | "CHECKED_IN";
+  customerName: string | null;
+}>> {
   const settings = await ensureBookingSettingsFor(businessId);
+  if (!settings) {
+    return new Map();
+  }
   const now = new Date();
   const [activeWindow, nextWindow] = getActiveAndNextBusinessWindows(
     now,
