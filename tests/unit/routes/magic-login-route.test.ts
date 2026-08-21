@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/auth/magic-login/route";
-import { cookieValue, getSetCookies, makeRequest, withEnv } from "../support/request-helpers";
+import { cookieValue, getSetCookies, withEnv } from "../support/request-helpers";
 
 /**
  * GET /api/auth/magic-login — locks existing behavior: enable/access-key checks,
@@ -25,7 +25,9 @@ const AUTH_SECRET = "magic-login-route-test-secret-0123456789";
 
 function magicUrl(searchParams: Record<string, string>): Request {
   const query = new URLSearchParams(searchParams).toString();
-  return makeRequest(`http://localhost:3000/api/auth/magic-login${query ? `?${query}` : ""}`);
+  return new Request(`http://localhost:3000/api/auth/magic-login${query ? `?${query}` : ""}`, {
+    headers: { host: "localhost:3000" }
+  });
 }
 
 function employeeFixture(overrides: Record<string, unknown> = {}) {

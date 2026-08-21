@@ -19,6 +19,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname === "/" ||
     pathname.startsWith("/login") ||
+    pathname === "/setup" ||
     pathname.startsWith("/magic-login") ||
     pathname.startsWith("/docs") ||
     pathname === "/book" ||

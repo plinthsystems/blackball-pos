@@ -379,7 +379,11 @@ function SuccessPanel({
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <HandoffItem label="Owner login" value={owner?.email ?? outlet.email ?? "Not provided"} />
         <HandoffItem label="Staff login" value={staff?.email ?? "Not created"} />
-        <HandoffItem label="Owner password" value={password ?? "Password@123"} />
+        {temporaryCredentials ? (
+          <HandoffItem label="Access" value="Change password at first login" />
+        ) : (
+          <HandoffItem label="Default password" value="Check email / temporary credential" />
+        )}
         {outlet.franchisee ? <HandoffItem label="Franchisee" value={outlet.franchisee.name} /> : null}
       </div>
     </section>

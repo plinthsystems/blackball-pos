@@ -1,15 +1,30 @@
 import { GameType, PrismaClient, ProductCategory } from "@prisma/client";
 import { hashPassword } from "../src/server/auth/auth-service";
 import { buildDatabaseUrl } from "../src/server/db/connection";
+import crypto from "crypto";
 
-if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOWED !== "true") {
+const isProduction = process.env.NODE_ENV === "production";
+const isSeedAllowed = process.env.SEED_ALLOWED === "true";
+const skipOrganizations = process.env.SEED_SKIP_ORGANIZATIONS === "true";
+
+if (isProduction && !isSeedAllowed) {
   throw new Error(
-    "Refusing to seed in production — this creates known demo credentials. Set SEED_ALLOWED=true only for disposable sandboxes."
+    "Refusing to seed in production — this creates known demo credentials. " +
+    "Set SEED_ALLOWED=true ONLY if you intentionally want to wipe/seed in production."
   );
 }
 
 const prisma = new PrismaClient({ datasourceUrl: buildDatabaseUrl() });
-const defaultPasswordHash = hashPassword("Password@123");
+
+/**
+ * Generates a cryptographically strong random password.
+ * Returns a 32-character random hex string.
+ */
+function generateSecurePassword(): string {
+  return crypto.randomBytes(20).toString("hex");
+}
+
+const defaultPasswordHash = hashPassword(generateSecurePassword());
 
 const permissionKeys = [
   "dashboard.read",
