@@ -8,7 +8,7 @@ import { startWalkInSessionAction } from "@/features/live-tables/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, textInputProps } from "@/components/ui/field";
-import { useToast } from "@/components/ui/toast";
+import { Snackbar } from "@/components/ui/snackbar";
 import { formatMoney } from "@/lib/money";
 import type { LiveTableGameType } from "@/features/live-tables/types";
 import { startWalkInSessionSchema, type StartWalkInSessionInput } from "../schemas";
@@ -31,7 +31,7 @@ export function StartWalkInDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const toast = useToast();
+  const [message, setMessage] = useState<string | null>(null);
   const [memberCount, setMemberCount] = useState<1 | 2 | 3 | 4>(1);
   const [isPending, startTransition] = useTransition();
   const {
@@ -48,7 +48,7 @@ export function StartWalkInDialog({
   function onSubmit(values: StartWalkInSessionInput) {
     startTransition(async () => {
       const result = await startWalkInSessionAction({ ...values, tableId });
-      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
+      setMessage(result.message);
       if (result.ok) {
         onOpenChange(false);
         router.refresh();
@@ -104,6 +104,7 @@ export function StartWalkInDialog({
           </div>
         </form>
       </Dialog>
+      <Snackbar message={message} tone={message === "Session started." ? "success" : "danger"} />
     </>
   );
 }

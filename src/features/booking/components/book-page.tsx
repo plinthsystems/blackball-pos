@@ -241,13 +241,7 @@ export function BookPageView({ catalog }: { catalog: PublicBookCatalog }) {
       </header>
 
       {detailsStep ? (
-        <form
-          className="mx-auto max-w-sm px-4 pt-6"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submitBooking();
-          }}
-        >
+        <div className="mx-auto max-w-sm px-4 pt-6">
           <button
             type="button"
             onClick={() => setStep("choose")}
@@ -295,20 +289,7 @@ export function BookPageView({ catalog }: { catalog: PublicBookCatalog }) {
           {submitError && (
             <p className="mt-4 rounded-lg border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200">{submitError}</p>
           )}
-
-          <BottomCta
-            show={canSubmit}
-            label={
-              catalog.paymentProvider && catalog.advanceAmount > 0
-                ? `Book & Pay ₹${catalog.advanceAmount.toFixed(2)}`
-                : catalog.requireConfirmation
-                  ? "Request Booking"
-                  : "Confirm Booking"
-            }
-            summary={formatSlotLabel()}
-            submit
-          />
-        </form>
+        </div>
       ) : (
         <div className="mx-auto max-w-sm px-4 pt-6">
           <section className="rounded-2xl border border-white/10 bg-slate-950 p-4">
@@ -418,17 +399,27 @@ export function BookPageView({ catalog }: { catalog: PublicBookCatalog }) {
         </div>
       )}
 
-      {!detailsStep && (
-        <BottomCta
-          show={canContinue}
-          label="Continue →"
-          summary={canContinue ? formatSlotLabel() : ""}
-          onClick={() => {
+      <BottomCta
+        show={detailsStep ? canSubmit : canContinue}
+        label={
+          detailsStep
+            ? catalog.paymentProvider && catalog.advanceAmount > 0
+              ? `Book & Pay ₹${catalog.advanceAmount.toFixed(2)}`
+              : catalog.requireConfirmation
+                ? "Request Booking"
+                : "Confirm Booking"
+            : "Continue →"
+        }
+        summary={detailsStep ? formatSlotLabel() : canContinue ? formatSlotLabel() : ""}
+        onClick={() => {
+          if (detailsStep) {
+            void submitBooking();
+          } else {
             window.scrollTo({ top: 0 });
             setStep("details");
-          }}
-        />
-      )}
+          }
+        }}
+      />
     </div>
   );
 }
@@ -437,14 +428,12 @@ function BottomCta({
   show,
   label,
   summary,
-  onClick,
-  submit = false
+  onClick
 }: {
   show: boolean;
   label: string;
   summary: string;
-  onClick?: () => void;
-  submit?: boolean;
+  onClick: () => void;
 }) {
   if (!show) {
     return null;
@@ -454,7 +443,7 @@ function BottomCta({
       <div className="mx-auto max-w-sm">
         {summary && <p className="mb-2 truncate text-center text-xs font-bold text-emerald-200">{summary}</p>}
         <button
-          type={submit ? "submit" : "button"}
+          type="button"
           onClick={onClick}
           className="flex h-14 w-full items-center justify-center rounded-xl bg-emerald-400 px-4 text-base font-black text-slate-950 shadow-[0_0_28px_rgba(52,211,153,0.45)] transition active:scale-[0.98] hover:bg-emerald-300"
         >
