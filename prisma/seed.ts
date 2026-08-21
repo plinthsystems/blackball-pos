@@ -5,6 +5,7 @@ import crypto from "crypto";
 
 const isProduction = process.env.NODE_ENV === "production";
 const isSeedAllowed = process.env.SEED_ALLOWED === "true";
+const skipOrganizations = process.env.SEED_SKIP_ORGANIZATIONS === "true";
 
 if (isProduction && !isSeedAllowed) {
   throw new Error(
