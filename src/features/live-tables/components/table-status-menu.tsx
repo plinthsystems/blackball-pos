@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { LiveTableCardData, LiveTableStatus } from "../types";
 import { useRouter } from "next/navigation";
 import { updateTableStatusAction } from "../actions";
@@ -19,19 +19,6 @@ export function TableStatusMenu({ table, canUpdateStatus }: { table: LiveTableCa
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open]);
 
   if (!canUpdateStatus) {
     return null;
@@ -77,7 +64,7 @@ useEffect(() => {
       {open && (
         <>
           <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
-<div className="absolute right-0 z-30 mt-1 w-48 rounded-material border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
+          <div className="absolute right-0 z-30 mt-1 w-48 rounded-xl border border-slate-700 bg-slate-900 p-1.5 shadow-2xl">
             <p className="px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
               Manual status override
             </p>

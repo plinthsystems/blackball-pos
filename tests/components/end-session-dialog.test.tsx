@@ -7,13 +7,6 @@ vi.mock("@/features/live-tables/actions", () => ({
   endSessionAction: vi.fn()
 }));
 
-vi.mock("@/components/ui/toast", () => ({
-  useToast: () => ({
-    show: vi.fn(),
-    dismiss: vi.fn()
-  })
-}));
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     refresh: vi.fn(),
@@ -171,10 +164,6 @@ describe("EndSessionDialog", () => {
   });
 
   it("shows snackbar message on success", async () => {
-    const mockShow = vi.fn();
-    const mockDismiss = vi.fn();
-    const mockUseToast = vi.fn(() => ({ show: mockShow, dismiss: mockDismiss }));
-    vi.mocked(await import("@/components/ui/toast")).useToast = mockUseToast;
     mockEndSessionAction.mockResolvedValue({
       ok: true,
       message: "Session ended. Final total Rs.180."
@@ -192,15 +181,11 @@ describe("EndSessionDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "End session" }));
 
     await waitFor(() => {
-      expect(mockShow).toHaveBeenCalledWith({ message: "Session ended. Final total Rs.180.", tone: "success" });
+      expect(screen.getByText("Session ended. Final total Rs.180.")).toBeInTheDocument();
     });
   });
 
   it("shows snackbar message on failure", async () => {
-    const mockShow = vi.fn();
-    const mockDismiss = vi.fn();
-    const mockUseToast = vi.fn(() => ({ show: mockShow, dismiss: mockDismiss }));
-    vi.mocked(await import("@/components/ui/toast")).useToast = mockUseToast;
     mockEndSessionAction.mockResolvedValue({
       ok: false,
       message: "Only an active or paused session can be ended."
@@ -218,7 +203,7 @@ describe("EndSessionDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "End session" }));
 
     await waitFor(() => {
-      expect(mockShow).toHaveBeenCalledWith({ message: "Only an active or paused session can be ended.", tone: "danger" });
+      expect(screen.getByText("Only an active or paused session can be ended.")).toBeInTheDocument();
     });
   });
 

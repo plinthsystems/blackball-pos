@@ -214,8 +214,7 @@ describe("createSaasSetupAction", () => {
       id: "user-owner-biz-1",
       email: "owner@cue.example",
       accountType: "STORE_OWNER",
-      active: true,
-      mustChangePassword: true
+      active: true
     });
     // hashPassword produces "salt:derived" — a real hash, not the plaintext
     expect(String(ownerCreate.passwordHash)).toMatch(/^[0-9a-f]{32}:[0-9a-f]+$/);

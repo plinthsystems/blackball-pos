@@ -23,7 +23,7 @@ describe("ChangePasswordPage", () => {
     await user.type(screen.getByLabelText("Current Password"), "oldpass");
     await user.type(screen.getByLabelText("New Password"), "123");
     await user.type(screen.getByLabelText("Confirm New Password"), "123");
-    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("button", { name: "Set New Password" }));
 
     expect(
       screen.getByText("Naya password kam se kam 8 characters ka hona chahiye.")
@@ -38,7 +38,7 @@ describe("ChangePasswordPage", () => {
     await user.type(screen.getByLabelText("Current Password"), "oldpass");
     await user.type(screen.getByLabelText("New Password"), "newpass123");
     await user.type(screen.getByLabelText("Confirm New Password"), "different123");
-    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("button", { name: "Set New Password" }));
 
     expect(
       screen.getByText("Naye aur confirm password match nahi kar rahe.")
@@ -46,7 +46,7 @@ describe("ChangePasswordPage", () => {
     expect(actions.changePasswordAction).not.toHaveBeenCalled();
   });
 
-  it("submits via Enter with valid inputs", async () => {
+  it("submits when valid inputs and button is clicked", async () => {
     const user = userEvent.setup();
     actions.changePasswordAction.mockResolvedValue({ ok: false, message: "Old password is wrong" });
 
@@ -54,7 +54,7 @@ describe("ChangePasswordPage", () => {
     await user.type(screen.getByLabelText("Current Password"), "oldpass");
     await user.type(screen.getByLabelText("New Password"), "newpass123");
     await user.type(screen.getByLabelText("Confirm New Password"), "newpass123");
-    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("button", { name: "Set New Password" }));
 
     expect(actions.changePasswordAction).toHaveBeenCalledWith({
       currentPassword: "oldpass",

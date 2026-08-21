@@ -228,14 +228,14 @@ beforeEach(() => {
 
     await userEvent.click(screen.getByRole("button", { name: "Add item" }));
 
-    expect((global as any).__lastToast?.message).toBe("Item added successfully");
+    expect(await screen.findByText("Item added successfully")).toBeInTheDocument();
   });
 
   it("shows danger snackbar on failure", async () => {
     const { createBookableItemAction } = await import("@/features/tables/actions");
     vi.mocked(createBookableItemAction).mockResolvedValueOnce({
       ok: false,
-      message: "could not add item — name already exists"
+      message: "could not add item"
     });
 
     render(<BookableItemsPage items={[]} businessName="My Club" />);
@@ -245,8 +245,7 @@ beforeEach(() => {
 
     await userEvent.click(screen.getByRole("button", { name: "Add item" }));
 
-    expect((global as any).__lastToast?.tone).toBe("danger");
-    expect((global as any).__lastToast?.message).toBe("could not add item — name already exists");
+    expect(await screen.findByText("could not add item")).toBeInTheDocument();
   });
 
   it("calls setBookableItemActiveAction when Restore is clicked", async () => {

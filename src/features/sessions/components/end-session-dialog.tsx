@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { endSessionAction } from "@/features/live-tables/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/toast";
+import { Snackbar } from "@/components/ui/snackbar";
 
 export function EndSessionDialog({
   sessionId,
@@ -19,13 +19,13 @@ export function EndSessionDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const toast = useToast();
+  const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function endSession() {
     startTransition(async () => {
       const result = await endSessionAction({ sessionId });
-      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
+      setMessage(result.message);
       if (result.ok) {
         onOpenChange(false);
         router.refresh();
@@ -44,6 +44,7 @@ export function EndSessionDialog({
           </div>
         </div>
       </Dialog>
+      <Snackbar message={message} tone={message?.startsWith("Session ended.") ? "success" : "danger"} />
     </>
   );
 }

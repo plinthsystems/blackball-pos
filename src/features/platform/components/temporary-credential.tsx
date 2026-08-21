@@ -5,7 +5,7 @@ import { useState } from "react";
 export function TemporaryCredential({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   return (
-<div className="rounded-material border border-amber-400/30 bg-slate-950/80 p-3">
+    <div className="rounded-[8px] border border-amber-400/30 bg-slate-950/80 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-[11px] font-black uppercase tracking-wide text-amber-200" title={label}>
           {label}

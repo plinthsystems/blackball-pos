@@ -1,6 +1,8 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSaasSetupAction } from "@/features/platform/actions";
 import { PlatformSaasSetupPage } from "@/features/platform/components/platform-setup-page";
+import type { TemporaryCredentials } from "@/features/platform/components/platform-setup-page";
 import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
 import { getDefaultRouteForPermissions } from "@/server/auth/routes";
 import { prisma } from "@/server/db/prisma";
@@ -23,7 +25,7 @@ export default async function PlatformSaasSetupRoute({ searchParams }: { searchP
   if (createdSlug && otpsRaw) {
     try {
       const parsed = JSON.parse(otpsRaw) as Record<string, TemporaryCredentials>;
-temporaryCredentials = parsed?.[createdSlug] ?? null;
+      temporaryCredentials = parsed[createdSlug] ?? null;
     } catch {}
   }
   const [plans, recentOutlets, createdOutlet] = await Promise.all([
