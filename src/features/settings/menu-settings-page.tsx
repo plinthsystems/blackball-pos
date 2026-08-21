@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, textInputProps } from "@/components/ui/field";
-import { Snackbar } from "@/components/ui/snackbar";
+import { useToast } from "@/components/ui/toast";
 import { formatMoney } from "@/lib/money";
 import { createOrUpdateProductAction, deactivateProductAction, updateBookingSettingsAction, updateBrandingAction } from "./actions";
 import type { ProductCategory } from "@/features/live-tables/types";
@@ -71,7 +71,7 @@ export function MenuSettingsPage({
   const [logoInitials, setLogoInitials] = useState(branding.logoInitials);
   const [brandColor, setBrandColor] = useState(branding.brandColor);
   const [accentColor, setAccentColor] = useState(branding.accentColor);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [isPending, startTransition] = useTransition();
   const [bookingEnabled, setBookingEnabled] = useState(booking?.bookingEnabled ?? true);
   const [requireConfirmation, setRequireConfirmation] = useState(booking?.requireConfirmation ?? false);
@@ -86,7 +86,7 @@ export function MenuSettingsPage({
   function addItem() {
     startTransition(async () => {
       const result = await createOrUpdateProductAction({ name, category, priceAmount });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
       if (result.ok) {
         setName("");
         setPriceAmount(0);
@@ -102,21 +102,21 @@ export function MenuSettingsPage({
         category: product.category === "CAFE" ? "FOOD" : product.category,
         priceAmount: nextPrice
       });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
     });
   }
 
   function removeItem(product: SettingsProduct) {
     startTransition(async () => {
       const result = await deactivateProductAction({ id: product.id });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
     });
   }
 
   function saveBranding() {
     startTransition(async () => {
       const result = await updateBrandingAction({ appName, logoInitials, brandColor, accentColor });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
     });
   }
 
@@ -133,14 +133,14 @@ export function MenuSettingsPage({
         paymentProvider,
         bookingAdvanceAmount: Number(advanceAmount)
       });
-      setMessage(result.message);
+      toast.show({ message: result.message, tone: result.ok ? "success" : "danger" });
     });
   }
 
   return (
     <section className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Business Profile & Menu</h1>
+        <h1 className="text-2xl font-black uppercase tracking-normal text-white">Business Profile & Menu</h1>
         <p className="mt-1 text-sm text-slate-400">Manage your outlet identity and billable Food, Cigarettes, and Beverages.</p>
       </div>
 
@@ -170,7 +170,13 @@ export function MenuSettingsPage({
               </div>
             </div>
           </div>
-          <div className="grid gap-4 p-5 md:grid-cols-[1fr_120px]">
+          <form
+            className="grid gap-4 p-5 md:grid-cols-[1fr_120px]"
+            onSubmit={(event) => {
+              event.preventDefault();
+              saveBranding();
+            }}
+          >
             <Field label="Application name">
               <input {...textInputProps()} value={appName} onChange={(event) => setAppName(event.target.value)} />
             </Field>
@@ -200,11 +206,11 @@ export function MenuSettingsPage({
             </Field>
             <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 border-t border-cyan-300/10 pt-4">
               <p className="text-xs text-slate-500">The interface stays consistent for staff; this identity appears where customers and managers recognize the outlet.</p>
-              <Button type="button" variant="primary" disabled={isPending || !appName.trim() || !logoInitials.trim()} onClick={saveBranding}>
+              <Button type="submit" variant="primary" disabled={isPending || !appName.trim() || !logoInitials.trim()}>
                 Save profile
               </Button>
             </div>
-          </div>
+          </form>
         </div>
       </div>
 
@@ -223,7 +229,13 @@ export function MenuSettingsPage({
               </div>
             )}
           </div>
-          <div className="grid gap-4 p-5 md:grid-cols-2">
+          <form
+            className="grid gap-4 p-5 md:grid-cols-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              saveBookingSettings();
+            }}
+          >
             <label className="flex cursor-pointer items-center justify-between gap-3 rounded-material border border-white/10 bg-white/[0.03] p-3">
               <span>
                 <span className="block text-sm font-black text-white">Accept new bookings</span>
@@ -325,11 +337,11 @@ export function MenuSettingsPage({
               <p className="text-xs text-slate-500">
                 Same-day start slots only, every 30 minutes between opening and closing hours. Overnight hours supported when &quot;Closes next day&quot; is enabled.
               </p>
-              <Button type="button" variant="primary" disabled={isPending} onClick={saveBookingSettings}>
+              <Button type="submit" variant="primary" disabled={isPending}>
                 Save booking preferences
               </Button>
             </div>
-          </div>
+          </form>
         </div>
       </div>
 
@@ -338,7 +350,13 @@ export function MenuSettingsPage({
         <p className="mt-1 text-sm text-slate-400">Manage Food, Cigarettes, and Beverages. Price changes affect only new bill items.</p>
       </div>
 
-      <div className="grid gap-3 rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material md:grid-cols-[1fr_180px_140px_auto]">
+      <form
+        className="grid gap-3 rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material md:grid-cols-[1fr_180px_140px_auto]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          addItem();
+        }}
+      >
         <Field label="Item name">
           <input {...textInputProps()} value={name} onChange={(event) => setName(event.target.value)} />
         </Field>
@@ -357,9 +375,9 @@ export function MenuSettingsPage({
           <input {...textInputProps()} type="number" min={0} value={priceAmount} onChange={(event) => setPriceAmount(Number(event.target.value))} />
         </Field>
         <div className="flex items-end">
-          <Button type="button" variant="primary" disabled={isPending || !name.trim()} onClick={addItem}>Add item</Button>
+          <Button type="submit" variant="primary" disabled={isPending || !name.trim()}>Add item</Button>
         </div>
-      </div>
+      </form>
 
       <div className="overflow-hidden rounded-material border border-lime-300/15 bg-slate-950/80 shadow-material">
         <div className="grid grid-cols-[1fr_130px_130px_180px] gap-3 border-b border-lime-300/15 px-4 py-3 text-xs font-bold uppercase text-slate-400">
@@ -372,7 +390,6 @@ export function MenuSettingsPage({
           <ProductRow key={product.id} product={product} disabled={isPending} onUpdate={updateItem} onRemove={removeItem} />
         ))}
       </div>
-      <Snackbar message={message} tone={message?.includes("could not") ? "danger" : "success"} />
     </section>
   );
 }
@@ -391,7 +408,13 @@ function ProductRow({
   const [price, setPrice] = useState(product.priceAmount);
 
   return (
-    <div className="grid grid-cols-[1fr_130px_130px_180px] items-center gap-3 border-b border-lime-300/10 px-4 py-3 text-sm text-slate-200 last:border-b-0">
+    <form
+      className="grid grid-cols-[1fr_130px_130px_180px] items-center gap-3 border-b border-lime-300/10 px-4 py-3 text-sm text-slate-200 last:border-b-0"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onUpdate(product, price);
+      }}
+    >
       <strong>{product.name}</strong>
       <span>{categoryLabels[product.category]}</span>
       <input
@@ -403,10 +426,10 @@ function ProductRow({
         onChange={(event) => setPrice(Number(event.target.value))}
       />
       <div className="flex gap-2">
-        <Button type="button" className="h-9 px-3" disabled={disabled} onClick={() => onUpdate(product, price)}>Update price</Button>
+        <Button type="submit" className="h-9 px-3" disabled={disabled}>Update price</Button>
         <Button type="button" variant="ghost" className="h-9 px-3" disabled={disabled} onClick={() => onRemove(product)}>Remove</Button>
       </div>
       <span className="sr-only">{formatMoney(product.priceAmount)}</span>
-    </div>
+    </form>
   );
 }

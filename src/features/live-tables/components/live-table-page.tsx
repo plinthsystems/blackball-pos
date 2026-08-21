@@ -79,7 +79,7 @@ export function LiveTablePage({
       <StationSection title="PS5" tables={ps5Stations} products={products} isHqAdmin={isHqAdmin} />
       {counterBills.length > 0 ? (
         <section className="rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material">
-          <h2 className="text-lg font-semibold">Counter bills</h2>
+          <h2 className="text-lg font-black uppercase tracking-normal text-white">Counter bills</h2>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {counterBills.map((bill) => (
               <CounterBillCard key={bill.id} bill={bill} products={products} isHqAdmin={isHqAdmin} />

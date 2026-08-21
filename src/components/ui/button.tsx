@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
@@ -15,9 +15,16 @@ const variants: Record<ButtonVariant, string> = {
   ghost: "bg-transparent text-slate-300 hover:bg-white/10 hover:text-white"
 };
 
-export function Button({ className, variant = "secondary", icon, children, ...props }: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { className, variant = "secondary", icon, children, type = "button", ...props },
+  ref
+) {
   return (
     <button
+      ref={ref}
+      // Explicit `type` default — never rely on the browser's implicit "submit"
+      // inside a form unless the caller opts into it with type="submit".
+      type={type}
       className={cn(
         "inline-flex h-10 items-center justify-center gap-2 rounded-material px-4 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50",
         variants[variant],
@@ -29,4 +36,4 @@ export function Button({ className, variant = "secondary", icon, children, ...pr
       {children}
     </button>
   );
-}
+});
