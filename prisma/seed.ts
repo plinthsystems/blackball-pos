@@ -2,9 +2,13 @@ import { GameType, PrismaClient, ProductCategory } from "@prisma/client";
 import { hashPassword } from "../src/server/auth/auth-service";
 import { buildDatabaseUrl } from "../src/server/db/connection";
 
-if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOWED !== "true") {
+const isProduction = process.env.NODE_ENV === "production";
+const isSeedAllowed = process.env.SEED_ALLOWED === "true";
+
+if (isProduction && !isSeedAllowed) {
   throw new Error(
-    "Refusing to seed in production — this creates known demo credentials. Set SEED_ALLOWED=true only for disposable sandboxes."
+    "Refusing to seed in production — this creates known demo credentials. " +
+    "Set SEED_ALLOWED=true ONLY if you intentionally want to wipe/seed in production."
   );
 }
 
