@@ -21,6 +21,14 @@ function matchesAccessKey(provided: string, expected: string): boolean {
   return crypto.timingSafeEqual(a, b);
 }
 
+function getRequestUrl(request: Request): string {
+  // When proxied or accessed via external IP, use forwarded headers to get the real host.
+  // Otherwise fall back to the request URL.
+  const proto = request.headers.get("x-forwarded-proto") ?? "http";
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
+  return `${proto}://${host}`;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const email = searchParams.get("email");
@@ -29,27 +37,23 @@ export async function GET(request: Request) {
 
   const expectedKey = devAccessKey();
 
+  const base = getRequestUrl(request);
+
   // Production-mode magic login requires an explicit AUTH-LEVEL access key.
   if (!isMagicLoginEnabled() || expectedKey === null) {
-    return NextResponse.redirect(
-      new URL("/magic-login?error=disabled", request.url)
-    );
+    return NextResponse.redirect(`${base}/magic-login?error=disabled`);
   }
 
   if (!matchesAccessKey(providedKey, expectedKey)) {
-    return NextResponse.redirect(
-      new URL("/magic-login?error=invalid_key", request.url)
-    );
+    return NextResponse.redirect(`${base}/magic-login?error=invalid_key`);
   }
 
   if (!checkRateLimit(`magic:${clientIpFromRequest(request)}`, 30)) {
-    return NextResponse.redirect(
-      new URL("/magic-login?error=rate_limited", request.url)
-    );
+    return NextResponse.redirect(`${base}/magic-login?error=rate_limited`);
   }
 
   if (!email) {
-    return NextResponse.redirect(new URL("/magic-login", request.url));
+    return NextResponse.redirect(`${base}/magic-login`);
   }
 
   const employee = await prisma.employee.findFirst({
@@ -58,7 +62,7 @@ export async function GET(request: Request) {
   });
 
   if (!employee) {
-    return NextResponse.redirect(new URL("/magic-login?error=user_not_found", request.url));
+    return NextResponse.redirect(`${base}/magic-login?error=user_not_found`);
   }
 
   const activeStoreSlug = storeSlug ?? employee.business?.slug ?? undefined;
@@ -78,7 +82,7 @@ export async function GET(request: Request) {
       : employee.accountType === "HQ_ADMIN"
         ? "/hq/dashboard"
         : "/dashboard";
-  const response = NextResponse.redirect(new URL(targetUrl, request.url));
+  const response = NextResponse.redirect(`${base}${targetUrl}`);
 
   response.cookies.set("auth_session", token, {
     httpOnly: true,
