@@ -12,6 +12,7 @@ const navItems = [
   { href: "/live-tables", label: "Live Floor", icon: "grid_view", permission: "tables.read" },
   { href: "/tables", label: "Bookable Items", icon: "sports", permission: "tables.manage" },
   { href: "/bookings", label: "Bookings", icon: "calendar_month", permission: "bookings.manage" },
+  { href: "/billing", label: "Billing", icon: "receipt_long", permission: "billing.read" },
   { href: "/settings", label: "Food/Menu", icon: "restaurant", permission: "products.manage" },
   { href: "/rates", label: "Rates", icon: "currency_rupee", permission: "rates.manage" }
 ];

@@ -41,7 +41,8 @@ const permissionKeys = [
   "products.manage",
   "rates.manage",
   "settings.update",
-  "bookings.manage"
+  "bookings.manage",
+  "billing.read"
 ];
 
 const storeUserPermissionKeys = [
