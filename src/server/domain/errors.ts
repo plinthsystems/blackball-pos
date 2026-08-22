@@ -7,7 +7,8 @@ export type DomainErrorCode =
   | "PRICING_NOT_FOUND"
   | "INVALID_STATUS_TRANSITION"
   | "UNAUTHORIZED"
-  | "PASSWORD_CHANGE_REQUIRED";
+  | "PASSWORD_CHANGE_REQUIRED"
+  | "BILL_NOT_FOUND";
 
 export class DomainError extends Error {
   constructor(
