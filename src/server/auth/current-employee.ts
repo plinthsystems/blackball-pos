@@ -308,8 +308,8 @@ async function getRequestIdentity() {
       };
     }
 
+    const cookieStoreSlug = requestCookies.get("demo_store_slug")?.value ?? sessionPayload?.storeSlug;
     const cookieEmail = sessionPayload?.email ?? requestCookies.get("demo_user_email")?.value;
-    const cookieStoreSlug = sessionPayload?.storeSlug ?? requestCookies.get("demo_store_slug")?.value;
     const tenantSlug =
       process.env.BLACKBALL_TENANT_SLUG ??
       process.env.NEXT_PUBLIC_BLACKBALL_TENANT_SLUG ??
