@@ -32,11 +32,12 @@ export function StoreSwitcher({
     setIsOpen(false);
     document.cookie = `demo_store_slug=${store.slug}; path=/; max-age=31536000`;
 
-    // If currently on HQ page, navigating to a store takes you to store dashboard / live tables
+    // Navigate to the same pathname with ?store= query param, or /live-tables for HQ pages
     if (isHqPage) {
-      window.location.href = "/live-tables";
-    } else {
       window.location.href = `/live-tables?store=${store.slug}`;
+    } else {
+      const search = pathname ? `${pathname}?store=${store.slug}` : `/live-tables?store=${store.slug}`;
+      window.location.href = search;
     }
   };
 

@@ -116,7 +116,7 @@ describe("StoreSwitcher", () => {
     expect(document.cookie).toContain("demo_store_slug=store-b");
   });
 
-  it("navigates to /live-tables when on HQ page and selecting a store", async () => {
+  it("navigates to /live-tables with ?store= when on HQ page and selecting a store", async () => {
     mockUsePathname.mockReturnValue("/hq/dashboard");
     Object.defineProperty(window, "location", {
       writable: true,
@@ -126,7 +126,7 @@ describe("StoreSwitcher", () => {
     render(<StoreSwitcher currentBusinessId="store_1" stores={stores} organizationType="FRANCHISE" />);
     await user.click(screen.getByRole("button"));
     await user.click(screen.getByText("Store B"));
-    expect(window.location.href).toBe("/live-tables");
+    expect(window.location.href).toBe("/live-tables?store=store-b");
   });
 
   it("shows All Outlets (HQ Master) option for FRANCHISE", async () => {
