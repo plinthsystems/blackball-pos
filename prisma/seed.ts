@@ -882,124 +882,255 @@ const desiredPricingForSeedBusiness = [
 }
 
 /**
- * Creates store-specific billing data with distinct amounts per store
- * so that store switching is easily verifiable on the billing page.
+ * Seed billing data with completely unique profiles per store.
+ * Each store gets different:
+ *  - Mix of OPEN/CLOSED/CANCELLED bills
+ *  - Different SESSION vs COUNTER ratios
+ *  - Dates spread across 10+ days
+ *  - Random item counts (0-4) and categories
+ *  - Staff names and table associations
+ *  - Realistic random amounts (no multipliers/formulas)
  */
 async function seedBillingData() {
   const stores = await prisma.business.findMany({
     select: { id: true, slug: true, name: true }
   });
 
-  // Store-specific multipliers so totals are clearly distinguishable
-  const multipliers: Record<string, number> = {
-    "seed-business": 1.0,
-    "outlet-mg-road": 0.8,
-    "outlet-indiranagar": 1.2,
-    "outlet-whitefield": 0.7,
-    "outlet-hsr": 0.6,
-    "saas-royal-snooker": 1.3,
-    "saas-break-and-run": 0.9,
-    "saas-gamezone": 1.1
+  // --- Store-specific profiles (completely different) ---
+  const storeProfiles: Record<string, {
+    prefix: string;
+    billCount: number;
+    openCount: number;
+    closedCount: number;
+    cancelledCount: number;
+    sessionRatio: number;    // 0-1, fraction of bills that are SESSION
+    hasTables: boolean;      // SESSION bills have table associations
+    staffNames: string[];
+    primaryCategories: ProductCategory[];
+  }> = {
+    "seed-business": {
+      prefix: "BBK",
+      billCount: 14, openCount: 4, closedCount: 8, cancelledCount: 2,
+      sessionRatio: 0.5, hasTables: true,
+      staffNames: ["Rahul Sharma", "Amit Kumar", "Priya Singh"],
+      primaryCategories: ["FOOD", "BEVERAGES", "CIGARETTES"]
+    },
+    "outlet-mg-road": {
+      prefix: "BBM",
+      billCount: 11, openCount: 2, closedCount: 7, cancelledCount: 2,
+      sessionRatio: 0.7, hasTables: true,
+      staffNames: ["Sanjay Patel", "Neha Desai"],
+      primaryCategories: ["FOOD", "FOOD", "BEVERAGES"]
+    },
+    "outlet-indiranagar": {
+      prefix: "BBI",
+      billCount: 18, openCount: 5, closedCount: 10, cancelledCount: 3,
+      sessionRatio: 0.4, hasTables: true,
+      staffNames: ["Priya Nair", "Vikram Joshi", "Meera Rao", "Arjun Das"],
+      primaryCategories: ["FOOD", "CIGARETTES", "FOOD", "BEVERAGES"]
+    },
+    "outlet-whitefield": {
+      prefix: "CNW",
+      billCount: 9, openCount: 1, closedCount: 7, cancelledCount: 1,
+      sessionRatio: 0.9, hasTables: true,
+      staffNames: ["Karthik Verma"],
+      primaryCategories: ["FOOD", "FOOD", "BEVERAGES"]
+    },
+    "outlet-hsr": {
+      prefix: "CNH",
+      billCount: 7, openCount: 1, closedCount: 5, cancelledCount: 1,
+      sessionRatio: 0.3, hasTables: false,
+      staffNames: ["Deepak Rao", "Sunita K"],
+      primaryCategories: ["BEVERAGES", "CIGARETTES", "FOOD"]
+    },
+    "saas-royal-snooker": {
+      prefix: "RSC",
+      billCount: 16, openCount: 3, closedCount: 11, cancelledCount: 2,
+      sessionRatio: 0.8, hasTables: true,
+      staffNames: ["Arjun Reddy", "Lakshmi N", "Rohan P"],
+      primaryCategories: ["FOOD", "CIGARETTES", "BEVERAGES", "FOOD"]
+    },
+    "saas-break-and-run": {
+      prefix: "BAR",
+      billCount: 12, openCount: 2, closedCount: 8, cancelledCount: 2,
+      sessionRatio: 0.6, hasTables: true,
+      staffNames: ["Varun Mehta", "Kavita S", "Aditya M"],
+      primaryCategories: ["FOOD", "BEVERAGES", "CIGARETTES"]
+    },
+    "saas-gamezone": {
+      prefix: "GZC",
+      billCount: 10, openCount: 2, closedCount: 6, cancelledCount: 2,
+      sessionRatio: 0.5, hasTables: true,
+      staffNames: ["Karan Singh", "Pooja Gupta"],
+      primaryCategories: ["BEVERAGES", "FOOD", "CIGARETTES"]
+    }
   };
 
-  // Store prefix for bill labels
-  const prefixes: Record<string, string> = {
-    "seed-business": "BB-K",
-    "outlet-mg-road": "BB-M",
-    "outlet-indiranagar": "BB-I",
-    "outlet-whitefield": "CN-W",
-    "outlet-hsr": "CN-H",
-    "saas-royal-snooker": "RSC",
-    "saas-break-and-run": "B&R",
-    "saas-gamezone": "GZ"
-  };
+  const productOptions = [
+    { name: "Masala Chai & Snack", category: "FOOD" as ProductCategory, priceRange: [40, 160] },
+    { name: "Club Sandwich Special", category: "FOOD" as ProductCategory, priceRange: [120, 280] },
+    { name: "Cold Coffee", category: "FOOD" as ProductCategory, priceRange: [80, 140] },
+    { name: "French Fries", category: "FOOD" as ProductCategory, priceRange: [70, 130] },
+    { name: "Premium Cigarette Pack", category: "CIGARETTES" as ProductCategory, priceRange: [40, 120] },
+    { name: "Classic Cigarette", category: "CIGARETTES" as ProductCategory, priceRange: [20, 60] },
+    { name: "Red Bull Energy Drink", category: "BEVERAGES" as ProductCategory, priceRange: [100, 180] },
+    { name: "Water Bottle", category: "BEVERAGES" as ProductCategory, priceRange: [20, 40] },
+    { name: "Mineral Water 1L", category: "BEVERAGES" as ProductCategory, priceRange: [20, 40] },
+    { name: "Cappuccino", category: "FOOD" as ProductCategory, priceRange: [70, 120] },
+    { name: "Veg Burger", category: "FOOD" as ProductCategory, priceRange: [100, 180] },
+    { name: "Pasta Bowl", category: "FOOD" as ProductCategory, priceRange: [150, 280] },
+  ];
+
+  const now = new Date();
 
   for (const store of stores) {
     const slug = store.slug;
-    const prefix = prefixes[slug] ?? slug.slice(0, 6).toUpperCase();
-    const mult = multipliers[slug] ?? 1.0;
-    const now = new Date();
+    const profile = storeProfiles[slug];
+    if (!profile) continue;
 
-    // Clear old billing data for this store
+    // Clear old data
     await prisma.billItem.deleteMany({ where: { businessId: store.id } });
     await prisma.bill.deleteMany({ where: { businessId: store.id } });
 
-    // --- Today: 3 OPEN bills ---
-    for (let i = 0; i < 3; i++) {
-      const openedAt = new Date(now.getTime() - (i + 1) * 25 * 60 * 1000);
+    // Simple hash of slug for deterministic-but-different per store
+    let rng = 0;
+    for (let i = 0; i < slug.length; i++) {
+      rng = (rng * 31 + slug.charCodeAt(i)) % 10000;
+    }
+
+    const randomBetween = (min: number, max: number, offset: number = 0): number => {
+      const val = ((rng + offset * 9301 + 49297) % 233280) / 233280;
+      return Math.round(min + val * (max - min));
+    };
+
+    // Build date/time offsets: spread across ~15 days
+    const dateOffsets: Array<{ day: number; hour: number; minute: number }> = [];
+
+    // Today: open bills first
+    for (let i = 0; i < profile.openCount; i++) {
+      dateOffsets.push({ day: 0, hour: 9 + i * 2, minute: randomBetween(0, 50, i * 3) });
+    }
+    // Today: some closed bills
+    const closedToday = Math.min(profile.closedCount, profile.openCount + 2);
+    for (let i = 0; i < closedToday; i++) {
+      dateOffsets.push({ day: 0, hour: 11 + i * 2, minute: randomBetween(0, 50, 100 + i * 5) });
+    }
+    // Yesterday
+    for (let i = 0; i < Math.floor(profile.closedCount / 3); i++) {
+      dateOffsets.push({ day: -1, hour: 10 + i * 3, minute: randomBetween(0, 50, 200 + i * 7) });
+    }
+    // Older days (2-14 days ago)
+    for (let i = 0; i < profile.billCount - dateOffsets.length; i++) {
+      const daysAgo = 2 + (i % 13);
+      dateOffsets.push({ day: -daysAgo, hour: 11 + randomBetween(0, 8, 300 + i), minute: randomBetween(0, 59, 400 + i) });
+    }
+
+    // Fetch employees for this store
+    const employees = await prisma.employee.findMany({
+      where: { businessId: store.id, active: true },
+      select: { id: true, name: true },
+      take: 3
+    });
+    const defaultEmployeeId = employees[0]?.id ?? "seed-employee";
+
+    for (let i = 0; i < dateOffsets.length; i++) {
+      const offset = dateOffsets[i];
+      const openedAt = new Date(now);
+      openedAt.setDate(openedAt.getDate() + offset.day);
+      openedAt.setHours(offset.hour, offset.minute, 0, 0);
+
+      // Determine status
+      let status: "OPEN" | "CLOSED" | "CANCELLED" = "CLOSED";
+      if (i < profile.openCount) status = "OPEN";
+      else if (i >= profile.openCount + profile.closedCount) status = "CANCELLED";
+
+      // Determine kind
+      const kind: "SESSION" | "COUNTER" = Math.random() < profile.sessionRatio ? "SESSION" : "COUNTER";
+
+      // Amounts — unique ranges per store prefix
+      const baseAmount = profile.prefix === "RSC" ? randomBetween(800, 2800, i * 11)
+        : profile.prefix === "BBI" ? randomBetween(500, 1800, i * 13)
+        : profile.prefix === "BBK" ? randomBetween(400, 1500, i * 17)
+        : profile.prefix === "CNW" ? randomBetween(350, 900, i * 19)
+        : profile.prefix === "CNH" ? randomBetween(200, 600, i * 23)
+        : profile.prefix === "BAR" ? randomBetween(300, 1100, i * 29)
+        : profile.prefix === "GZC" ? randomBetween(450, 1300, i * 31)
+        : randomBetween(350, 1000, i * 37);
+
+      const totalAmount = baseAmount;
+      const tablePortion = Math.round(baseAmount * randomBetween(50, 80, i * 41) / 100);
+      const itemPortion = baseAmount - tablePortion;
+
       await prisma.bill.create({
         data: {
           businessId: store.id,
-          label: `${prefix} Open #${i + 1}`,
-          kind: i === 0 ? "SESSION" : "COUNTER",
-          status: "OPEN",
+          label: `${profile.prefix}-${String(i + 1).padStart(3, "0")}`,
+          kind,
+          status,
           openedAt,
-          tableAmountSnapshot: Math.round(mult * 250 * 100) / 100,
-          itemTotalAmountSnapshot: Math.round(mult * 120 * 100) / 100,
-          totalAmountSnapshot: Math.round(mult * 370 * 100) / 100
+          closedAt: status !== "OPEN" ? new Date(openedAt.getTime() + randomBetween(25, 90, i * 43) * 60 * 1000) : null,
+          tableAmountSnapshot: tablePortion,
+          itemTotalAmountSnapshot: itemPortion,
+          totalAmountSnapshot: totalAmount
+        }
+      }).then(async (bill) => {
+        // Add items if CLOSED
+        if (status === "CLOSED" && Math.random() > 0.3) {
+          const itemCount = randomBetween(1, 3, i * 47);
+          for (let j = 0; j < itemCount; j++) {
+            const product = productOptions[randomBetween(0, productOptions.length - 1, i * 53 + j * 3)];
+            const qty = randomBetween(1, 4, i * 59 + j * 7);
+            const unitPrice = Math.round((itemPortion / itemCount / qty) * 100) / 100;
+
+            await prisma.billItem.create({
+              data: {
+                businessId: store.id,
+                billId: bill.id,
+                category: product.category,
+                nameSnapshot: product.name,
+                quantity: qty,
+                unitPriceAmount: unitPrice,
+                lineTotalAmount: Math.round(unitPrice * qty * 100) / 100
+              }
+            });
+          }
         }
       });
     }
 
-    // --- Today: 4 CLOSED bills with items (distinct amounts per store) ---
-    const closedBaseAmounts = [450, 780, 1150, 620];
-    const closedCategories: ProductCategory[] = ["FOOD", "CIGARETTES", "BEVERAGES", "FOOD"];
-    const closedProducts = [
-      "Masala Chai & Snack", "Premium Cigarette Pack", "Red Bull Combo", "Club Sandwich"
-    ];
-    for (let i = 0; i < 4; i++) {
-      const openedAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9 + i * 2, 0, 0);
-      const total = Math.round(closedBaseAmounts[i] * mult * 100) / 100;
-      const bill = await prisma.bill.create({
-        data: {
-          businessId: store.id,
-          label: `${prefix} Closed #${i + 1}`,
-          kind: i % 2 === 0 ? "SESSION" : "COUNTER",
-          status: "CLOSED",
-          openedAt,
-          closedAt: new Date(openedAt.getTime() + 50 * 60 * 1000),
-          tableAmountSnapshot: Math.round(total * 0.7 * 100) / 100,
-          itemTotalAmountSnapshot: Math.round(total * 0.3 * 100) / 100,
-          totalAmountSnapshot: total
-        }
+    // Create sessions for stores with tables
+    if (profile.hasTables) {
+      const tables = await prisma.clubTable.findMany({
+        where: { businessId: store.id, active: true },
+        select: { id: true, number: true }
       });
-      await prisma.billItem.create({
-        data: {
-          businessId: store.id,
-          billId: bill.id,
-          category: closedCategories[i % closedCategories.length],
-          nameSnapshot: closedProducts[i % closedProducts.length],
-          unitPriceAmount: Math.round(total * 0.3 * 100) / 100,
-          quantity: 1,
-          lineTotalAmount: Math.round(total * 0.3 * 100) / 100
-        }
-      });
-    }
 
-    // --- Yesterday: 2 CLOSED bills ---
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(10, 0, 0, 0);
-    for (let i = 0; i < 2; i++) {
-      const openedAt = new Date(yesterday.getTime() + i * 3 * 60 * 60 * 1000);
-      const total = Math.round((900 + i * 200) * mult * 100) / 100;
-      await prisma.bill.create({
-        data: {
-          businessId: store.id,
-          label: `${prefix} Past #${i + 1}`,
-          kind: "COUNTER",
-          status: "CLOSED",
-          openedAt,
-          closedAt: new Date(openedAt.getTime() + 60 * 60 * 1000),
-          tableAmountSnapshot: Math.round(total * 0.65 * 100) / 100,
-          itemTotalAmountSnapshot: Math.round(total * 0.35 * 100) / 100,
-          totalAmountSnapshot: total
+      if (tables.length > 0) {
+        const sessionsToCreate = randomBetween(2, 4, 900);
+        for (let s = 0; s < sessionsToCreate; s++) {
+          const table = tables[s % tables.length];
+          const employee = employees[randomBetween(0, employees.length - 1, s * 11)] ?? employees[0];
+          const startedAt = new Date(now);
+          startedAt.setDate(startedAt.getDate() - randomBetween(0, 3, s * 13));
+          startedAt.setHours(randomBetween(10, 22, s * 17), randomBetween(0, 59, s * 19));
+
+          await prisma.session.create({
+            data: {
+              businessId: store.id,
+              tableId: table.id,
+              assignedEmployeeId: employee.id,
+              createdByEmployeeId: defaultEmployeeId,
+              status: Math.random() > 0.6 ? "ACTIVE" : "COMPLETED",
+              startedAt,
+              plannedEndAt: new Date(startedAt.getTime() + randomBetween(60, 180, s * 23) * 60 * 1000)
+            }
+          });
         }
-      });
+      }
     }
   }
 
-  console.log("Billing data seeded for all stores (OPEN + CLOSED bills with store-specific amounts).");
+  console.log("Billing data seeded with unique profiles per store (different counts, statuses, kinds, dates, item mixes).");
 }
 
 main()
