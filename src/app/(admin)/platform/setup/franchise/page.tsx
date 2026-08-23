@@ -30,7 +30,6 @@ export default async function PlatformFranchiseSetupRoute({ searchParams }: { se
   }
   const [plans, organizations, recentOutlets, createdOutlet] = await Promise.all([
     prisma.subscriptionPlan.findMany({
-      where: { active: true },
       orderBy: [{ baseAmount: "asc" }, { name: "asc" }],
       select: { id: true, name: true, code: true, baseAmount: true }
     }),
