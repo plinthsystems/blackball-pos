@@ -14,7 +14,7 @@ export default async function PlatformSetupRoute() {
   }
 
   const [planCount, organizations, franchiseeCount, outletCount] = await Promise.all([
-    prisma.subscriptionPlan.count({ where: { active: true } }),
+    prisma.subscriptionPlan.count(),
     prisma.organization.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true, slug: true, type: true }
