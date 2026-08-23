@@ -434,6 +434,9 @@ async function main() {
     outletLimit: 5
   });
 
+  // Seed billing data with store-specific amounts for easy verification
+  await seedBillingData();
+
   console.log("Successfully seeded 2 Franchise Groups (5 Outlets total) and 3 Independent B2B SaaS Store accounts!");
 }
 
@@ -876,6 +879,127 @@ const desiredPricingForSeedBusiness = [
   }
 
   return store;
+}
+
+/**
+ * Creates store-specific billing data with distinct amounts per store
+ * so that store switching is easily verifiable on the billing page.
+ */
+async function seedBillingData() {
+  const stores = await prisma.business.findMany({
+    select: { id: true, slug: true, name: true }
+  });
+
+  // Store-specific multipliers so totals are clearly distinguishable
+  const multipliers: Record<string, number> = {
+    "seed-business": 1.0,
+    "outlet-mg-road": 0.8,
+    "outlet-indiranagar": 1.2,
+    "outlet-whitefield": 0.7,
+    "outlet-hsr": 0.6,
+    "saas-royal-snooker": 1.3,
+    "saas-break-and-run": 0.9,
+    "saas-gamezone": 1.1
+  };
+
+  // Store prefix for bill labels
+  const prefixes: Record<string, string> = {
+    "seed-business": "BB-K",
+    "outlet-mg-road": "BB-M",
+    "outlet-indiranagar": "BB-I",
+    "outlet-whitefield": "CN-W",
+    "outlet-hsr": "CN-H",
+    "saas-royal-snooker": "RSC",
+    "saas-break-and-run": "B&R",
+    "saas-gamezone": "GZ"
+  };
+
+  for (const store of stores) {
+    const slug = store.slug;
+    const prefix = prefixes[slug] ?? slug.slice(0, 6).toUpperCase();
+    const mult = multipliers[slug] ?? 1.0;
+    const now = new Date();
+
+    // Clear old billing data for this store
+    await prisma.billItem.deleteMany({ where: { businessId: store.id } });
+    await prisma.bill.deleteMany({ where: { businessId: store.id } });
+
+    // --- Today: 3 OPEN bills ---
+    for (let i = 0; i < 3; i++) {
+      const openedAt = new Date(now.getTime() - (i + 1) * 25 * 60 * 1000);
+      await prisma.bill.create({
+        data: {
+          businessId: store.id,
+          label: `${prefix} Open #${i + 1}`,
+          kind: i === 0 ? "SESSION" : "COUNTER",
+          status: "OPEN",
+          openedAt,
+          tableAmountSnapshot: Math.round(mult * 250 * 100) / 100,
+          itemTotalAmountSnapshot: Math.round(mult * 120 * 100) / 100,
+          totalAmountSnapshot: Math.round(mult * 370 * 100) / 100
+        }
+      });
+    }
+
+    // --- Today: 4 CLOSED bills with items (distinct amounts per store) ---
+    const closedBaseAmounts = [450, 780, 1150, 620];
+    const closedCategories: ProductCategory[] = ["FOOD", "CIGARETTES", "BEVERAGES", "FOOD"];
+    const closedProducts = [
+      "Masala Chai & Snack", "Premium Cigarette Pack", "Red Bull Combo", "Club Sandwich"
+    ];
+    for (let i = 0; i < 4; i++) {
+      const openedAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9 + i * 2, 0, 0);
+      const total = Math.round(closedBaseAmounts[i] * mult * 100) / 100;
+      const bill = await prisma.bill.create({
+        data: {
+          businessId: store.id,
+          label: `${prefix} Closed #${i + 1}`,
+          kind: i % 2 === 0 ? "SESSION" : "COUNTER",
+          status: "CLOSED",
+          openedAt,
+          closedAt: new Date(openedAt.getTime() + 50 * 60 * 1000),
+          tableAmountSnapshot: Math.round(total * 0.7 * 100) / 100,
+          itemTotalAmountSnapshot: Math.round(total * 0.3 * 100) / 100,
+          totalAmountSnapshot: total
+        }
+      });
+      await prisma.billItem.create({
+        data: {
+          businessId: store.id,
+          billId: bill.id,
+          category: closedCategories[i % closedCategories.length],
+          nameSnapshot: closedProducts[i % closedProducts.length],
+          unitPriceAmount: Math.round(total * 0.3 * 100) / 100,
+          quantity: 1,
+          lineTotalAmount: Math.round(total * 0.3 * 100) / 100
+        }
+      });
+    }
+
+    // --- Yesterday: 2 CLOSED bills ---
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(10, 0, 0, 0);
+    for (let i = 0; i < 2; i++) {
+      const openedAt = new Date(yesterday.getTime() + i * 3 * 60 * 60 * 1000);
+      const total = Math.round((900 + i * 200) * mult * 100) / 100;
+      await prisma.bill.create({
+        data: {
+          businessId: store.id,
+          label: `${prefix} Past #${i + 1}`,
+          kind: "COUNTER",
+          status: "CLOSED",
+          openedAt,
+          closedAt: new Date(openedAt.getTime() + 60 * 60 * 1000),
+          tableAmountSnapshot: Math.round(total * 0.65 * 100) / 100,
+          itemTotalAmountSnapshot: Math.round(total * 0.35 * 100) / 100,
+          totalAmountSnapshot: total
+        }
+      });
+    }
+  }
+
+  console.log("Billing data seeded for all stores (OPEN + CLOSED bills with store-specific amounts).");
 }
 
 main()

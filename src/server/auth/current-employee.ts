@@ -213,7 +213,7 @@ export function buildCurrentEmployeeContext(
 
   const organization = employee.organization;
   const organizationBusinesses = organization?.businesses ?? [];
-  const allowedBusinesses = getAllowedBusinesses(employee, organizationBusinesses);
+  const allowedBusinesses = getAllowedBusinesses(employee, organizationBusinesses, currentSlug);
   const selectedBusiness = (currentSlug ? allowedBusinesses.find((business) => business.slug === currentSlug) : undefined) ?? allowedBusinesses[0];
   const settings = selectedBusiness?.settings ?? employee.business?.settings ?? defaultBranding;
   const selectedBusinessId = selectedBusiness?.id ?? employee.businessId ?? "seed-business";
@@ -254,9 +254,16 @@ export function buildCurrentEmployeeContext(
   };
 }
 
-function getAllowedBusinesses(employee: EmployeeWithTenantAccess, organizationBusinesses: BusinessAccessSummary[]) {
+function getAllowedBusinesses(employee: EmployeeWithTenantAccess, organizationBusinesses: BusinessAccessSummary[], currentSlug?: string | null) {
   if (["PLATFORM_ADMIN", "HQ_ADMIN"].includes(employee.accountType)) {
     return organizationBusinesses.length > 0 ? organizationBusinesses : compactBusiness(employee.business);
+  }
+
+  // In dev mode, when a specific store is explicitly requested (via cookie/URL), allow access
+  // to all organization businesses so the user can switch between stores regardless of
+  // franchisee or employee-business assignments.
+  if (!isProduction() && currentSlug && organizationBusinesses.length > 0) {
+    return organizationBusinesses;
   }
 
   if (employee.franchisee) {
@@ -311,17 +318,24 @@ async function getRequestIdentity() {
     const cookieStoreSlug = requestCookies.get("demo_store_slug")?.value ?? sessionPayload?.storeSlug;
     const cookieEmail = sessionPayload?.email ?? requestCookies.get("demo_user_email")?.value;
 
-    // Fallback: extract ?store= from the referer URL when cookie/session don't provide a slug.
-    // This handles direct URL navigation (e.g. /billing?store=store-a) or server-rendered
-    // pages where the store switcher cookie hasn't been set yet.
-    const referer = requestHeaders.get("referer") ?? requestHeaders.get("x-referrer") ?? "";
-    let refererStoreSlug: string | null = null;
-    if (referer) {
+    // Parse ?store= from the current request URL (primary mechanism for direct navigation).
+    // The "url" header from next/headers contains the full request URL including query string.
+    let urlStoreSlug: string | null = null;
+    const urlHeader = requestHeaders.get("url") ?? "";
+    if (urlHeader) {
       try {
-        const refererUrl = new URL(referer);
-        refererStoreSlug = refererUrl.searchParams.get("store");
+        const url = new URL(urlHeader);
+        urlStoreSlug = url.searchParams.get("store");
       } catch {
-        // Invalid referer URL — ignore
+        // URL header may be relative — construct absolute URL using host header
+        const host = requestHeaders.get("host") ?? "localhost";
+        const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
+        try {
+          const url = new URL(urlHeader, `${proto}://${host}`);
+          urlStoreSlug = url.searchParams.get("store");
+        } catch {
+          // Unparseable URL — skip
+        }
       }
     }
 
@@ -332,7 +346,7 @@ async function getRequestIdentity() {
     const defaultEmail = process.env.BLACKBALL_USER_EMAIL ?? "owner@cueclub.example";
 
     return {
-      tenantSlug: requestHeaders.get("x-tenant-slug") ?? cookieStoreSlug ?? refererStoreSlug ?? tenantSlug,
+      tenantSlug: requestHeaders.get("x-tenant-slug") ?? cookieStoreSlug ?? urlStoreSlug ?? tenantSlug,
       email: requestHeaders.get("x-user-email") ?? cookieEmail ?? defaultEmail
     };
   } catch {
