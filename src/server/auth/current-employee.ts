@@ -310,6 +310,21 @@ async function getRequestIdentity() {
 
     const cookieStoreSlug = requestCookies.get("demo_store_slug")?.value ?? sessionPayload?.storeSlug;
     const cookieEmail = sessionPayload?.email ?? requestCookies.get("demo_user_email")?.value;
+
+    // Fallback: extract ?store= from the referer URL when cookie/session don't provide a slug.
+    // This handles direct URL navigation (e.g. /billing?store=store-a) or server-rendered
+    // pages where the store switcher cookie hasn't been set yet.
+    const referer = requestHeaders.get("referer") ?? requestHeaders.get("x-referrer") ?? "";
+    let refererStoreSlug: string | null = null;
+    if (referer) {
+      try {
+        const refererUrl = new URL(referer);
+        refererStoreSlug = refererUrl.searchParams.get("store");
+      } catch {
+        // Invalid referer URL — ignore
+      }
+    }
+
     const tenantSlug =
       process.env.BLACKBALL_TENANT_SLUG ??
       process.env.NEXT_PUBLIC_BLACKBALL_TENANT_SLUG ??
@@ -317,7 +332,7 @@ async function getRequestIdentity() {
     const defaultEmail = process.env.BLACKBALL_USER_EMAIL ?? "owner@cueclub.example";
 
     return {
-      tenantSlug: requestHeaders.get("x-tenant-slug") ?? cookieStoreSlug ?? tenantSlug,
+      tenantSlug: requestHeaders.get("x-tenant-slug") ?? cookieStoreSlug ?? refererStoreSlug ?? tenantSlug,
       email: requestHeaders.get("x-user-email") ?? cookieEmail ?? defaultEmail
     };
   } catch {
