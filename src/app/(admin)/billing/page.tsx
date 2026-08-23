@@ -9,6 +9,7 @@ export default async function BillingRoute() {
   const context = await getCurrentEmployeeContext();
 
   // Parse filters from URL search params
+  const searchParams = new URLSearchParams();
   // In a real SSR scenario, we'd get searchParams from the request
   // For now, we pass empty filters - the client will handle filter changes
   const filters: BillingFilters = {};

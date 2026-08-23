@@ -64,6 +64,7 @@ describe("BillingTable", () => {
   it("renders bill rows with key details", () => {
     render(<BillingTable records={mockRecords} expandedId={null} onToggle={() => {}} />);
 
+    // Check the row content exists
     expect(screen.getByText("Session")).toBeInTheDocument();
     expect(screen.getByText("Counter")).toBeInTheDocument();
     expect(screen.getByText("Table P1")).toBeInTheDocument();
@@ -102,6 +103,7 @@ describe("BillingTable", () => {
 
     expect(screen.getByText("Item Breakdown")).toBeInTheDocument();
     expect(screen.getByText("Tea")).toBeInTheDocument();
+    // Check that the unit price is rendered (unique to this row)
     expect(screen.getByText("₹30.00 each")).toBeInTheDocument();
   });
 
