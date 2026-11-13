@@ -35,11 +35,11 @@ describe("BillingTable", () => {
       id: "bill_2",
       label: "Bill 2",
       kind: "COUNTER",
-      status: "OPEN",
+      status: "CLOSED",
       tableNumber: null,
       sessionLabel: null,
       openedAt: "2026-01-15T14:00:00.000Z",
-      closedAt: null,
+      closedAt: "2026-01-15T14:05:00.000Z",
       totalAmount: 80,
       tableAmount: 0,
       tableDurationMinutes: 0,
@@ -60,34 +60,31 @@ describe("BillingTable", () => {
     expect(screen.getAllByText("Table time").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Table charge").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Items").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Grand total").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Total").length).toBeGreaterThan(0);
   });
 
   it("renders bill rows with key details", () => {
     render(<BillingTable records={mockRecords} expandedId={null} onToggle={() => {}} />);
 
     // Check the row content exists
-    expect(screen.getByText("Session")).toBeInTheDocument();
-    expect(screen.getByText("Counter")).toBeInTheDocument();
+    expect(screen.getByText("Table session")).toBeInTheDocument();
+    expect(screen.getByText("Counter sale")).toBeInTheDocument();
     expect(screen.getByText("P1")).toBeInTheDocument();
-    expect(screen.getByText("Aarav Manager")).toBeInTheDocument();
-    expect(screen.getByText("Riya Staff")).toBeInTheDocument();
     expect(screen.getByText("₹315.00")).toBeInTheDocument();
     expect(screen.getByText("₹80.00")).toBeInTheDocument();
   });
 
-  it("renders status badges correctly", () => {
+  it("keeps redundant status badges out of the receipt list", () => {
     render(<BillingTable records={mockRecords} expandedId={null} onToggle={() => {}} />);
 
-    expect(screen.getByText("Closed")).toBeInTheDocument();
-    expect(screen.getByText("Open")).toBeInTheDocument();
+    expect(screen.queryByText("Open")).not.toBeInTheDocument();
   });
 
   it("shows item count and item total per row", () => {
     render(<BillingTable records={mockRecords} expandedId={null} onToggle={() => {}} />);
 
-    expect(screen.getByText("2 · ₹140.00")).toBeInTheDocument();
-    expect(screen.getByText("1 · ₹80.00")).toBeInTheDocument();
+    expect(screen.getByText("2 items · ₹140.00")).toBeInTheDocument();
+    expect(screen.getByText("1 item · ₹80.00")).toBeInTheDocument();
   });
 
   it("shows customer name in expanded row when expanded", () => {
@@ -136,6 +133,6 @@ describe("BillingTable", () => {
   it("renders empty state when no records", () => {
     render(<BillingTable records={[]} expandedId={null} onToggle={() => {}} />);
 
-    expect(screen.getByText("No billing records found")).toBeInTheDocument();
+    expect(screen.getByText("No closed bills found")).toBeInTheDocument();
   });
 });

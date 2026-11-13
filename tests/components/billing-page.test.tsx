@@ -9,7 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("BillingPage", () => {
-  it("frames billing as a The Nine receipt workspace", () => {
+  it("renders a clear billing header and closed-bill empty state", () => {
     render(
       <BillingPage
         data={{
@@ -22,10 +22,9 @@ describe("BillingPage", () => {
       />
     );
 
-    expect(screen.getByText("The Nine Snooker & Cafe")).toBeInTheDocument();
-    expect(screen.getByText("Closed sales")).toBeInTheDocument();
-    expect(screen.getByText("Table time")).toBeInTheDocument();
-    expect(screen.getByText("Items")).toBeInTheDocument();
-    expect(screen.getByText("No billing records found")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Billing" })).toBeInTheDocument();
+    expect(screen.getByText("Closed receipts with table time and item totals.")).toBeInTheDocument();
+    expect(screen.getByText("No closed bills found")).toBeInTheDocument();
+    expect(screen.queryByText("The Nine Snooker & Cafe")).not.toBeInTheDocument();
   });
 });

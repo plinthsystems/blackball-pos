@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminShell } from "@/components/app/admin-shell";
@@ -25,9 +25,10 @@ describe("AdminShell", () => {
     );
 
     expect(screen.getAllByText("Cue City POS").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("CC").length).toBeGreaterThan(0);
+    expect(screen.getByRole("img", { name: "The Nine logo" })).toBeInTheDocument();
+    expect(screen.queryByText("Cue City Sports")).not.toBeInTheDocument();
     expect(screen.queryByText("BlackBall POS")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Dashboard/ })).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Admin navigation" })).getByRole("link", { name: /Dashboard/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Change Password/ })).toBeInTheDocument();
     expect(screen.queryByText("Operations")).not.toBeInTheDocument();
   });
@@ -52,12 +53,13 @@ describe("AdminShell", () => {
       </AdminShell>
     );
 
-    expect(screen.getByRole("link", { name: /Live Floor/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Billing/ })).toBeInTheDocument();
+    const nav = within(screen.getByRole("navigation", { name: "Admin navigation" }));
+    expect(nav.getByRole("link", { name: /Live Floor/ })).toBeInTheDocument();
+    expect(nav.getByRole("link", { name: /Billing/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Change Password/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Dashboard/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Rates/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /Food\/Menu/ })).not.toBeInTheDocument();
+    expect(nav.queryByRole("link", { name: /Dashboard/ })).not.toBeInTheDocument();
+    expect(nav.queryByRole("link", { name: /Rates/ })).not.toBeInTheDocument();
+    expect(nav.queryByRole("link", { name: /Food\/Menu/ })).not.toBeInTheDocument();
     expect(screen.queryByText("Store")).not.toBeInTheDocument();
   });
 
@@ -70,11 +72,12 @@ describe("AdminShell", () => {
       </AdminShell>
     );
 
-    expect(screen.getByRole("link", { name: /Dashboard/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Live Floor/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Billing/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Menu" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Rates/ })).toBeInTheDocument();
+    const nav = within(screen.getByRole("navigation", { name: "Admin navigation" }));
+    expect(nav.getByRole("link", { name: /Dashboard/ })).toBeInTheDocument();
+    expect(nav.getByRole("link", { name: /Live Floor/ })).toBeInTheDocument();
+    expect(nav.getByRole("link", { name: /Billing/ })).toBeInTheDocument();
+    expect(nav.getByRole("link", { name: "Menu" })).toBeInTheDocument();
+    expect(nav.queryByRole("link", { name: /Rates/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Franchise HQ/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Platform Setup/ })).not.toBeInTheDocument();
     expect(screen.queryByText("Admin", { exact: true })).not.toBeInTheDocument();
@@ -93,7 +96,7 @@ describe("AdminShell", () => {
       </AdminShell>
     );
 
-    expect(screen.getByRole("link", { name: /Franchise HQ/ })).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Admin navigation" })).getByRole("link", { name: /Franchise HQ/ })).toBeInTheDocument();
   });
 
   it("shows platform setup navigation for platform admins", () => {
@@ -109,7 +112,7 @@ describe("AdminShell", () => {
       </AdminShell>
     );
 
-    expect(screen.getByRole("link", { name: /Platform Setup/ })).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Admin navigation" })).getByRole("link", { name: /Platform Setup/ })).toBeInTheDocument();
     expect(screen.queryByText("Platform Admin")).not.toBeInTheDocument();
   });
 
@@ -194,7 +197,7 @@ describe("AdminShell sign-out flow", () => {
       </AdminShell>
     );
 
-    await user.click(screen.getByRole("button", { name: /Logout/ }));
+    await user.click(within(screen.getByRole("navigation", { name: "Store navigation" })).getByRole("button", { name: /Logout/ }));
 
     expect(fetch).toHaveBeenCalledWith("/api/auth/logout", { method: "POST" });
     expect(window.location.href).toBe("/login");
