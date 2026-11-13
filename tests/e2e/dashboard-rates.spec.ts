@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { loginAs } from "./auth";
 
 test("owner can view dashboard and rates", async ({ page }) => {
-  await page.goto("/dashboard");
-  await expect(page.getByRole("heading", { name: "Owner Dashboard" })).toBeVisible();
+  await loginAs(page, "admin@thenine.local");
+  await expect(page.getByRole("heading", { name: "The Nine Admin" })).toBeVisible();
   await expect(page.getByText("Today's revenue", { exact: true })).toBeVisible();
   await expect(page.getByText("PS5 time")).toBeVisible();
 

@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { loginAs } from "./auth";
 
 test("staff can view the live table board", async ({ page }) => {
-  await page.goto("/live-tables");
+  await loginAs(page, "store@thenine.local");
   await expect(page.getByRole("heading", { name: "Live Floor" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Snooker & Pool" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "PS5", exact: true })).toBeVisible();
@@ -14,7 +15,7 @@ test("staff can view the live table board", async ({ page }) => {
 
 test("table cards remain usable on tablet width", async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1194 });
-  await page.goto("/live-tables");
+  await loginAs(page, "store@thenine.local");
   await expect(page.getByRole("heading", { name: "Live Floor" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Start session for station/ }).first()).toBeVisible();
 });
