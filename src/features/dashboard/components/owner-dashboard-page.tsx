@@ -1,7 +1,11 @@
 import { formatMoney } from "@/lib/money";
 import type { OwnerDashboardData } from "../types";
+import Link from "next/link";
 
 export function OwnerDashboardPage({ data }: { data: OwnerDashboardData }) {
+  const dailyTrend = data.dailyTrend ?? [];
+  const reportingWindow = data.reportingWindow ?? "today";
+  const windowLabel = reportingWindow === "30d" ? "Last 30 days" : reportingWindow === "7d" ? "Last 7 days" : "Today";
   const revenueRows = [
     { label: "Snooker & Pool time", value: data.revenue.stationTime },
     { label: "PS5 time", value: data.revenue.ps5Time },
@@ -14,15 +18,33 @@ export function OwnerDashboardPage({ data }: { data: OwnerDashboardData }) {
     <section className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-normal text-white">Owner Dashboard</h1>
+          <h1 className="text-2xl font-black uppercase tracking-normal text-white">The Nine Admin</h1>
+          <p className="mt-1 text-sm text-slate-400">Sales, revenue, and table usage at a glance.</p>
+        </div>
+        <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-1">
+          {[
+            ["today", "Today"],
+            ["7d", "7 days"],
+            ["30d", "30 days"]
+          ].map(([value, label]) => (
+            <Link
+              key={value}
+              href={value === "today" ? "/dashboard" : `/dashboard?range=${value}`}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                value === reportingWindow ? "bg-lime-400 text-slate-950" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
-        <MetricCard label="Today's revenue" value={formatMoney(data.totalRevenue)} />
+        <MetricCard label={reportingWindow === "today" ? "Today's revenue" : `${windowLabel} revenue`} value={formatMoney(data.totalRevenue)} />
         <MetricCard label="Closed bills" value={String(data.closedBillCount)} />
         <MetricCard label="Open bills" value={String(data.openBillCount)} />
       </div>
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-3">
         <section className="rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material">
           <h2 className="text-lg font-black text-white">Revenue by category</h2>
           <div className="mt-3 space-y-2">
@@ -48,9 +70,37 @@ export function OwnerDashboardPage({ data }: { data: OwnerDashboardData }) {
             ))}
           </div>
         </section>
+        <section className="rounded-material border border-amber-300/15 bg-slate-950/80 p-4 shadow-material xl:col-span-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-black text-white">Sales trend</h2>
+              <p className="mt-1 text-xs text-slate-500">{windowLabel} · closed bills</p>
+            </div>
+            <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-[11px] font-bold text-amber-200">
+              {dailyTrend.reduce((total, row) => total + row.closedBills, 0)} bills
+            </span>
+          </div>
+          {dailyTrend.length > 0 ? (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
+              {dailyTrend.map((row) => (
+                <div key={row.date} className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{formatTrendDate(row.date)}</p>
+                  <strong className="mt-2 block text-lg font-black text-amber-200">{formatMoney(row.revenue)}</strong>
+                  <p className="mt-1 text-[11px] text-slate-500">{row.closedBills} closed bill{row.closedBills === 1 ? "" : "s"}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 rounded-xl border border-dashed border-slate-800 p-4 text-sm text-slate-500">No closed bills in this window.</p>
+          )}
+        </section>
       </div>
     </section>
   );
+}
+
+function formatTrendDate(date: string) {
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`));
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {
