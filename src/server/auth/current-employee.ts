@@ -179,7 +179,7 @@ export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContex
     return buildDeniedContext();
   }
 
-  return buildFallbackContext(identity.tenantSlug ?? "seed-business", identity.email ?? "owner@cueclub.example");
+  return buildFallbackContext(identity.tenantSlug ?? "the-nine", identity.email ?? process.env.THE_NINE_ADMIN_EMAIL ?? "admin@thenine.local");
 }
 
 export function buildCurrentEmployeeContext(
@@ -342,8 +342,8 @@ async function getRequestIdentity() {
     const tenantSlug =
       process.env.BLACKBALL_TENANT_SLUG ??
       process.env.NEXT_PUBLIC_BLACKBALL_TENANT_SLUG ??
-      "seed-business";
-    const defaultEmail = process.env.BLACKBALL_USER_EMAIL ?? "owner@cueclub.example";
+      "the-nine";
+    const defaultEmail = process.env.BLACKBALL_USER_EMAIL ?? process.env.THE_NINE_ADMIN_EMAIL ?? "admin@thenine.local";
 
     return {
       tenantSlug: requestHeaders.get("x-tenant-slug") ?? cookieStoreSlug ?? urlStoreSlug ?? tenantSlug,
@@ -354,8 +354,8 @@ async function getRequestIdentity() {
       return { tenantSlug: null, email: null };
     }
     return {
-      tenantSlug: process.env.BLACKBALL_TENANT_SLUG ?? "seed-business",
-      email: process.env.BLACKBALL_USER_EMAIL ?? "owner@cueclub.example"
+      tenantSlug: process.env.BLACKBALL_TENANT_SLUG ?? "the-nine",
+      email: process.env.BLACKBALL_USER_EMAIL ?? process.env.THE_NINE_ADMIN_EMAIL ?? "admin@thenine.local"
     };
   }
 }

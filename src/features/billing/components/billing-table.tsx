@@ -4,15 +4,9 @@ import { useState } from "react";
 import { formatMoney } from "@/lib/money";
 import type { BillingRecord } from "../types";
 
-const statusStyles: Record<string, { label: string; classes: string }> = {
-  OPEN: { label: "Open", classes: "border-cyan-400/50 bg-cyan-400/10 text-cyan-200" },
-  CLOSED: { label: "Closed", classes: "border-emerald-400/50 bg-emerald-400/10 text-emerald-200" },
-  CANCELLED: { label: "Cancelled", classes: "border-rose-400/50 bg-rose-400/10 text-rose-200" }
-};
-
 const kindLabel: Record<string, string> = {
-  SESSION: "Session",
-  COUNTER: "Counter"
+  SESSION: "Table session",
+  COUNTER: "Counter sale"
 };
 
 const categoryLabels: Record<string, string> = {
@@ -24,111 +18,71 @@ const categoryLabels: Record<string, string> = {
 export function BillingTable({ records, expandedId, onToggle }: { records: BillingRecord[]; expandedId: string | null; onToggle: (id: string) => void }) {
   if (records.length === 0) {
     return (
-      <div className="rounded-material border border-slate-700 bg-slate-900/80 p-10 text-center">
-        <p className="text-3xl">📋</p>
-        <p className="mt-3 text-sm font-bold text-slate-300">No billing records found</p>
-        <p className="mt-1 text-xs text-slate-500">Try adjusting your filters or date range.</p>
+      <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-12 text-center">
+        <span className="material-symbols-outlined text-3xl text-slate-500" aria-hidden="true">receipt_long</span>
+        <p className="mt-3 text-sm font-bold text-slate-200">No closed bills found</p>
+        <p className="mt-1 text-xs text-slate-500">Try a different date range or bill type.</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-material border border-slate-700 bg-slate-900/80 shadow-material">
-      {/* Table header */}
-      <div className="hidden border-b border-slate-700/70 bg-slate-900/90 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 md:grid md:grid-cols-12">
-        <div className="col-span-2">Date & Time</div>
-        <div className="col-span-1">Kind</div>
-        <div className="col-span-2">Table</div>
-        <div className="col-span-1">Staff</div>
-        <div className="col-span-2">Items</div>
-        <div className="col-span-1">Total</div>
-        <div className="col-span-1">Status</div>
-        <div className="col-span-2 text-right">Actions</div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-base font-bold text-white">Closed bills</h2>
+        <span className="text-xs text-slate-500">{records.length} shown · select a receipt for details</span>
       </div>
-
-      {/* Table body */}
-      <div className="divide-y divide-slate-700/50">
+      <div className="space-y-3">
         {records.map((record) => {
           const isExpanded = expandedId === record.id;
-          const style = statusStyles[record.status] ?? statusStyles.OPEN;
-
           return (
-            <div key={record.id}>
-              {/* Row */}
-              <div
-                className={`group cursor-pointer transition-colors hover:bg-slate-800/50 ${isExpanded ? "bg-slate-800/30" : ""}`}
+            <div key={record.id} className={`overflow-hidden rounded-xl border bg-slate-950/80 transition ${isExpanded ? "border-lime-300/40" : "border-slate-800 hover:border-slate-600"}`}>
+              <button
+                type="button"
+                aria-expanded={isExpanded}
+                aria-label={`${isExpanded ? "Collapse" : "View"} receipt for ${record.tableNumber ?? "counter sale"}, ${formatDate(record.openedAt)}, ${formatMoney(record.totalAmount)}`}
+                className="w-full p-4 text-left sm:p-5"
                 onClick={() => onToggle(record.id)}
               >
-                <div className="grid grid-cols-2 gap-3 px-4 py-3 md:grid-cols-12">
-                  {/* Date & Time */}
-                  <div className="col-span-2 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[18px] text-slate-400">{isExpanded ? "expand_less" : "expand_more"}</span>
-                    <div>
-                      <p className="text-sm font-bold text-white">{formatDate(record.openedAt)}</p>
-                      <p className="text-[10px] text-slate-500">
-                        {record.closedAt ? `Closed ${formatDate(record.closedAt)}` : "Still open"}
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className={`material-symbols-outlined mt-0.5 text-xl ${isExpanded ? "text-lime-300" : "text-slate-500"}`} aria-hidden="true">{isExpanded ? "expand_less" : "receipt_long"}</span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p className="text-base font-bold text-white">{record.tableNumber ?? "Counter sale"}</p>
+                        {record.kind === "SESSION" ? <span className="text-xs text-slate-500">{kindLabel[record.kind]}</span> : null}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {formatDate(record.openedAt)}{record.sessionLabel ? ` · ${record.sessionLabel}` : ""}
+                        {record.assignedStaffName ? ` · ${record.assignedStaffName}` : ""}
                       </p>
                     </div>
                   </div>
-
-                  {/* Kind */}
-                  <div className="col-span-1 flex items-center">
-                    <span className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-300">
-                      {kindLabel[record.kind] ?? record.kind}
-                    </span>
-                  </div>
-
-                  {/* Table */}
-                  <div className="col-span-2 flex items-center text-sm text-slate-300">
-                    {record.tableNumber ? (
-                      <span className="font-bold text-white">Table {record.tableNumber}</span>
-                    ) : (
-                      <span className="text-slate-500">—</span>
-                    )}
-                  </div>
-
-                  {/* Staff */}
-                  <div className="col-span-1 flex items-center text-sm text-slate-400">
-                    {record.assignedStaffName ? <span>{record.assignedStaffName}</span> : <span className="text-slate-600">—</span>}
-                  </div>
-
-                  {/* Items */}
-                  <div className="col-span-2 flex items-center text-sm text-slate-400">
-                    <span>{record.items.length} items · {formatMoney(record.itemTotal)}</span>
-                  </div>
-
-                  {/* Total */}
-                  <div className="col-span-1 flex items-center">
-                    <strong className="text-lg font-black text-lime-300">{formatMoney(record.totalAmount)}</strong>
-                  </div>
-
-                  {/* Status */}
-                  <div className="col-span-1 flex items-center">
-                    <span className={`rounded-md border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${style.classes}`}>
-                      {style.label}
-                    </span>
-                  </div>
-
-                  {/* Actions (desktop) */}
-                  <div className="col-span-2 hidden items-center justify-end gap-2 md:flex">
-                    {record.status === "OPEN" && (
-                      <>
-                        <span className="text-xs text-amber-300 font-semibold">⏳ Pending</span>
-                      </>
-                    )}
-                    {record.customerName && (
-                      <span className="text-xs text-slate-400">{record.customerName}</span>
-                    )}
+                  <div className="ml-auto text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total</p>
+                    <strong className="text-xl font-black text-lime-300 sm:text-2xl">{formatMoney(record.totalAmount)}</strong>
                   </div>
                 </div>
-              </div>
-
-              {/* Expanded details */}
+                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-800 pt-3 sm:grid-cols-3">
+                  <ReceiptMetric label="Table time" value={record.tableDurationMinutes ? `${record.tableDurationMinutes} min @ ${formatMoney(record.tableHourlyRate)}/hr` : "—"} />
+                  <ReceiptMetric label="Table charge" value={formatMoney(record.tableAmount)} />
+                  <ReceiptMetric label="Items" value={`${record.items.length} ${record.items.length === 1 ? "item" : "items"} · ${formatMoney(record.itemTotal)}`} />
+                </div>
+              </button>
               {isExpanded && <BillDetails record={record} />}
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function ReceiptMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold text-slate-200">{value}</p>
     </div>
   );
 }
@@ -163,19 +117,21 @@ function BillDetails({ record }: { record: BillingRecord }) {
           <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Summary</h4>
           <div className="space-y-1 text-sm">
             <div className="flex justify-between text-slate-400">
-              <span>Items</span>
-              <span className="text-white font-bold">{totalItems}</span>
+              <span>Table time</span>
+              <span className="text-right text-white font-bold">
+                {record.tableDurationMinutes ? `${record.tableDurationMinutes} min · ${formatMoney(record.tableHourlyRate)}/hr` : "No table time"}
+              </span>
             </div>
             <div className="flex justify-between text-slate-400">
               <span>Table charge</span>
               <span className="text-white font-bold">{formatMoney(record.tableAmount)}</span>
             </div>
             <div className="flex justify-between text-slate-400">
-              <span>Items total</span>
+              <span>Items ({totalItems})</span>
               <span className="text-white font-bold">{formatMoney(record.itemTotal)}</span>
             </div>
             <div className="mt-2 border-t border-slate-700 pt-2 flex justify-between">
-              <span className="text-sm font-black text-white">Grand Total</span>
+              <span className="text-sm font-black text-white">Grand total</span>
               <strong className="text-lg font-black text-lime-300">{formatMoney(record.totalAmount)}</strong>
             </div>
           </div>

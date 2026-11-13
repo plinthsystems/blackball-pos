@@ -8,11 +8,13 @@ import type {
   ProductCategory
 } from "./types";
 import type { CurrentEmployeeContext, AccountType } from "@/server/auth/current-employee";
+import { calculateBillSegmentTableAmount } from "@/server/domain/bill-summary";
 
 export async function getBillingPageData(
   businessId: string,
   filters: BillingFilters,
-  context: CurrentEmployeeContext
+  context: CurrentEmployeeContext,
+  now = new Date()
 ): Promise<BillingPageData> {
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 50;
@@ -47,6 +49,8 @@ export async function getBillingPageData(
             startedAt: true,
             actualEndAt: true,
             plannedEndAt: true,
+            hourlyRateSnapshot: true,
+            billableSecondsSnapshot: true,
             status: true
           }
         }
@@ -65,7 +69,7 @@ export async function getBillingPageData(
     })
   ]);
 
-  const records = bills.map((bill) => mapBillToRecord(bill));
+  const records = bills.map((bill) => mapBillToRecord(bill, now));
 
   return {
     records,
@@ -163,9 +167,11 @@ function mapBillToRecord(bill: {
     startedAt: Date;
     actualEndAt: Date | null;
     plannedEndAt: Date;
+    hourlyRateSnapshot: unknown;
+    billableSecondsSnapshot: number;
     status: string;
   } | null;
-}): BillingRecord {
+}, now: Date): BillingRecord {
   const tableNumber = bill.session?.table?.number ?? null;
   const staffName = bill.session?.assignedEmployee?.name ?? null;
   const customerName = bill.session?.customer?.name ?? null;
@@ -186,6 +192,21 @@ function mapBillToRecord(bill: {
     total: data.total
   }));
 
+  const itemTotalFromLines = roundMoney(bill.items.reduce((sum, item) => sum + Number(item.lineTotalAmount), 0));
+  const tableHourlyRate = bill.session ? Number(bill.session.hourlyRateSnapshot) : 0;
+  const tableEnd = bill.status === "OPEN" ? now : bill.closedAt;
+  const tableDurationMinutes = bill.session && tableEnd
+    ? Math.ceil(Math.max(0, tableEnd.getTime() - bill.openedAt.getTime()) / 60000)
+    : 0;
+  const calculatedOpenTableAmount = bill.kind === "SESSION" && bill.session && bill.status === "OPEN"
+    ? calculateBillSegmentTableAmount({ startedAt: bill.openedAt, endedAt: now, hourlyRate: tableHourlyRate })
+    : 0;
+  const tableAmount = bill.status === "OPEN"
+    ? calculatedOpenTableAmount
+    : Number(bill.tableAmountSnapshot);
+  const itemTotal = bill.status === "OPEN" ? itemTotalFromLines : Number(bill.itemTotalAmountSnapshot);
+  const totalAmount = bill.status === "OPEN" ? roundMoney(tableAmount + itemTotal) : Number(bill.totalAmountSnapshot);
+
   return {
     id: bill.id,
     label: bill.label ?? "Bill",
@@ -195,9 +216,11 @@ function mapBillToRecord(bill: {
     sessionLabel: bill.session ? formatSessionLabel(bill.session) : null,
     openedAt: bill.openedAt.toISOString(),
     closedAt: bill.closedAt?.toISOString() ?? null,
-    totalAmount: Number(bill.totalAmountSnapshot),
-    tableAmount: Number(bill.tableAmountSnapshot),
-    itemTotal: Number(bill.itemTotalAmountSnapshot),
+    totalAmount,
+    tableAmount,
+    tableDurationMinutes,
+    tableHourlyRate,
+    itemTotal,
     items: bill.items.map((item) => ({
       id: item.id,
       name: item.nameSnapshot,
@@ -211,6 +234,10 @@ function mapBillToRecord(bill: {
     customerName,
     customerPhone
   };
+}
+
+function roundMoney(amount: number) {
+  return Math.round(amount * 100) / 100;
 }
 
 function formatSessionLabel(session: {

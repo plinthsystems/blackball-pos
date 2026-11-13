@@ -64,6 +64,8 @@ describe("getBillingPageData", () => {
           startedAt: new Date("2026-01-15T10:00:00Z"),
           actualEndAt: new Date("2026-01-15T11:30:00Z"),
           plannedEndAt: new Date("2026-01-15T11:00:00Z"),
+          hourlyRateSnapshot: 400,
+          billableSecondsSnapshot: 5400,
           status: "COMPLETED"
         }
       }
@@ -79,6 +81,8 @@ describe("getBillingPageData", () => {
     expect(result.records[0].totalAmount).toBe(315);
     expect(result.records[0].tableAmount).toBe(175);
     expect(result.records[0].itemTotal).toBe(140);
+    expect(result.records[0].tableDurationMinutes).toBe(90);
+    expect(result.records[0].tableHourlyRate).toBe(400);
     expect(result.records[0].tableNumber).toBe("P1");
     expect(result.records[0].customerName).toBe("Riya Shah");
     expect(result.records[0].assignedStaffName).toBe("Aarav Manager");
@@ -86,6 +90,52 @@ describe("getBillingPageData", () => {
     expect(result.records[0].items[0].name).toBe("Tea");
     expect(result.records[0].items[0].lineTotal).toBe(60);
     expect(result.total).toBe(1);
+  });
+
+  it("includes live table time in an open session bill using the saved hourly rate", async () => {
+    mockBillFindMany.mockResolvedValue([
+      {
+        id: "open_session_bill",
+        label: "Bill 1",
+        kind: "SESSION",
+        status: "OPEN",
+        openedAt: new Date("2026-01-15T10:00:00Z"),
+        closedAt: null,
+        tableAmountSnapshot: 0,
+        itemTotalAmountSnapshot: 0,
+        totalAmountSnapshot: 0,
+        items: [{ id: "item_1", nameSnapshot: "Tea", category: "FOOD", quantity: 1, unitPriceAmount: 60, lineTotalAmount: 60 }],
+        session: {
+          table: { number: "Royal Snooker 1" },
+          customer: null,
+          assignedEmployee: { name: "Aarav Manager" },
+          startedAt: new Date("2026-01-15T10:00:00Z"),
+          actualEndAt: null,
+          plannedEndAt: new Date("2026-01-15T12:00:00Z"),
+          hourlyRateSnapshot: 400,
+          billableSecondsSnapshot: 0,
+          status: "ACTIVE"
+        }
+      }
+    ]);
+    mockBillCount.mockResolvedValue(1);
+    mockEmployeeFindMany.mockResolvedValue([]);
+    mockTableFindMany.mockResolvedValue([]);
+
+    const result = await getBillingPageData(
+      "biz_1",
+      {},
+      mockContext,
+      new Date("2026-01-15T11:30:00Z")
+    );
+
+    expect(result.records[0]).toMatchObject({
+      tableDurationMinutes: 90,
+      tableHourlyRate: 400,
+      tableAmount: 600,
+      itemTotal: 60,
+      totalAmount: 660
+    });
   });
 
   it("filters by status when provided", async () => {

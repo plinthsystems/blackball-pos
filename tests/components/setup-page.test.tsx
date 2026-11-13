@@ -3,7 +3,7 @@ import SetupPage from "@/app/setup/page";
 
 vi.mock("@/server/db/prisma", () => ({
   prisma: {
-    organization: {
+    business: {
       count: vi.fn()
     }
   },
@@ -31,16 +31,16 @@ describe("SetupPage", () => {
     vi.restoreAllMocks();
   });
 
-  it("should redirect to /login if organizations already exist", async () => {
-    mockPrisma.organization.count.mockResolvedValue(1);
+  it("should redirect to /login if a store already exists", async () => {
+    mockPrisma.business.count.mockResolvedValue(1);
 
     await SetupPage({ searchParams: Promise.resolve({}) });
 
     expect(redirect).toHaveBeenCalledWith("/login");
   });
 
-  it("should render the form if no organizations exist", async () => {
-    mockPrisma.organization.count.mockResolvedValue(0);
+  it("should render the two-login form if no store exists", async () => {
+    mockPrisma.business.count.mockResolvedValue(0);
 
     const result = await SetupPage({ searchParams: Promise.resolve({}) });
 
