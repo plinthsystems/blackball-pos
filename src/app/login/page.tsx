@@ -1,13 +1,11 @@
 import { prisma } from "@/server/db/prisma";
 import { redirect } from "next/navigation";
 import { LoginForm } from "./LoginForm";
-import { Button } from "@/components/ui/button";
 
 export const dynamic = 'force-dynamic';
 
 export default async function LoginPage() {
-  // If no organization exists, show setup button instead of login form
-  const count = await prisma.organization.count();
+  const count = await prisma.business.count();
   
   if (count === 0) {
     return (
@@ -16,13 +14,13 @@ export default async function LoginPage() {
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-lime-500/10 border border-lime-500/30 text-lime-400 text-2xl">
              BB
           </div>
-          <h1 className="text-3xl font-black text-white">Welcome!</h1>
+          <h1 className="text-3xl font-black text-white">Welcome to The Nine</h1>
           <p className="text-slate-400">
-            No platform has been set up yet. Create your first Super Admin account to get started.
+            Set up the store once, then use the Admin or Store login.
           </p>
           <div className="pt-4">
             <a href="/setup" className="inline-block w-full h-12 bg-lime-500 hover:bg-lime-400 text-slate-950 font-black text-sm rounded-xl shadow-[0_0_20px_rgba(132,204,22,0.3)] transition text-center py-3">
-              Create Account & Setup Platform
+              Set up The Nine
             </a>
           </div>
         </div>

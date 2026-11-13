@@ -102,6 +102,13 @@ describe("middleware", () => {
       expect(response.headers.get("location")).toBe("http://localhost:3000/dashboard");
     });
 
+    it("redirects a store account to /live-tables", async () => {
+      const response = await middleware(
+        makeRequest("/login", { auth_session: tokenFor({ accountType: "STORE_USER" }) })
+      );
+      expect(response.headers.get("location")).toBe("http://localhost:3000/live-tables");
+    });
+
     it("redirects a platform admin to /platform/setup", async () => {
       const response = await middleware(
         makeRequest("/login", { auth_session: tokenFor({ accountType: "PLATFORM_ADMIN" }) })
@@ -204,6 +211,16 @@ describe("middleware", () => {
         makeRequest("/hq/dashboard", { demo_user_email: "hq.admin@blackball.example" })
       );
       expect(response.status).toBe(200);
+    });
+  });
+
+  describe("demo route guard", () => {
+    it("redirects normal store accounts away from the demo route", async () => {
+      const response = await middleware(
+        makeRequest("/demo", { auth_session: tokenFor({ accountType: "STORE_USER" }) })
+      );
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe("http://localhost:3000/live-tables");
     });
   });
 });

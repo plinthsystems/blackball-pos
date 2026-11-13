@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getAuthSecret, verifySessionTokenEdge } from "@/server/auth/auth-service";
+import { getDefaultRouteForAccountType } from "@/server/auth/routes";
 
 const isProduction = () => process.env.NODE_ENV === "production";
 
@@ -35,7 +36,12 @@ export async function middleware(request: NextRequest) {
       const accountType = tokenPayload?.accountType;
       const isPlatformAdmin = accountType === "PLATFORM_ADMIN" || (!isProduction() && Boolean(demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@")));
       const isHq = accountType === "HQ_ADMIN" || (!isProduction() && Boolean(demoEmail?.includes("hq.")));
-      return NextResponse.redirect(new URL(isPlatformAdmin ? "/platform/setup" : isHq ? "/hq/dashboard" : "/dashboard", request.url));
+      const defaultRoute = isPlatformAdmin
+        ? "/platform/setup"
+        : isHq
+          ? "/hq/dashboard"
+          : getDefaultRouteForAccountType(accountType ?? "STORE_OWNER", tokenPayload?.mustChangePassword);
+      return NextResponse.redirect(new URL(defaultRoute, request.url));
     }
     return NextResponse.next();
   }
@@ -74,6 +80,13 @@ export async function middleware(request: NextRequest) {
       (!isProduction() && Boolean(demoEmail?.includes("hq.") || demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@")));
     if (!isHqAdmin) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
+  if (pathname.startsWith("/demo")) {
+    const canUseDemo = tokenPayload?.accountType === "PLATFORM_ADMIN" || tokenPayload?.accountType === "HQ_ADMIN";
+    if (!canUseDemo) {
+      return NextResponse.redirect(new URL(getDefaultRouteForAccountType(tokenPayload?.accountType ?? "STORE_USER"), request.url));
     }
   }
 

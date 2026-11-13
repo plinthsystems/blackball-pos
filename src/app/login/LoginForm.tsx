@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -44,15 +43,15 @@ export function LoginForm() {
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-lime-500/10 border border-lime-500/30 text-lime-400 font-black text-2xl shadow-[0_0_30px_rgba(132,204,22,0.2)]">
             BB
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">BlackBall POS & SaaS</h1>
-          <p className="text-xs text-slate-400">Club Management & Multi-Outlet Enterprise POS</p>
+          <h1 className="text-2xl font-black text-white tracking-tight">The Nine</h1>
+          <p className="text-xs text-slate-400">Simple store POS</p>
         </div>
 
         {/* Login Card */}
         <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-7 shadow-2xl space-y-5">
           <div className="border-b border-slate-800 pb-3">
-            <h2 className="text-base font-bold text-white">Sign In to Your Account</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Enter your store manager or staff credentials</p>
+            <h2 className="text-base font-bold text-white">Sign in</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Use your Admin or Store login</p>
           </div>
 
           {error && (
@@ -70,7 +69,7 @@ export function LoginForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="owner@cueclub.example"
+                placeholder="admin@thenine.local"
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-lime-400 focus:outline-none"
               />
             </div>
