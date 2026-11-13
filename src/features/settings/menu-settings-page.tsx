@@ -52,6 +52,7 @@ export function MenuSettingsPage({
   const [selectedCategory, setSelectedCategory] = useState<"ALL" | Exclude<ProductCategory, "CAFE">>("ALL");
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"add" | "save" | "remove" | null>(null);
   const [isPending, startTransition] = useTransition();
   const visibleProducts = products.filter((product) => {
     const matchesCategory = selectedCategory === "ALL" || product.category === selectedCategory || (selectedCategory === "FOOD" && product.category === "CAFE");
@@ -65,32 +66,47 @@ export function MenuSettingsPage({
   ];
 
   function addItem() {
+    setPendingAction("add");
     startTransition(async () => {
-      const result = await createOrUpdateProductAction({ name, category, priceAmount });
-      setMessage(result.message);
-      if (result.ok) {
-        setName("");
-        setPriceAmount(0);
+      try {
+        const result = await createOrUpdateProductAction({ name, category, priceAmount });
+        setMessage(result.message);
+        if (result.ok) {
+          setName("");
+          setPriceAmount(0);
+        }
+      } finally {
+        setPendingAction(null);
       }
     });
   }
 
   function updateItem(product: SettingsProduct, nextPrice: number) {
+    setPendingAction("save");
     startTransition(async () => {
-      const result = await createOrUpdateProductAction({
-        id: product.id,
-        name: product.name,
-        category: product.category === "CAFE" ? "FOOD" : product.category,
-        priceAmount: nextPrice
-      });
-      setMessage(result.message);
+      try {
+        const result = await createOrUpdateProductAction({
+          id: product.id,
+          name: product.name,
+          category: product.category === "CAFE" ? "FOOD" : product.category,
+          priceAmount: nextPrice
+        });
+        setMessage(result.message);
+      } finally {
+        setPendingAction(null);
+      }
     });
   }
 
   function removeItem(product: SettingsProduct) {
+    setPendingAction("remove");
     startTransition(async () => {
-      const result = await deactivateProductAction({ id: product.id });
-      setMessage(result.message);
+      try {
+        const result = await deactivateProductAction({ id: product.id });
+        setMessage(result.message);
+      } finally {
+        setPendingAction(null);
+      }
     });
   }
 
@@ -126,7 +142,7 @@ export function MenuSettingsPage({
           <Field label="Selling price (₹)">
             <input {...textInputProps()} type="number" min={0} value={priceAmount} onChange={(event) => setPriceAmount(Number(event.target.value))} />
           </Field>
-          <div className="flex items-end"><Button type="button" variant="primary" className="w-full" disabled={isPending || !name.trim()} onClick={addItem}>Add item</Button></div>
+          <div className="flex items-end"><Button type="button" variant="primary" className="w-full" disabled={isPending || !name.trim()} onClick={addItem}>{pendingAction === "add" ? "Adding…" : "Add item"}</Button></div>
         </div>
       </div>
 
@@ -142,7 +158,7 @@ export function MenuSettingsPage({
           <input {...textInputProps()} className="h-10 w-full rounded-material border border-slate-700 bg-slate-900 px-3 text-sm text-white placeholder:text-slate-500 sm:max-w-xs" placeholder="Search menu items" value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
         <div className="divide-y divide-slate-800">
-          {visibleProducts.map((product) => <ProductRow key={product.id} product={product} disabled={isPending} onUpdate={updateItem} onRemove={removeItem} />)}
+          {visibleProducts.map((product) => <ProductRow key={product.id} product={product} disabled={isPending} pendingAction={pendingAction} onUpdate={updateItem} onRemove={removeItem} />)}
           {visibleProducts.length === 0 ? <p className="px-4 py-10 text-center text-sm text-slate-500">{products.length ? "No items match this filter." : "No menu items yet. Add your first item above."}</p> : null}
         </div>
       </div>
@@ -154,11 +170,13 @@ export function MenuSettingsPage({
 function ProductRow({
   product,
   disabled,
+  pendingAction,
   onUpdate,
   onRemove
 }: {
   product: SettingsProduct;
   disabled: boolean;
+  pendingAction: "add" | "save" | "remove" | null;
   onUpdate: (product: SettingsProduct, nextPrice: number) => void;
   onRemove: (product: SettingsProduct) => void;
 }) {
@@ -170,8 +188,8 @@ function ProductRow({
       <span className="hidden text-xs font-semibold text-slate-400 sm:block">{categoryLabels[product.category]}</span>
       <label className="flex items-center gap-2 sm:block"><span className="text-xs text-slate-500 sm:hidden">Price ₹</span><input {...textInputProps()} className="h-10 w-full rounded-material border border-slate-700 bg-slate-900 px-3 text-sm text-white" type="number" min={0} value={price} aria-label={`Price for ${product.name}`} onChange={(event) => setPrice(Number(event.target.value))} /></label>
       <div className="flex gap-2 sm:justify-end">
-        <Button type="button" className="h-9 flex-1 px-3 sm:flex-none" disabled={disabled} onClick={() => onUpdate(product, price)}>Save price</Button>
-        <Button type="button" variant="ghost" className="h-9 px-3" disabled={disabled} onClick={() => onRemove(product)}>Remove</Button>
+        <Button type="button" className="h-9 flex-1 px-3 sm:flex-none" disabled={disabled} onClick={() => onUpdate(product, price)}>{disabled && pendingAction === "save" ? "Saving…" : "Save price"}</Button>
+        <Button type="button" variant="ghost" className="h-9 px-3" disabled={disabled} onClick={() => onRemove(product)}>{disabled && pendingAction === "remove" ? "Removing…" : "Remove"}</Button>
       </div>
       <span className="sr-only">{formatMoney(product.priceAmount)}</span>
     </div>

@@ -35,12 +35,12 @@ export function EndSessionDialog({
 
   return (
     <>
-      <Dialog open={open} title={`End session for ${tableNumber}`} onOpenChange={onOpenChange}>
+      <Dialog open={open} title={`Stop session for ${tableNumber}`} onOpenChange={onOpenChange}>
         <div className="space-y-4">
-          <p className="text-sm text-neutral-600">Final duration and table charges are calculated on the server.</p>
+          <p className="text-sm text-slate-300">Stopping ends the session, closes the current bill, and charges actual play time plus items.</p>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="button" variant="primary" disabled={isPending} onClick={endSession}>End session</Button>
+            <Button type="button" variant="primary" disabled={isPending} onClick={endSession}>{isPending ? "Stopping…" : "Stop & close bill"}</Button>
           </div>
         </div>
       </Dialog>

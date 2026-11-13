@@ -209,6 +209,14 @@ export async function addBillItemAction(input: unknown): Promise<ActionResult> {
 
       const unitPrice = Number(product.priceAmount);
       const lineTotal = Math.round(unitPrice * parsed.quantity * 100) / 100;
+      const stockUpdate = await tx.product.updateMany({
+        where: { id: product.id, businessId: context.businessId, active: true, stockOnHand: { gte: parsed.quantity } },
+        data: { stockOnHand: { decrement: parsed.quantity } }
+      });
+      if (stockUpdate.count !== 1) {
+        throw new DomainError("INSUFFICIENT_STOCK", "Not enough stock available.");
+      }
+
       await tx.billItem.create({
         data: {
           businessId: context.businessId,
@@ -253,15 +261,23 @@ export async function removeBillItemAction(input: unknown): Promise<ActionResult
     const context = await getCurrentEmployeeContext();
     requirePermission(context, "bills.manage");
     const parsed = removeBillItemSchema.parse(input);
-    const item = await prisma.billItem.findFirst({
-      where: { id: parsed.billItemId, businessId: context.businessId, bill: { status: "OPEN" } },
-      select: { id: true, bill: { select: { kind: true } } }
-    });
-    if (!item) {
-      throw new DomainError("SESSION_NOT_ACTIVE", "Open bill item was not found.");
-    }
+    await prisma.$transaction(async (tx) => {
+      const item = await tx.billItem.findFirst({
+        where: { id: parsed.billItemId, businessId: context.businessId, bill: { status: "OPEN" } },
+        select: { id: true, productId: true, quantity: true, bill: { select: { kind: true } } }
+      });
+      if (!item) {
+        throw new DomainError("SESSION_NOT_ACTIVE", "Open bill item was not found.");
+      }
 
-    await prisma.billItem.delete({ where: { id: item.id } });
+      if (item.productId) {
+        await tx.product.updateMany({
+          where: { id: item.productId, businessId: context.businessId },
+          data: { stockOnHand: { increment: item.quantity } }
+        });
+      }
+      await tx.billItem.delete({ where: { id: item.id } });
+    });
     revalidatePath("/live-tables");
     revalidatePath("/settings");
     return { ok: true, message: "Item removed from bill." };

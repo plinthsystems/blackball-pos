@@ -92,6 +92,24 @@ describe("getBillingPageData", () => {
     expect(result.total).toBe(1);
   });
 
+  it("searches bills by customer, table, item and receipt label", async () => {
+    mockBillFindMany.mockResolvedValue([]);
+    mockBillCount.mockResolvedValue(0);
+    mockEmployeeFindMany.mockResolvedValue([]);
+    mockTableFindMany.mockResolvedValue([]);
+
+    await getBillingPageData("biz_1", { search: "Riya" }, mockContext);
+
+    expect(mockBillFindMany.mock.calls[0]?.[0].where).toMatchObject({
+      OR: [
+        { label: { contains: "Riya", mode: "insensitive" } },
+        { session: { is: { customer: { is: { name: { contains: "Riya", mode: "insensitive" } } } } } },
+        { session: { is: { table: { is: { number: { contains: "Riya", mode: "insensitive" } } } } } },
+        { items: { some: { nameSnapshot: { contains: "Riya", mode: "insensitive" } } } }
+      ]
+    });
+  });
+
   it("includes live table time in an open session bill using the saved hourly rate", async () => {
     mockBillFindMany.mockResolvedValue([
       {

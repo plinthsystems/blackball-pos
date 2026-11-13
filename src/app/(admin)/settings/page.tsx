@@ -23,6 +23,9 @@ export default async function SettingsPage() {
         name: product.name,
         category: product.category,
         priceAmount: Number(product.priceAmount),
+        stockOnHand: product.stockOnHand,
+        stockUnit: product.stockUnit,
+        unitsPerPack: product.unitsPerPack,
         active: product.active
       }))}
     />

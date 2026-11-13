@@ -8,6 +8,9 @@ export type ProductOption = {
   name: string;
   category: ProductCategory;
   priceAmount: number;
+  stockOnHand: number;
+  stockUnit: string;
+  unitsPerPack: number;
 };
 
 export type LiveBillSummary = {

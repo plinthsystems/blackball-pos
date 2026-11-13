@@ -19,7 +19,7 @@ export function OwnerDashboardPage({ data }: { data: OwnerDashboardData }) {
         <img src="/the-nine/club-opening.webp" alt="The Nine club floor" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-30" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/30" />
         <div>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Owner overview</h1>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Overview</h1>
           <p className="mt-1 text-sm text-slate-400">Sales, revenue, and table usage at a glance.</p>
         </div>
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">

@@ -51,6 +51,14 @@ describe("BillingFilters", () => {
     expect(mockPush).toHaveBeenCalledWith("/billing?kind=SESSION");
   });
 
+  it("searches bills by customer, table or item name", () => {
+    render(<BillingFilters />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Search bills by name" }), { target: { value: "Riya Shah" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search bills" }));
+
+    expect(mockPush).toHaveBeenCalledWith("/billing?q=Riya+Shah");
+  });
+
   it("applies a date shortcut and retains the current bill type", () => {
     mockSearchParams.set("kind", "COUNTER");
     mockSearchParams.set("page", "3");

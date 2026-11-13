@@ -1,6 +1,8 @@
 "use client";
 
+import { useTransition, type FormEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { textInputProps } from "@/components/ui/field";
 
 const DATE_RANGES = [
   { value: "today", label: "Today" },
@@ -48,10 +50,11 @@ export function BillingFilters({ total: _total }: {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
   const params = new URLSearchParams(searchParams.toString());
   const activeRange = getDateRange(params);
   const activeKind = (params.get("kind") as BillKind | null) ?? "ALL";
-  const hasFilters = Boolean(params.get("dateFrom") || params.get("dateTo") || (activeKind && activeKind !== "ALL"));
+  const hasFilters = Boolean(params.get("dateFrom") || params.get("dateTo") || (activeKind && activeKind !== "ALL") || params.get("q"));
 
   function apply(next: { range?: DateRange; kind?: BillKind }) {
     const updated = new URLSearchParams(searchParams.toString());
@@ -74,11 +77,23 @@ export function BillingFilters({ total: _total }: {
       else updated.set("kind", next.kind);
     }
     const query = updated.toString();
-    router.push(query ? `${pathname}?${query}` : pathname);
+    startTransition(() => router.push(query ? `${pathname}?${query}` : pathname));
   }
 
   function clear() {
-    router.push(pathname);
+    startTransition(() => router.push(pathname));
+  }
+
+  function searchBills(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const query = String(form.get("q") ?? "").trim();
+    const updated = new URLSearchParams(searchParams.toString());
+    updated.delete("page");
+    if (query) updated.set("q", query);
+    else updated.delete("q");
+    const next = updated.toString();
+    startTransition(() => router.push(next ? `${pathname}?${next}` : pathname));
   }
 
   return (
@@ -100,12 +115,25 @@ export function BillingFilters({ total: _total }: {
           onChange={(value) => apply({ kind: value as BillKind })}
         />
         {hasFilters ? (
-          <button type="button" onClick={clear} className="inline-flex h-9 items-center gap-1.5 self-start rounded-lg border border-slate-800 px-3 text-xs font-semibold text-slate-400 transition hover:border-slate-600 hover:text-white lg:ml-auto lg:self-center">
+          <button type="button" disabled={isPending} onClick={clear} className="inline-flex h-9 items-center gap-1.5 self-start rounded-lg border border-slate-800 px-3 text-xs font-semibold text-slate-400 transition hover:border-slate-600 hover:text-white lg:ml-auto lg:self-center">
             <span className="material-symbols-outlined text-base" aria-hidden="true">filter_alt_off</span>
             Clear filters
           </button>
         ) : null}
       </div>
+      <form className="mt-4 flex flex-col gap-2 border-t border-slate-800 pt-4 sm:flex-row" onSubmit={searchBills} role="search">
+        <label className="sr-only" htmlFor="billing-search">Search bills by name</label>
+        <input
+          {...textInputProps()}
+          key={params.get("q") ?? ""}
+          id="billing-search"
+          name="q"
+          defaultValue={params.get("q") ?? ""}
+          placeholder="Search customer, table or item"
+          className="h-10 w-full rounded-material border border-slate-700 bg-slate-900 px-3 text-sm text-white placeholder:text-slate-500 sm:max-w-md"
+        />
+        <button type="submit" disabled={isPending} className="h-10 rounded-material border border-slate-700 px-4 text-sm font-semibold text-slate-200 hover:border-lime-300/40 hover:text-white disabled:opacity-60">{isPending ? "Searching…" : "Search bills"}</button>
+      </form>
     </section>
   );
 }

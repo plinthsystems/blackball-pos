@@ -139,6 +139,17 @@ function buildWhereClause(
     };
   }
 
+  const search = filters.search?.trim();
+  if (search) {
+    const contains = { contains: search, mode: "insensitive" };
+    where.OR = [
+      { label: contains },
+      { session: { is: { customer: { is: { name: contains } } } } },
+      { session: { is: { table: { is: { number: contains } } } } },
+      { items: { some: { nameSnapshot: contains } } }
+    ];
+  }
+
   return where;
 }
 

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, textInputProps } from "@/components/ui/field";
 import { Snackbar } from "@/components/ui/snackbar";
-import { formatMoney } from "@/lib/money";
 import type { LiveTableGameType } from "@/features/live-tables/types";
 import { startWalkInSessionSchema, type StartWalkInSessionInput } from "../schemas";
 
@@ -17,16 +16,12 @@ export function StartWalkInDialog({
   tableId,
   tableNumber,
   gameType = "POOL",
-  hourlyRate = 0,
-  ps5MemberRates,
   open,
   onOpenChange
 }: {
   tableId: string;
   tableNumber: string;
   gameType?: LiveTableGameType;
-  hourlyRate?: number;
-  ps5MemberRates?: Record<1 | 2 | 3 | 4, number>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -40,10 +35,8 @@ export function StartWalkInDialog({
     formState: { errors }
   } = useForm<StartWalkInSessionInput>({
     resolver: zodResolver(startWalkInSessionSchema),
-    defaultValues: { tableId, customerName: "", customerPhone: "", ps5MemberCount: 1 }
+    defaultValues: { tableId, customerName: "", customerPhone: "", ps5MemberCount: 1, durationMinutes: 60 }
   });
-  const ps5Rates = ps5MemberRates ?? { 1: hourlyRate || 100, 2: 150, 3: 200, 4: 250 };
-  const previewRate = gameType === "PS5" ? ps5Rates[memberCount] : hourlyRate;
 
   function onSubmit(values: StartWalkInSessionInput) {
     startTransition(async () => {
@@ -67,17 +60,6 @@ export function StartWalkInDialog({
           <Field label="Phone" error={errors.customerPhone?.message}>
             <input {...textInputProps()} {...register("customerPhone")} />
           </Field>
-          <Field label="Duration" error={errors.durationMinutes ? "Choose a duration." : undefined}>
-            <select
-              className="h-10 w-full rounded-material border border-slate-600 bg-slate-950 px-3 text-sm text-slate-100"
-              defaultValue=""
-              {...register("durationMinutes", { valueAsNumber: true })}
-            >
-              <option value="">Select duration</option>
-              <option value={30}>30 minutes</option>
-              <option value={60}>1 hour</option>
-            </select>
-          </Field>
           {gameType === "PS5" ? (
             <Field label="Members" error={errors.ps5MemberCount?.message}>
               <select
@@ -95,12 +77,9 @@ export function StartWalkInDialog({
               </select>
             </Field>
           ) : null}
-          <div className="rounded-material border border-lime-300/30 bg-slate-950 px-3 py-2 text-sm font-semibold text-lime-100 shadow-[0_0_20px_rgba(132,204,22,0.12)]">
-            {gameType === "PS5" ? `PS5 rate: ${formatMoney(previewRate)}/hr` : `Rate: ${formatMoney(previewRate)}/hr`}
-          </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" variant="primary" disabled={isPending}>Start session</Button>
+            <Button type="submit" variant="primary" disabled={isPending}>{isPending ? "Starting…" : "Start session"}</Button>
           </div>
         </form>
       </Dialog>

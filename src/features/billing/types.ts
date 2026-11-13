@@ -38,6 +38,7 @@ export type BillingRecord = {
 };
 
 export type BillingFilters = {
+  search?: string | null;
   dateFrom?: string | null;
   dateTo?: string | null;
   status?: BillingStatus | "ALL";

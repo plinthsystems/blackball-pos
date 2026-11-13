@@ -14,6 +14,7 @@ const filterSchema = z.object({
   dateTo: z.string().optional(),
   staffId: z.string().optional(),
   tableId: z.string().optional(),
+  q: z.string().optional(),
   page: z.coerce.number().optional().default(1),
   pageSize: z.coerce.number().optional().default(50),
 });
@@ -26,7 +27,7 @@ export default async function BillingRoute(props: {
 
   // Parse filters from URL search params
   const parsed = filterSchema.safeParse(searchParams);
-  const filters: BillingFilters = parsed.success ? parsed.data : { page: 1, pageSize: 50 };
+  const filters: BillingFilters = parsed.success ? { ...parsed.data, search: parsed.data.q } : { page: 1, pageSize: 50 };
 
   // Convert "ALL" to undefined for the query
   const queryFilters: BillingFilters = { ...filters };

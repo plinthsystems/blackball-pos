@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createOrUpdateProductAction,
   deactivateProductAction,
+  importInventoryAction,
+  restockProductAction,
   updateBookingSettingsAction,
   updateBrandingAction
 } from "@/features/settings/actions";
@@ -21,7 +23,7 @@ const mocks = vi.hoisted(() => {
     count: vi.fn()
   });
   return {
-    prisma: { businessSettings: model(), product: model() },
+    prisma: { $transaction: vi.fn(), businessSettings: model(), product: model() },
     context: vi.fn(),
     revalidatePath: vi.fn()
   };
@@ -42,6 +44,10 @@ const validBookingSettings = {
   paymentProvider: "NONE",
   bookingAdvanceAmount: 0
 };
+
+function txThrough() {
+  mocks.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(mocks.prisma));
+}
 
 describe("updateBookingSettingsAction", () => {
   beforeEach(() => {
@@ -128,7 +134,9 @@ describe("createOrUpdateProductAction", () => {
         businessId: "biz-1",
         name: "Masala Chai",
         category: "FOOD",
-        priceAmount: 30
+        priceAmount: 30,
+        stockUnit: "unit",
+        unitsPerPack: 1
       }
     });
     expect(mocks.prisma.product.update).not.toHaveBeenCalled();
@@ -150,6 +158,48 @@ describe("createOrUpdateProductAction", () => {
     expect(mocks.prisma.product.update).toHaveBeenCalledWith({
       where: { id: "p1", businessId: "biz-1" },
       data: { name: "Cold Coffee", category: "BEVERAGES", priceAmount: 120, active: true }
+    });
+  });
+
+  it("restocks cigarette stock in whole packs and converts to individual sticks", async () => {
+    mocks.prisma.product.findFirst.mockResolvedValue({ id: "p1", unitsPerPack: 10 });
+    mocks.prisma.product.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await restockProductAction({ id: "p1", packs: 3 });
+
+    expect(result).toEqual({ ok: true, message: "Stock added." });
+    expect(mocks.prisma.product.updateMany).toHaveBeenCalledWith({
+      where: { id: "p1", businessId: "biz-1", active: true },
+      data: expect.objectContaining({ stockOnHand: { increment: 30 }, stockUpdatedAt: expect.any(Date) })
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/settings");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/live-tables");
+  });
+
+  it("imports inventory rows as a stock snapshot", async () => {
+    txThrough();
+    mocks.prisma.product.findFirst.mockResolvedValue(null);
+    mocks.prisma.product.create.mockResolvedValue({ id: "p1" });
+
+    const result = await importInventoryAction([{
+      name: "Compact",
+      category: "CIGARETTES",
+      priceAmount: 12,
+      stockUnit: "stick",
+      unitsPerPack: 10,
+      stockOnHand: 100
+    }]);
+
+    expect(result).toEqual({ ok: true, message: "Imported 1 inventory items." });
+    expect(mocks.prisma.product.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        businessId: "biz-1",
+        name: "Compact",
+        stockOnHand: 100,
+        stockUnit: "stick",
+        unitsPerPack: 10,
+        stockUpdatedAt: expect.any(Date)
+      })
     });
   });
 

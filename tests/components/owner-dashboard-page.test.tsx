@@ -21,7 +21,7 @@ describe("OwnerDashboardPage", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Owner overview" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument();
     expect(screen.queryByText("Today's revenue and station utilization.")).not.toBeInTheDocument();
     expect(screen.getByText("Today's revenue")).toBeInTheDocument();
     expect(screen.getByText("₹435.00")).toBeInTheDocument();
