@@ -41,6 +41,7 @@ export function AddSessionItemDialog({
   const selectedProduct = useMemo(() => products.find((product) => product.id === productId), [productId, products]);
   const previewTotal = selectedProduct ? selectedProduct.priceAmount * quantity : 0;
   const stockOnHand = selectedProduct?.stockOnHand ?? 0;
+  const quantityLimit = selectedProduct?.trackInventory ? stockOnHand : 99;
 
   function addItem() {
     startTransition(async () => {
@@ -76,8 +77,8 @@ export function AddSessionItemDialog({
                   return (
                     <optgroup key={category} label={categoryLabels[category]}>
                       {options.map((product) => (
-                        <option key={product.id} value={product.id} disabled={product.stockOnHand === 0}>
-                          {product.name} - {formatMoney(product.priceAmount)} ({product.stockOnHand} {product.stockUnit} left)
+                        <option key={product.id} value={product.id} disabled={product.trackInventory && product.stockOnHand === 0}>
+                          {product.name} - {formatMoney(product.priceAmount)}{product.trackInventory ? ` (${product.stockOnHand} ${product.stockUnit} left)` : ""}
                         </option>
                       ))}
                     </optgroup>
@@ -90,19 +91,19 @@ export function AddSessionItemDialog({
                 {...textInputProps()}
                 type="number"
                 min={1}
-                max={Math.min(99, stockOnHand)}
+                max={quantityLimit}
                 value={quantity}
                 onChange={(event) => setQuantity(Number(event.target.value))}
               />
             </Field>
-            <p className="text-xs text-slate-400">In stock: {stockOnHand} {selectedProduct?.stockUnit ?? "units"}</p>
+            {selectedProduct?.trackInventory ? <p className="text-xs text-slate-400">In stock: {stockOnHand} {selectedProduct.stockUnit}</p> : null}
             <div className="flex items-center justify-between rounded-material border border-lime-300/20 bg-slate-900 px-3 py-2 text-sm">
               <span className="text-slate-400">Line total</span>
               <strong>{formatMoney(previewTotal)}</strong>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="button" variant="primary" disabled={isPending || !productId || quantity < 1 || quantity > stockOnHand} onClick={addItem}>
+              <Button type="button" variant="primary" disabled={isPending || !productId || quantity < 1 || quantity > quantityLimit} onClick={addItem}>
                 {isPending ? "Adding…" : "Add to bill"}
               </Button>
             </div>

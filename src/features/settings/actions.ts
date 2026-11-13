@@ -67,7 +67,8 @@ export async function createOrUpdateProductAction(input: unknown): Promise<Actio
           category: parsed.category,
           priceAmount: parsed.priceAmount,
           stockUnit: parsed.stockUnit ?? (parsed.category === "CIGARETTES" ? "stick" : "unit"),
-          unitsPerPack: parsed.unitsPerPack ?? (parsed.category === "CIGARETTES" ? 10 : 1)
+          unitsPerPack: parsed.unitsPerPack ?? (parsed.category === "CIGARETTES" ? 10 : 1),
+          trackInventory: parsed.category === "CIGARETTES"
         }
       });
     }
@@ -97,7 +98,7 @@ export async function restockProductAction(input: unknown): Promise<ActionResult
     const restockUnits = parsed.packs * product.unitsPerPack;
     const updated = await prisma.product.updateMany({
       where: { id: product.id, businessId: context.businessId, active: true },
-      data: { stockOnHand: { increment: restockUnits }, stockUpdatedAt: new Date() }
+      data: { stockOnHand: { increment: restockUnits }, stockUpdatedAt: new Date(), trackInventory: true }
     });
     if (updated.count !== 1) {
       return { ok: false, message: "Menu item was not found." };
@@ -118,7 +119,7 @@ export async function updateInventoryProductAction(input: unknown): Promise<Acti
     const parsed = inventoryProductSettingsSchema.parse(input);
     await prisma.product.update({
       where: { id: parsed.id, businessId: context.businessId },
-      data: { stockUnit: parsed.stockUnit, unitsPerPack: parsed.unitsPerPack }
+      data: { stockUnit: parsed.stockUnit, unitsPerPack: parsed.unitsPerPack, trackInventory: true }
     });
     revalidatePath("/inventory");
     revalidatePath("/live-tables");
@@ -149,6 +150,7 @@ export async function importInventoryAction(input: unknown): Promise<ActionResul
           unitsPerPack: row.unitsPerPack,
           stockOnHand: row.stockOnHand,
           stockUpdatedAt: now,
+          trackInventory: true,
           active: true
         };
         if (existing) {

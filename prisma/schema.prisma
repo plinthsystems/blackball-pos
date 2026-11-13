@@ -388,6 +388,7 @@ model Product {
   name           String
   category       ProductCategory
   priceAmount    Decimal         @db.Decimal(12, 2)
+  trackInventory Boolean         @default(false)
   stockOnHand    Int             @default(0)
   stockUnit      String          @default("unit")
   unitsPerPack   Int             @default(1)

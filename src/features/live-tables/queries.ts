@@ -112,6 +112,7 @@ export async function getProductOptions(businessId: string): Promise<ProductOpti
     name: product.name,
     category: product.category,
     priceAmount: Number(product.priceAmount),
+    trackInventory: product.trackInventory,
     stockOnHand: product.stockOnHand,
     stockUnit: product.stockUnit,
     unitsPerPack: product.unitsPerPack

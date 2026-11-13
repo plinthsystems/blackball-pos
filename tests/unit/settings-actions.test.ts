@@ -136,7 +136,8 @@ describe("createOrUpdateProductAction", () => {
         category: "FOOD",
         priceAmount: 30,
         stockUnit: "unit",
-        unitsPerPack: 1
+        unitsPerPack: 1,
+        trackInventory: false
       }
     });
     expect(mocks.prisma.product.update).not.toHaveBeenCalled();
@@ -170,7 +171,7 @@ describe("createOrUpdateProductAction", () => {
     expect(result).toEqual({ ok: true, message: "Stock added." });
     expect(mocks.prisma.product.updateMany).toHaveBeenCalledWith({
       where: { id: "p1", businessId: "biz-1", active: true },
-      data: expect.objectContaining({ stockOnHand: { increment: 30 }, stockUpdatedAt: expect.any(Date) })
+      data: expect.objectContaining({ stockOnHand: { increment: 30 }, stockUpdatedAt: expect.any(Date), trackInventory: true })
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/settings");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/live-tables");
@@ -198,7 +199,8 @@ describe("createOrUpdateProductAction", () => {
         stockOnHand: 100,
         stockUnit: "stick",
         unitsPerPack: 10,
-        stockUpdatedAt: expect.any(Date)
+        stockUpdatedAt: expect.any(Date),
+        trackInventory: true
       })
     });
   });

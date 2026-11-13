@@ -55,8 +55,8 @@ describe("LiveTablePage", () => {
         counterBills={[]}
         businessName="The Nine Snooker & Cafe"
         products={[
-          { id: "product_tea", name: "Tea", category: "FOOD", priceAmount: 20, stockOnHand: 25, stockUnit: "servings", unitsPerPack: 1 },
-          { id: "product_water", name: "Water Bottle", category: "BEVERAGES", priceAmount: 20, stockOnHand: 12, stockUnit: "bottles", unitsPerPack: 1 }
+          { id: "product_tea", name: "Tea", category: "FOOD", priceAmount: 20, trackInventory: false, stockOnHand: 25, stockUnit: "servings", unitsPerPack: 1 },
+          { id: "product_water", name: "Water Bottle", category: "BEVERAGES", priceAmount: 20, trackInventory: true, stockOnHand: 12, stockUnit: "bottles", unitsPerPack: 1 }
         ]}
         tables={[
           {

@@ -77,6 +77,35 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
       throw new DomainError("PRICING_NOT_FOUND", "Hourly rate was not found for this station.");
     }
 
+    let customerId: string | null = null;
+    if (parsed.customerName || parsed.customerPhone) {
+      const existingCustomer = parsed.customerPhone
+        ? await prisma.customer.findFirst({
+            where: { businessId: context.businessId, phone: parsed.customerPhone },
+            select: { id: true, name: true }
+          })
+        : null;
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+        if (parsed.customerName && parsed.customerName !== existingCustomer.name) {
+          await prisma.customer.update({
+            where: { id: existingCustomer.id, businessId: context.businessId },
+            data: { name: parsed.customerName }
+          });
+        }
+      } else {
+        const customer = await prisma.customer.create({
+          data: {
+            businessId: context.businessId,
+            name: parsed.customerName || "Walk-in customer",
+            phone: parsed.customerPhone || null
+          },
+          select: { id: true }
+        });
+        customerId = customer.id;
+      }
+    }
+
     const session = await services().sessions.startWalkInSession({
       businessId: context.businessId,
       employeeId: context.employeeId,
@@ -84,6 +113,7 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
       durationMinutes: parsed.durationMinutes,
       ps5MemberCount,
       hourlyRateSnapshot: Number(pricing.priceAmount),
+      customerId,
       assignedEmployeeId: parsed.assignedEmployeeId ?? context.employeeId,
       now: new Date()
     });
@@ -199,7 +229,7 @@ export async function addBillItemAction(input: unknown): Promise<ActionResult> {
             businessId: context.businessId,
             active: true
           },
-          select: { id: true, name: true, category: true, priceAmount: true }
+          select: { id: true, name: true, category: true, priceAmount: true, trackInventory: true }
         })
       ]);
 
@@ -209,12 +239,14 @@ export async function addBillItemAction(input: unknown): Promise<ActionResult> {
 
       const unitPrice = Number(product.priceAmount);
       const lineTotal = Math.round(unitPrice * parsed.quantity * 100) / 100;
-      const stockUpdate = await tx.product.updateMany({
-        where: { id: product.id, businessId: context.businessId, active: true, stockOnHand: { gte: parsed.quantity } },
-        data: { stockOnHand: { decrement: parsed.quantity } }
-      });
-      if (stockUpdate.count !== 1) {
-        throw new DomainError("INSUFFICIENT_STOCK", "Not enough stock available.");
+      if (product.trackInventory) {
+        const stockUpdate = await tx.product.updateMany({
+          where: { id: product.id, businessId: context.businessId, active: true, trackInventory: true, stockOnHand: { gte: parsed.quantity } },
+          data: { stockOnHand: { decrement: parsed.quantity } }
+        });
+        if (stockUpdate.count !== 1) {
+          throw new DomainError("INSUFFICIENT_STOCK", "Not enough stock available.");
+        }
       }
 
       await tx.billItem.create({
@@ -271,10 +303,16 @@ export async function removeBillItemAction(input: unknown): Promise<ActionResult
       }
 
       if (item.productId) {
-        await tx.product.updateMany({
+        const product = await tx.product.findFirst({
           where: { id: item.productId, businessId: context.businessId },
-          data: { stockOnHand: { increment: item.quantity } }
+          select: { trackInventory: true }
         });
+        if (product?.trackInventory) {
+          await tx.product.updateMany({
+            where: { id: item.productId, businessId: context.businessId, trackInventory: true },
+            data: { stockOnHand: { increment: item.quantity } }
+          });
+        }
       }
       await tx.billItem.delete({ where: { id: item.id } });
     });

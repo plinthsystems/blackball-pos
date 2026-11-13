@@ -12,7 +12,7 @@ export default async function InventoryRoute() {
     redirect(getDefaultRouteForPermissions(context.permissions));
   }
   const products = await prisma.product.findMany({
-    where: { businessId: context.businessId, active: true },
+    where: { businessId: context.businessId, active: true, trackInventory: true },
     orderBy: [{ category: "asc" }, { name: "asc" }]
   });
 

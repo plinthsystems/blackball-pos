@@ -338,15 +338,15 @@ describe("getProductOptions", () => {
 
   it("maps active products ordered by category then name", async () => {
     mocks.prisma.product.findMany.mockResolvedValue([
-      { id: "p1", name: "Cold Coffee", category: "BEVERAGES", priceAmount: "120", stockOnHand: 8, stockUnit: "bottles", unitsPerPack: 1 },
-      { id: "p2", name: "Fries", category: "FOOD", priceAmount: 110, stockOnHand: 12, stockUnit: "portions", unitsPerPack: 1 }
+      { id: "p1", name: "Cold Coffee", category: "BEVERAGES", priceAmount: "120", trackInventory: true, stockOnHand: 8, stockUnit: "bottles", unitsPerPack: 1 },
+      { id: "p2", name: "Fries", category: "FOOD", priceAmount: 110, trackInventory: false, stockOnHand: 12, stockUnit: "portions", unitsPerPack: 1 }
     ]);
 
     const options = await getProductOptions("biz-1");
 
     expect(options).toEqual([
-      { id: "p1", name: "Cold Coffee", category: "BEVERAGES", priceAmount: 120, stockOnHand: 8, stockUnit: "bottles", unitsPerPack: 1 },
-      { id: "p2", name: "Fries", category: "FOOD", priceAmount: 110, stockOnHand: 12, stockUnit: "portions", unitsPerPack: 1 }
+      { id: "p1", name: "Cold Coffee", category: "BEVERAGES", priceAmount: 120, trackInventory: true, stockOnHand: 8, stockUnit: "bottles", unitsPerPack: 1 },
+      { id: "p2", name: "Fries", category: "FOOD", priceAmount: 110, trackInventory: false, stockOnHand: 12, stockUnit: "portions", unitsPerPack: 1 }
     ]);
     expect(mocks.prisma.product.findMany).toHaveBeenCalledWith({
       where: { businessId: "biz-1", active: true },
