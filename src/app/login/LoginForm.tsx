@@ -37,17 +37,17 @@ export function LoginForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#090d0b] p-3 text-white sm:p-6">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-[28px] border border-lime-300/15 bg-slate-950 shadow-[0_24px_100px_rgba(0,0,0,0.45)] lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="relative hidden min-h-[620px] overflow-hidden lg:block">
-          <img src="/the-nine/club-opening.webp" alt="The Nine club floor" className="absolute inset-0 h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#07100c] via-[#07100c]/35 to-[#07100c]/5" />
-          <div className="absolute inset-x-0 bottom-0 p-10">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-lime-300/25 bg-black/25 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-lime-100 backdrop-blur">
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-[24px] border border-lime-300/15 bg-slate-950 shadow-[0_24px_100px_rgba(0,0,0,0.45)] lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="relative isolate flex min-h-[230px] items-end overflow-hidden sm:min-h-[300px] lg:min-h-[620px]">
+          <img src="/the-nine/club-opening.webp" alt="The Nine club floor and snooker tables" className="absolute inset-0 z-0 h-full w-full object-cover object-center" />
+          <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#07100c]/95 via-[#07100c]/30 to-[#07100c]/5" />
+          <div className="relative z-20 p-5 sm:p-8 lg:p-10">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-lime-300/25 bg-black/35 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-lime-100 backdrop-blur sm:mb-5 sm:text-[11px]">
               <span className="h-2 w-2 rounded-full bg-lime-300 shadow-[0_0_14px_rgba(190,242,100,0.75)]" />
               The Nine · Cue Sports Club
             </div>
-            <h2 className="max-w-lg text-4xl font-black leading-tight text-white">Run the floor. Know the numbers.</h2>
-            <p className="mt-3 max-w-md text-sm leading-6 text-lime-50/75">
+            <h2 className="max-w-lg text-2xl font-black leading-tight text-white sm:text-4xl">Run the floor. Know the numbers.</h2>
+            <p className="mt-2 max-w-md text-xs leading-5 text-lime-50/80 sm:mt-3 sm:text-sm sm:leading-6">
               A focused workspace for live tables, billing, and the decisions that keep your club moving.
             </p>
           </div>
@@ -55,18 +55,12 @@ export function LoginForm() {
 
         <section className="flex items-center p-5 sm:p-8 lg:p-12">
           <div className="w-full space-y-6">
-            <div className="grid grid-cols-3 gap-2 lg:hidden">
-              <img src="/the-nine/club-table-closeup.webp" alt="The Nine pool table" className="h-20 w-full rounded-xl object-cover" />
-              <img src="/the-nine/club-lounge.webp" alt="The Nine reception" className="h-20 w-full rounded-xl object-cover" />
-              <img src="/the-nine/club-table-front.webp" alt="The Nine snooker table" className="h-20 w-full rounded-xl object-cover" />
-            </div>
-
-            <div className="space-y-2 text-center lg:text-left">
-              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-lime-300/30 bg-lime-500/10 text-2xl font-black text-lime-300 shadow-[0_0_30px_rgba(132,204,22,0.2)]">
-                TN
+            <div className="flex items-center gap-3">
+              <img src="/the-nine/the-nine-logo.jpeg" alt="The Nine logo" className="h-16 w-16 rounded-xl border border-amber-300/20 object-cover object-center shadow-[0_0_24px_rgba(212,145,64,0.12)]" />
+              <div className="space-y-1">
+                <h1 className="text-xl font-black tracking-tight text-white sm:text-2xl">The Nine Snooker & Cafe</h1>
+                <p className="text-xs text-slate-400">Store operations</p>
               </div>
-              <h1 className="text-2xl font-black tracking-tight text-white">The Nine Snooker & Cafe</h1>
-              <p className="text-xs text-slate-400">Store operations</p>
             </div>
 
             <div className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl sm:p-7">

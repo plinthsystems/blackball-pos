@@ -159,12 +159,11 @@ function getVisibleNavItems(account: ShellAccount) {
 function BrandMark({ branding, compact = false }: { branding: TenantBranding; compact?: boolean }) {
   return (
     <div className="flex items-center gap-3">
-      <div
-        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/25 bg-slate-900 text-sm font-black text-white shadow-[0_0_22px_rgba(34,211,238,0.14)]"
-      >
-        <span className="absolute inset-1 rounded-full border" style={{ borderColor: branding.brandColor }} aria-hidden="true" />
-        {branding.logoInitials}
-      </div>
+      <img
+        src="/the-nine/the-nine-logo.jpeg"
+        alt="The Nine logo"
+        className="h-10 w-10 rounded-full border border-amber-300/30 object-cover object-center shadow-[0_0_22px_rgba(212,145,64,0.14)]"
+      />
       <div>
         <p className={compact ? "text-sm font-black text-white" : "text-sm font-black text-white"}>{branding.appName}</p>
         {!compact ? <p className="text-xs text-cyan-100/60">{branding.businessName}</p> : null}

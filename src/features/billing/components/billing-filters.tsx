@@ -20,7 +20,7 @@ function dateInputProps() {
   return {
     type: "date" as const,
     className:
-      "h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
+      "h-10 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
   };
 }
 
@@ -64,8 +64,8 @@ export function BillingFilters({
   );
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-3 shadow-material sm:p-4">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 sm:p-4">
+      <div className="flex flex-wrap items-end gap-4">
         <FilterGroup
           label="Sale type"
           options={KIND_OPTIONS}
@@ -91,9 +91,9 @@ export function BillingFilters({
             <button
               type="button"
               onClick={() => router.push(pathname)}
-              className="h-10 rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 text-xs font-black text-rose-200 transition hover:bg-rose-400/20"
+              className="h-10 rounded-lg border border-slate-700 px-3 text-xs font-bold text-slate-300 transition hover:border-lime-300/40 hover:text-white"
             >
-              Clear
+              Reset filters
             </button>
           ) : null}
         </div>
@@ -115,8 +115,8 @@ function FilterGroup<T extends readonly { value: string; label: string }[]>({
 }) {
   return (
     <div>
-      <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
-      <div className="flex flex-wrap gap-1 rounded-xl border border-slate-800 bg-slate-900 p-1">
+      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
+      <div className="flex flex-wrap gap-1 rounded-lg border border-slate-800 bg-slate-900/80 p-1">
         {options.map((option) => {
           const selected = value === option.value;
           return (
@@ -125,7 +125,7 @@ function FilterGroup<T extends readonly { value: string; label: string }[]>({
               type="button"
               aria-pressed={selected}
               onClick={() => onChange(option.value)}
-              className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${selected ? "bg-lime-300 text-slate-950" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+              className={`rounded-md px-3 py-2 text-xs font-semibold transition ${selected ? "bg-lime-300 text-slate-950" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
             >
               {option.label}
             </button>

@@ -33,6 +33,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/integrations") ||
     pathname.startsWith("/_next") ||
+    pathname.startsWith("/the-nine/") ||
     pathname.startsWith("/favicon")
   ) {
     // If visiting /login while authenticated, redirect to role dashboard

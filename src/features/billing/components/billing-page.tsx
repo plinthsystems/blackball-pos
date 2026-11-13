@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useSearchParams, usePathname } from "next/navigation";
-import { formatMoney } from "@/lib/money";
 import { BillingFilters } from "./billing-filters";
 import { BillingTable } from "./billing-table";
 import type { BillingPageData } from "../types";
@@ -23,39 +22,25 @@ export function BillingPage({ data }: { data: BillingPageData }) {
   // Pagination
   const currentPage = searchParams.get("page") ? parseInt(searchParams.get("page")!, 10) : 1;
   const totalPages = Math.ceil(data.total / (data.filters.pageSize ?? 50));
-  const salesTotal = data.records.reduce((sum, record) => sum + record.totalAmount, 0);
-  const tableMinutes = data.records.reduce((sum, record) => sum + record.tableDurationMinutes, 0);
-  const itemTotal = data.records.reduce((sum, record) => sum + record.itemTotal, 0);
-
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="mx-auto max-w-6xl space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-800 pb-4">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-lime-200/80">The Nine Snooker & Cafe</p>
-          <h1 className="mt-1 text-2xl font-black uppercase tracking-normal text-white">Billing</h1>
-          <p className="mt-1 text-sm text-slate-400">Closed bills with table time, rate, items, and the final amount.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-lime-300">The Nine Snooker & Cafe</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-white">Billing</h1>
+          <p className="mt-1 text-sm text-slate-400">Closed receipts with table time and item totals.</p>
         </div>
       </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Closed sales" value={formatMoney(salesTotal)} hint={`${data.total} bill${data.total !== 1 ? "s" : ""}`} />
-        <SummaryCard label="Table time" value={`${tableMinutes} min`} hint="from session bills" />
-        <SummaryCard label="Items" value={formatMoney(itemTotal)} hint="food, cafe, drinks" />
-      </div>
-
-      {/* Filters */}
       <BillingFilters
         staffOptions={data.staffOptions}
         tableOptions={data.tables}
         accountType="MANAGER"
       />
 
-      {/* Table */}
       <BillingTable records={data.records} expandedId={expandedId} onToggle={toggle} />
 
-      {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 border-t border-slate-800 pt-4">
           <p className="text-sm text-slate-400">
             Page {currentPage} of {totalPages}
           </p>
@@ -85,16 +70,6 @@ export function BillingPage({ data }: { data: BillingPageData }) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function SummaryCard({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <div className="rounded-2xl border border-lime-300/15 bg-slate-950/80 p-4 shadow-material">
-      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <strong className="mt-2 block text-2xl font-black text-white">{value}</strong>
-      <p className="mt-1 text-xs text-slate-500">{hint}</p>
     </div>
   );
 }

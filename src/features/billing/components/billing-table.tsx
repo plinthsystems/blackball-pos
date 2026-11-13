@@ -4,15 +4,9 @@ import { useState } from "react";
 import { formatMoney } from "@/lib/money";
 import type { BillingRecord } from "../types";
 
-const statusStyles: Record<string, { label: string; classes: string }> = {
-  OPEN: { label: "Open", classes: "border-cyan-400/50 bg-cyan-400/10 text-cyan-200" },
-  CLOSED: { label: "Closed", classes: "border-emerald-400/50 bg-emerald-400/10 text-emerald-200" },
-  CANCELLED: { label: "Cancelled", classes: "border-rose-400/50 bg-rose-400/10 text-rose-200" }
-};
-
 const kindLabel: Record<string, string> = {
-  SESSION: "Session",
-  COUNTER: "Counter"
+  SESSION: "Table session",
+  COUNTER: "Counter sale"
 };
 
 const categoryLabels: Record<string, string> = {
@@ -24,10 +18,10 @@ const categoryLabels: Record<string, string> = {
 export function BillingTable({ records, expandedId, onToggle }: { records: BillingRecord[]; expandedId: string | null; onToggle: (id: string) => void }) {
   if (records.length === 0) {
     return (
-      <div className="rounded-material border border-slate-700 bg-slate-900/80 p-10 text-center">
-        <p className="text-3xl">📋</p>
-        <p className="mt-3 text-sm font-bold text-slate-300">No billing records found</p>
-        <p className="mt-1 text-xs text-slate-500">Try adjusting your filters or date range.</p>
+      <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-12 text-center">
+        <span className="material-symbols-outlined text-3xl text-slate-500" aria-hidden="true">receipt_long</span>
+        <p className="mt-3 text-sm font-bold text-slate-200">No closed bills found</p>
+        <p className="mt-1 text-xs text-slate-500">Adjust the date or item filters to view other receipts.</p>
       </div>
     );
   }
@@ -35,46 +29,44 @@ export function BillingTable({ records, expandedId, onToggle }: { records: Billi
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">Closed bills</h2>
-        <span className="text-xs text-slate-500">Select a bill to see the full receipt</span>
+        <h2 className="text-base font-bold text-white">Closed bills</h2>
+        <span className="text-xs text-slate-500">{records.length} shown · select a receipt for details</span>
       </div>
       <div className="space-y-3">
         {records.map((record) => {
           const isExpanded = expandedId === record.id;
-          const style = statusStyles[record.status] ?? statusStyles.OPEN;
-
           return (
-            <div key={record.id}>
+            <div key={record.id} className={`overflow-hidden rounded-xl border bg-slate-950/80 transition ${isExpanded ? "border-lime-300/40" : "border-slate-800 hover:border-slate-600"}`}>
               <button
                 type="button"
-                className={`w-full rounded-material border border-slate-700 bg-slate-900/80 p-4 text-left shadow-material transition-colors hover:border-lime-300/30 hover:bg-slate-800/80 ${isExpanded ? "border-lime-300/40 bg-slate-800/60" : ""}`}
+                aria-expanded={isExpanded}
+                aria-label={`${isExpanded ? "Collapse" : "View"} receipt for ${record.tableNumber ?? "counter sale"}, ${formatDate(record.openedAt)}, ${formatMoney(record.totalAmount)}`}
+                className="w-full p-4 text-left sm:p-5"
                 onClick={() => onToggle(record.id)}
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <span className="material-symbols-outlined mt-0.5 text-[18px] text-slate-400">{isExpanded ? "expand_less" : "expand_more"}</span>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-black text-white">{record.tableNumber ?? "Counter sale"}</p>
-                        <span className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-300">{kindLabel[record.kind] ?? record.kind}</span>
-                        <span className={`rounded-md border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${style.classes}`}>{style.label}</span>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className={`material-symbols-outlined mt-0.5 text-xl ${isExpanded ? "text-lime-300" : "text-slate-500"}`} aria-hidden="true">{isExpanded ? "expand_less" : "receipt_long"}</span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p className="text-base font-bold text-white">{record.tableNumber ?? "Counter sale"}</p>
+                        {record.kind === "SESSION" ? <span className="text-xs text-slate-500">{kindLabel[record.kind]}</span> : null}
                       </div>
-                      <p className="mt-1 flex flex-wrap gap-x-1 text-xs text-slate-500">
-                        <span>{formatDate(record.openedAt)}</span>
-                        <span>· {record.closedAt ? `Closed ${formatDate(record.closedAt)}` : "Live bill"}</span>
-                        {record.assignedStaffName ? <span>· <span className="text-slate-400">{record.assignedStaffName}</span></span> : null}
+                      <p className="mt-1 text-xs text-slate-400">
+                        {formatDate(record.openedAt)}{record.sessionLabel ? ` · ${record.sessionLabel}` : ""}
+                        {record.assignedStaffName ? ` · ${record.assignedStaffName}` : ""}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Grand total</p>
-                    <strong className="text-2xl font-black text-lime-300">{formatMoney(record.totalAmount)}</strong>
+                  <div className="ml-auto text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total</p>
+                    <strong className="text-xl font-black text-lime-300 sm:text-2xl">{formatMoney(record.totalAmount)}</strong>
                   </div>
                 </div>
-                <div className="mt-4 grid gap-2 border-t border-slate-800 pt-3 sm:grid-cols-3">
-                  <ReceiptMetric label="Table time" value={record.tableDurationMinutes ? `${record.tableDurationMinutes} min · ${formatMoney(record.tableHourlyRate)}/hr` : "No table time"} />
+                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-800 pt-3 sm:grid-cols-3">
+                  <ReceiptMetric label="Table time" value={record.tableDurationMinutes ? `${record.tableDurationMinutes} min @ ${formatMoney(record.tableHourlyRate)}/hr` : "—"} />
                   <ReceiptMetric label="Table charge" value={formatMoney(record.tableAmount)} />
-                  <ReceiptMetric label="Items" value={`${record.items.length} · ${formatMoney(record.itemTotal)}`} />
+                  <ReceiptMetric label="Items" value={`${record.items.length} ${record.items.length === 1 ? "item" : "items"} · ${formatMoney(record.itemTotal)}`} />
                 </div>
               </button>
               {isExpanded && <BillDetails record={record} />}
@@ -88,9 +80,9 @@ export function BillingTable({ records, expandedId, onToggle }: { records: Billi
 
 function ReceiptMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2">
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-bold text-white">{value}</p>
+    <div className="min-w-0">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold text-slate-200">{value}</p>
     </div>
   );
 }
