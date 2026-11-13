@@ -9,8 +9,8 @@ export default function InventoryLoading() {
         </div>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {["Tracked items", "Out of stock", "Overall stock", "Menu only"].map((label) => (
+      <div className="grid gap-3 sm:grid-cols-3">
+        {["Inventory items", "Out of stock", "Overall stock"].map((label) => (
           <div key={label} className="animate-pulse rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
             <div className="mt-3 h-7 w-20 rounded bg-slate-800" />

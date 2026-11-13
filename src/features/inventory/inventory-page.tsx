@@ -14,7 +14,6 @@ export type InventoryProduct = {
   name: string;
   category: ProductCategory;
   priceAmount: number;
-  trackInventory: boolean;
   stockOnHand: number;
   stockUnit: string;
   unitsPerPack: number;
@@ -47,17 +46,13 @@ export function InventoryPage({ products }: { products: InventoryProduct[] }) {
     (category === "ALL" || product.category === category || (category === "FOOD" && product.category === "CAFE")) &&
     product.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
   );
-  const trackedProducts = products.filter((product) => product.trackInventory);
-  const menuOnlyCount = products.length - trackedProducts.length;
   const totalsByUnit = useMemo(() => {
     const totals = new Map<string, number>();
-    for (const product of products) {
-      if (product.trackInventory) totals.set(product.stockUnit, (totals.get(product.stockUnit) ?? 0) + product.stockOnHand);
-    }
+    for (const product of products) totals.set(product.stockUnit, (totals.get(product.stockUnit) ?? 0) + product.stockOnHand);
     return Array.from(totals.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [products]);
-  const outOfStockCount = trackedProducts.filter((product) => product.stockOnHand === 0).length;
-  const lowStockCount = trackedProducts.filter((product) => product.stockOnHand > 0 && product.stockOnHand <= product.unitsPerPack).length;
+  const outOfStockCount = products.filter((product) => product.stockOnHand === 0).length;
+  const lowStockCount = products.filter((product) => product.stockOnHand > 0 && product.stockOnHand <= product.unitsPerPack).length;
 
   function selectCsv(file?: File) {
     setImportMessage(null);
@@ -98,8 +93,8 @@ export function InventoryPage({ products }: { products: InventoryProduct[] }) {
         </div>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Tracked items" value={String(trackedProducts.length)} detail="Stock-managed products" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SummaryCard label="Inventory items" value={String(products.length)} detail="Stock-managed products" />
         <SummaryCard label="Out of stock" value={String(outOfStockCount)} detail={`${lowStockCount} at one pack or less`} />
         <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Overall stock</p>
@@ -107,7 +102,6 @@ export function InventoryPage({ products }: { products: InventoryProduct[] }) {
             {totalsByUnit.length ? totalsByUnit.map(([unit, count]) => <strong key={unit} className="text-sm text-white">{formatUnits(count, unit)}</strong>) : <span className="text-sm text-slate-400">No stock recorded</span>}
           </div>
         </div>
-        <SummaryCard label="Menu only" value={String(menuOnlyCount)} detail="Orderable, stock not tracked" />
       </div>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4" aria-label="Import inventory CSV">
@@ -132,7 +126,7 @@ export function InventoryPage({ products }: { products: InventoryProduct[] }) {
         {importMessage ? <p className={`mt-3 text-sm ${importMessage.includes("could not") || importMessage.startsWith("CSV") || importMessage.startsWith("Row") ? "text-rose-300" : "text-lime-200"}`} role="status">{importMessage}</p> : null}
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70" aria-label="Inventory and menu items">
+      <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70" aria-label="Inventory stock list">
         <div className="flex flex-col gap-3 border-b border-slate-800 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
           <div className="flex flex-wrap gap-1.5" aria-label="Filter inventory by category">
             {filters.map((filter) => (
@@ -153,21 +147,6 @@ export function InventoryPage({ products }: { products: InventoryProduct[] }) {
 }
 
 function InventoryRow({ product }: { product: InventoryProduct }) {
-  if (!product.trackInventory) {
-    return (
-      <article className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 text-sm">
-        <div className="min-w-0">
-          <strong className="block truncate text-white">{product.name}</strong>
-          <span className="text-xs text-slate-500">{categoryLabels[product.category]} · {formatMoney(product.priceAmount)} / {formatUnit(product.stockUnit)}</span>
-        </div>
-        <span className="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs font-semibold text-slate-300">Menu only · stock not tracked</span>
-      </article>
-    );
-  }
-  return <TrackedInventoryRow product={product} />;
-}
-
-function TrackedInventoryRow({ product }: { product: InventoryProduct }) {
   const router = useRouter();
   const [stockUnit, setStockUnit] = useState(product.stockUnit);
   const [unitsPerPack, setUnitsPerPack] = useState(product.unitsPerPack);

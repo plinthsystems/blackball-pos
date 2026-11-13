@@ -7,9 +7,8 @@ describe("InventoryPage", () => {
     render(
       <InventoryPage
         products={[
-          { id: "c1", name: "Compact", category: "CIGARETTES", priceAmount: 12, trackInventory: true, stockOnHand: 40, stockUnit: "sticks", unitsPerPack: 10, stockUpdatedAt: "2026-11-13T08:00:00.000Z" },
-          { id: "b1", name: "Water", category: "BEVERAGES", priceAmount: 20, trackInventory: true, stockOnHand: 12, stockUnit: "bottles", unitsPerPack: 6, stockUpdatedAt: null },
-          { id: "m1", name: "Veg Sandwich", category: "FOOD", priceAmount: 119, trackInventory: false, stockOnHand: 0, stockUnit: "unit", unitsPerPack: 1, stockUpdatedAt: null }
+          { id: "c1", name: "Compact", category: "CIGARETTES", priceAmount: 12, stockOnHand: 40, stockUnit: "sticks", unitsPerPack: 10, stockUpdatedAt: "2026-11-13T08:00:00.000Z" },
+          { id: "b1", name: "Water", category: "BEVERAGES", priceAmount: 20, stockOnHand: 12, stockUnit: "bottles", unitsPerPack: 6, stockUpdatedAt: null }
         ]}
       />
     );
