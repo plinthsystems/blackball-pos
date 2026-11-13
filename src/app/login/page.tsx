@@ -14,7 +14,7 @@ export default async function LoginPage() {
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-lime-500/10 border border-lime-500/30 text-lime-400 text-2xl">
              BB
           </div>
-          <h1 className="text-3xl font-black text-white">Welcome to The Nine</h1>
+          <h1 className="text-3xl font-black text-white">Welcome to The Nine Snooker & Cafe</h1>
           <p className="text-slate-400">
             Set up the store once, then use the Admin or Store login.
           </p>

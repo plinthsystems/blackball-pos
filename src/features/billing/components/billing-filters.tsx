@@ -3,21 +3,14 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
-const STATUS_OPTIONS = [
-  { value: "ALL", label: "All Statuses" },
-  { value: "OPEN", label: "Open" },
-  { value: "CLOSED", label: "Closed" },
-  { value: "CANCELLED", label: "Cancelled" }
-] as const;
-
 const KIND_OPTIONS = [
-  { value: "ALL", label: "All Kinds" },
-  { value: "SESSION", label: "Session" },
-  { value: "COUNTER", label: "Counter" }
+  { value: "ALL", label: "All kinds" },
+  { value: "SESSION", label: "Sessions" },
+  { value: "COUNTER", label: "Counter sales" }
 ] as const;
 
 const CATEGORY_OPTIONS = [
-  { value: "ALL", label: "All Categories" },
+  { value: "ALL", label: "All categories" },
   { value: "FOOD", label: "Food" },
   { value: "CIGARETTES", label: "Cigarettes" },
   { value: "BEVERAGES", label: "Beverages" }
@@ -25,16 +18,16 @@ const CATEGORY_OPTIONS = [
 
 function dateInputProps() {
   return {
-    type: "date",
+    type: "date" as const,
     className:
-      "w-40 rounded-material border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
+      "h-10 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
   };
 }
 
 export function BillingFilters({
-  staffOptions,
-  tableOptions,
-  accountType
+  staffOptions: _staffOptions,
+  tableOptions: _tableOptions,
+  accountType: _accountType
 }: {
   staffOptions: { id: string; name: string }[];
   tableOptions: { id: string; number: string }[];
@@ -46,167 +39,98 @@ export function BillingFilters({
 
   const createQueryString = useCallback(
     (params: Record<string, string | undefined>) => {
-      const newParams = new URLSearchParams(searchParams?.toString() ?? "");
+      const next = new URLSearchParams(searchParams?.toString() ?? "");
       for (const [key, value] of Object.entries(params)) {
-        if (value === undefined || value === "") {
-          newParams.delete(key);
-        } else {
-          newParams.set(key, value);
-        }
+        if (!value || value === "ALL") next.delete(key);
+        else next.set(key, value);
       }
-      return newParams.toString();
+      next.delete("page");
+      return next.toString();
     },
     [searchParams]
   );
 
-  const handleFilterChange = (key: string, value: string | undefined) => {
-    const queryString = createQueryString({ [key]: value });
-    router.push(`${pathname}?${queryString}`);
+  const handleFilterChange = (key: string, value: string) => {
+    const query = createQueryString({ [key]: value });
+    router.push(query ? `${pathname}?${query}` : pathname);
   };
 
-  const handleClearFilters = () => {
-    router.push(pathname);
-  };
-
-  const hasActiveFilters =
+  const hasActiveFilters = Boolean(
     searchParams?.get("status") ||
-    searchParams?.get("kind") ||
-    searchParams?.get("category") ||
-    searchParams?.get("dateFrom") ||
-    searchParams?.get("dateTo") ||
-    searchParams?.get("staffId") ||
-    searchParams?.get("tableId");
+      searchParams?.get("kind") ||
+      searchParams?.get("category") ||
+      searchParams?.get("dateFrom") ||
+      searchParams?.get("dateTo")
+  );
 
   return (
-    <div className="rounded-material border border-slate-700 bg-slate-900/80 p-4 shadow-material">
-      <div className="flex flex-wrap items-end gap-3">
-        {/* Status filter */}
-        <div className="flex flex-col gap-1">
-          <label htmlFor="status" className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-            Status
-          </label>
-          <select
-            id="status"
-            defaultValue={searchParams?.get("status") ?? "ALL"}
-            onChange={(e) => handleFilterChange("status", e.target.value)}
-            className="rounded-material border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-lime-400 focus:outline-none"
-          >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Kind filter */}
-        <div className="flex flex-col gap-1">
-          <label htmlFor="kind" className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-            Kind
-          </label>
-          <select
-            id="kind"
-            defaultValue={searchParams?.get("kind") ?? "ALL"}
-            onChange={(e) => handleFilterChange("kind", e.target.value)}
-            className="rounded-material border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-lime-400 focus:outline-none"
-          >
-            {KIND_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Category filter */}
-        <div className="flex flex-col gap-1">
-          <label htmlFor="category" className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-            Category
-          </label>
-          <select
-            id="category"
-            defaultValue={searchParams?.get("category") ?? "ALL"}
-            onChange={(e) => handleFilterChange("category", e.target.value)}
-            className="rounded-material border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-lime-400 focus:outline-none"
-          >
-            {CATEGORY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Date from */}
-        <div className="flex flex-col gap-1">
-          <label htmlFor="dateFrom" className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-3 shadow-material sm:p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterGroup
+          label="Sale type"
+          options={KIND_OPTIONS}
+          value={searchParams?.get("kind") ?? "ALL"}
+          onChange={(value) => handleFilterChange("kind", value)}
+        />
+        <FilterGroup
+          label="Category"
+          options={CATEGORY_OPTIONS}
+          value={searchParams?.get("category") ?? "ALL"}
+          onChange={(value) => handleFilterChange("category", value)}
+        />
+        <div className="ml-auto flex flex-wrap items-end gap-2">
+          <label className="min-w-36 text-[10px] font-black uppercase tracking-widest text-slate-500">
             From
+            <input {...dateInputProps()} aria-label="From" value={searchParams?.get("dateFrom") ?? ""} onChange={(event) => handleFilterChange("dateFrom", event.target.value)} />
           </label>
-          <input {...dateInputProps()} id="dateFrom" defaultValue={searchParams?.get("dateFrom") ?? ""} onChange={(e) => handleFilterChange("dateFrom", e.target.value)} />
-        </div>
-
-        {/* Date to */}
-        <div className="flex flex-col gap-1">
-          <label htmlFor="dateTo" className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <label className="min-w-36 text-[10px] font-black uppercase tracking-widest text-slate-500">
             To
+            <input {...dateInputProps()} aria-label="To" value={searchParams?.get("dateTo") ?? ""} onChange={(event) => handleFilterChange("dateTo", event.target.value)} />
           </label>
-          <input {...dateInputProps()} id="dateTo" defaultValue={searchParams?.get("dateTo") ?? ""} onChange={(e) => handleFilterChange("dateTo", e.target.value)} />
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={() => router.push(pathname)}
+              className="h-10 rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 text-xs font-black text-rose-200 transition hover:bg-rose-400/20"
+            >
+              Clear
+            </button>
+          ) : null}
         </div>
+      </div>
+    </div>
+  );
+}
 
-        {/* Staff filter (managers and above) */}
-        {accountType !== "STORE_USER" && staffOptions.length > 0 && (
-          <div className="flex flex-col gap-1">
-            <label htmlFor="staffId" className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Staff
-            </label>
-            <select
-              id="staffId"
-              defaultValue={searchParams?.get("staffId") ?? ""}
-              onChange={(e) => handleFilterChange("staffId", e.target.value)}
-              className="rounded-material border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-lime-400 focus:outline-none"
+function FilterGroup<T extends readonly { value: string; label: string }[]>({
+  label,
+  options,
+  value,
+  onChange
+}: {
+  label: string;
+  options: T;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+      <div className="flex flex-wrap gap-1 rounded-xl border border-slate-800 bg-slate-900 p-1">
+        {options.map((option) => {
+          const selected = value === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange(option.value)}
+              className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${selected ? "bg-lime-300 text-slate-950" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
             >
-              <option value="">All Staff</option>
-              {staffOptions.map((staff) => (
-                <option key={staff.id} value={staff.id}>
-                  {staff.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Table filter (managers and above) */}
-        {accountType !== "STORE_USER" && tableOptions.length > 0 && (
-          <div className="flex flex-col gap-1">
-            <label htmlFor="tableId" className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Table
-            </label>
-            <select
-              id="tableId"
-              defaultValue={searchParams?.get("tableId") ?? ""}
-              onChange={(e) => handleFilterChange("tableId", e.target.value)}
-              className="rounded-material border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-lime-400 focus:outline-none"
-            >
-              <option value="">All Tables</option>
-              {tableOptions.map((table) => (
-                <option key={table.id} value={table.id}>
-                  {table.number}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Clear filters button */}
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={handleClearFilters}
-            className="ml-auto rounded-material border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-200 transition hover:bg-rose-500/20"
-          >
-            Clear Filters
-          </button>
-        )}
+              {option.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

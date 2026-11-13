@@ -35,7 +35,7 @@ export function BillingTable({ records, expandedId, onToggle }: { records: Billi
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">Billing history</h2>
+        <h2 className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">Closed bills</h2>
         <span className="text-xs text-slate-500">Select a bill to see the full receipt</span>
       </div>
       <div className="space-y-3">

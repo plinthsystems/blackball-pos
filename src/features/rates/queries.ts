@@ -12,7 +12,7 @@ type RateRule = {
 export function mapRateSettings(rules: RateRule[]): RateSetting[] {
   const order = ["Royal Snooker", "Mini Snooker", "Pool", "PS5 · 1 player", "PS5 · 2 players", "PS5 · 3 players", "PS5 · 4 players"];
   return rules
-    .filter((rule) => rule.durationMinutes === 60)
+    .filter((rule) => rule.durationMinutes === 60 && rule.gameType !== "PS5")
     .map((rule) => ({
       id: rule.id,
       label: rateLabel(rule.gameType, rule.pricingGroup),

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { AccountType, OrganizationContext, TenantBranding } from "@/server/auth/current-employee";
 import { StoreSwitcher } from "./store-switcher";
@@ -21,7 +22,7 @@ const theNineAdminNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: "monitoring" },
   { href: "/live-tables", label: "Live Floor", icon: "grid_view" },
   { href: "/billing", label: "Billing", icon: "receipt_long" },
-  { href: "/settings", label: "Menu & Settings", icon: "restaurant" },
+  { href: "/settings", label: "Menu", icon: "restaurant" },
   { href: "/rates", label: "Rates", icon: "currency_rupee" }
 ] as const;
 
@@ -38,9 +39,9 @@ type ShellAccount = {
 };
 
 const fallbackBranding: TenantBranding = {
-  appName: "The Nine",
+  appName: "The Nine Snooker & Cafe",
   logoInitials: "TN",
-  businessName: "The Nine",
+  businessName: "The Nine Snooker & Cafe",
   brandColor: "#12613d",
   accentColor: "#b98922"
 };
@@ -65,15 +66,8 @@ export function AdminShell({
   businessId?: string;
   organization?: OrganizationContext;
 }) {
+  const pathname = usePathname();
   const visibleNavItems = getVisibleNavItems(account);
-  const accountLabelMap: Record<AccountType, string> = {
-    PLATFORM_ADMIN: "Platform Admin",
-    HQ_ADMIN: "Franchise HQ Director",
-    STORE_OWNER: "Admin",
-    MANAGER: "Store Manager",
-    STORE_USER: "Store"
-  };
-  const accountLabel = accountLabelMap[account.accountType] ?? "Store User";
 
   return (
     <div className="min-h-screen bg-background text-charcoal">
@@ -86,7 +80,7 @@ export function AdminShell({
             <Link
               key={item.href}
               href={item.href}
-              className="flex h-10 items-center gap-3 rounded-material px-3 text-sm font-bold text-slate-300 hover:bg-lime-300/10 hover:text-lime-100"
+              className={`flex h-11 items-center gap-3 rounded-material px-3 text-sm font-bold transition ${pathname === item.href ? "bg-lime-300/15 text-lime-100" : "text-slate-300 hover:bg-lime-300/10 hover:text-lime-100"}`}
             >
               <span className="material-symbols-outlined text-[20px] text-lime-300" aria-hidden="true">
                 {item.icon}
@@ -94,24 +88,25 @@ export function AdminShell({
               {item.label}
             </Link>
           ))}
-          <div className="mt-4 border-t border-lime-300/15 pt-3">
-            <Link
-              href="/change-password"
-              title="Change password"
-              className="flex h-10 items-center gap-3 rounded-material px-3 text-sm font-bold text-slate-300 hover:bg-amber-500/10 hover:text-amber-300"
-            >
-              <span className="material-symbols-outlined text-[20px] text-amber-400" aria-hidden="true">
-                lock
-              </span>
-              Change Password
-            </Link>
-          </div>
+          {account.accountType !== "STORE_USER" ? (
+            <div className="mt-4 border-t border-lime-300/15 pt-3">
+              <Link
+                href="/change-password"
+                title="Change password"
+                className="flex h-10 items-center gap-3 rounded-material px-3 text-sm font-bold text-slate-300 hover:bg-amber-500/10 hover:text-amber-300"
+              >
+                <span className="material-symbols-outlined text-[20px] text-amber-400" aria-hidden="true">
+                  lock
+                </span>
+                Change Password
+              </Link>
+            </div>
+          ) : null}
         </nav>
       </aside>
       <div className="lg:pl-64">
         <header className="sticky top-0 z-20 border-b border-lime-300/15 bg-slate-950/85 px-4 py-3 backdrop-blur lg:px-6">
-          <div className="flex items-center justify-between">
-            <BrandMark branding={tenantBranding} compact />
+          <div className="flex items-center justify-end gap-3">
             <div className="flex items-center gap-3">
               {organization && organization.businesses.length > 0 && !["STORE_OWNER", "STORE_USER"].includes(account.accountType) && (
                 <StoreSwitcher
@@ -121,17 +116,16 @@ export function AdminShell({
                   stores={organization.businesses}
                 />
               )}
-              <div className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase text-cyan-100">
-                {accountLabel}
-              </div>
-              <Link
-                href="/change-password"
-                title="Change password"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-300 hover:border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-300 transition"
-              >
-                <span className="material-symbols-outlined text-[16px]">lock</span>
-                <span>Password</span>
-              </Link>
+              {account.accountType !== "STORE_USER" ? (
+                <Link
+                  href="/change-password"
+                  title="Change password"
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-300 hover:border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-300 transition"
+                >
+                  <span className="material-symbols-outlined text-[16px]">lock</span>
+                  <span>Password</span>
+                </Link>
+              ) : null}
               <button
                 onClick={async () => {
                   await fetch("/api/auth/logout", { method: "POST" });

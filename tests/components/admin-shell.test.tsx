@@ -54,11 +54,11 @@ describe("AdminShell", () => {
 
     expect(screen.getByRole("link", { name: /Live Floor/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Billing/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Change Password/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Change Password/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Dashboard/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Rates/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Food\/Menu/ })).not.toBeInTheDocument();
-    expect(screen.getByText("Store")).toBeInTheDocument();
+    expect(screen.queryByText("Store")).not.toBeInTheDocument();
   });
 
   it("shows the focused admin navigation for The Nine admins", () => {
@@ -73,11 +73,11 @@ describe("AdminShell", () => {
     expect(screen.getByRole("link", { name: /Dashboard/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Live Floor/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Billing/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Menu & Settings/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Menu" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Rates/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Franchise HQ/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Platform Setup/ })).not.toBeInTheDocument();
-    expect(screen.getByText("Admin")).toBeInTheDocument();
+    expect(screen.queryByText("Admin", { exact: true })).not.toBeInTheDocument();
   });
 
   it("shows Franchise HQ link for HQ admins", () => {
@@ -110,7 +110,7 @@ describe("AdminShell", () => {
     );
 
     expect(screen.getByRole("link", { name: /Platform Setup/ })).toBeInTheDocument();
-    expect(screen.getByText("Platform Admin")).toBeInTheDocument();
+    expect(screen.queryByText("Platform Admin")).not.toBeInTheDocument();
   });
 
   it("labels the account pill correctly for every account type", () => {
@@ -119,21 +119,21 @@ describe("AdminShell", () => {
         <div>Content</div>
       </AdminShell>
     );
-    expect(screen.getByText("Store Manager")).toBeInTheDocument();
+    expect(screen.queryByText("Store Manager")).not.toBeInTheDocument();
 
     rerender(
       <AdminShell account={{ name: "Owner", accountType: "STORE_OWNER", permissions: [] }}>
         <div>Content</div>
       </AdminShell>
     );
-    expect(screen.getByText("Admin")).toBeInTheDocument();
+    expect(screen.queryByText("Admin", { exact: true })).not.toBeInTheDocument();
 
     rerender(
       <AdminShell account={{ name: "HQ Director", accountType: "HQ_ADMIN", permissions: ["hq.dashboard.read"] }}>
         <div>Content</div>
       </AdminShell>
     );
-    expect(screen.getByText("Franchise HQ Director")).toBeInTheDocument();
+    expect(screen.queryByText("Franchise HQ Director")).not.toBeInTheDocument();
   });
 
   it("renders the store switcher when the organization has stores", () => {

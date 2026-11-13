@@ -5,11 +5,11 @@ test("Admin can see The Nine analytics and minimal navigation", async ({ page })
   await loginAs(page, "admin@thenine.local");
 
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole("heading", { name: "The Nine Admin" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Owner overview" })).toBeVisible();
   await expect(page.getByText("Sales trend")).toBeVisible();
   await expect(page.getByRole("link", { name: "Live Floor" }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Billing" }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Menu & Settings" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Menu" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Rates" })).toBeVisible();
 
   await page.getByRole("link", { name: "Live Floor" }).first().click();

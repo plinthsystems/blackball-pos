@@ -32,16 +32,15 @@ describe("BillingFilters", () => {
       />
     );
 
-    expect(screen.getByLabelText("Status")).toBeInTheDocument();
-    expect(screen.getByLabelText("Kind")).toBeInTheDocument();
-    expect(screen.getByLabelText("Category")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sessions" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Food" })).toBeInTheDocument();
     expect(screen.getByLabelText("From")).toBeInTheDocument();
     expect(screen.getByLabelText("To")).toBeInTheDocument();
-    expect(screen.getByLabelText("Staff")).toBeInTheDocument();
-    expect(screen.getByLabelText("Table")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Staff")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Table")).not.toBeInTheDocument();
   });
 
-  it("shows status options", () => {
+  it("shows quick kind options", () => {
     render(
       <BillingFilters
         staffOptions={staffOptions}
@@ -50,15 +49,11 @@ describe("BillingFilters", () => {
       />
     );
 
-    const statusSelect = screen.getByLabelText("Status");
-    expect(statusSelect).toHaveValue("ALL");
-    // Check that options exist in the DOM
-    expect(screen.getByText("Open")).toBeInTheDocument();
-    expect(screen.getByText("Closed")).toBeInTheDocument();
-    expect(screen.getByText("Cancelled")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sessions" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Counter sales" })).toBeInTheDocument();
   });
 
-  it("shows kind options", () => {
+  it("shows quick category options", () => {
     render(
       <BillingFilters
         staffOptions={staffOptions}
@@ -67,13 +62,13 @@ describe("BillingFilters", () => {
       />
     );
 
-    const kindSelect = screen.getByLabelText("Kind");
-    expect(kindSelect).toHaveValue("ALL");
-    expect(screen.getByText("Session")).toBeInTheDocument();
-    expect(screen.getByText("Counter")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All categories" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Food" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cigarettes" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Beverages" })).toBeInTheDocument();
   });
 
-  it("shows category options", () => {
+  it("keeps staff and table selection out of the quick billing bar", () => {
     render(
       <BillingFilters
         staffOptions={staffOptions}
@@ -82,26 +77,9 @@ describe("BillingFilters", () => {
       />
     );
 
-    const categorySelect = screen.getByLabelText("Category");
-    expect(categorySelect).toHaveValue("ALL");
-    expect(screen.getByText("Food")).toBeInTheDocument();
-    expect(screen.getByText("Cigarettes")).toBeInTheDocument();
-    expect(screen.getByText("Beverages")).toBeInTheDocument();
-  });
-
-  it("shows staff filter for MANAGER role", () => {
-    render(
-      <BillingFilters
-        staffOptions={staffOptions}
-        tableOptions={tableOptions}
-        accountType="MANAGER"
-      />
-    );
-
-    expect(screen.getByLabelText("Staff")).toBeInTheDocument();
-    expect(screen.getByText("All Staff")).toBeInTheDocument();
-    expect(screen.getByText("Aarav")).toBeInTheDocument();
-    expect(screen.getByText("Riya")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Staff")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Table")).not.toBeInTheDocument();
+    expect(screen.queryByText("Aarav")).not.toBeInTheDocument();
   });
 
   it("hides staff filter for STORE_USER role", () => {
@@ -160,9 +138,6 @@ describe("BillingFilters", () => {
       />
     );
 
-    // The filter should call router.push on change
-    const statusSelect = screen.getByLabelText("Status") as HTMLSelectElement;
-    statusSelect.value = "OPEN";
-    statusSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    screen.getByRole("button", { name: "Sessions" }).click();
   });
 });

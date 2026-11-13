@@ -23,7 +23,7 @@ describe("BillingPage", () => {
     );
 
     expect(screen.getByText("The Nine Snooker & Cafe")).toBeInTheDocument();
-    expect(screen.getByText("Today's sales")).toBeInTheDocument();
+    expect(screen.getByText("Closed sales")).toBeInTheDocument();
     expect(screen.getByText("Table time")).toBeInTheDocument();
     expect(screen.getByText("Items")).toBeInTheDocument();
     expect(screen.getByText("No billing records found")).toBeInTheDocument();

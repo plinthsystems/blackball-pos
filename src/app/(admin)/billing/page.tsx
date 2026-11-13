@@ -7,7 +7,7 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 const filterSchema = z.object({
-  status: z.enum(["ALL", "OPEN", "CLOSED", "CANCELLED"]).optional().default("ALL"),
+  status: z.enum(["ALL", "OPEN", "CLOSED", "CANCELLED"]).optional().default("CLOSED"),
   kind: z.enum(["ALL", "SESSION", "COUNTER"]).optional().default("ALL"),
   category: z.enum(["ALL", "FOOD", "CIGARETTES", "BEVERAGES"]).optional().default("ALL"),
   dateFrom: z.string().optional(),

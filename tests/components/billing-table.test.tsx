@@ -56,7 +56,7 @@ describe("BillingTable", () => {
   it("renders receipt-oriented billing labels", () => {
     render(<BillingTable records={mockRecords} expandedId={null} onToggle={() => {}} />);
 
-    expect(screen.getByText("Billing history")).toBeInTheDocument();
+    expect(screen.getByText("Closed bills")).toBeInTheDocument();
     expect(screen.getAllByText("Table time").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Table charge").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Items").length).toBeGreaterThan(0);

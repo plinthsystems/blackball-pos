@@ -33,15 +33,14 @@ export function BillingPage({ data }: { data: BillingPageData }) {
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-lime-200/80">The Nine Snooker & Cafe</p>
           <h1 className="mt-1 text-2xl font-black uppercase tracking-normal text-white">Billing</h1>
-          <p className="mt-1 text-sm text-slate-400">Every receipt adds table time and items into one clear total.</p>
+          <p className="mt-1 text-sm text-slate-400">Closed bills with table time, rate, items, and the final amount.</p>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Today's sales" value={formatMoney(salesTotal)} hint={`${data.total} record${data.total !== 1 ? "s" : ""}`} />
+        <SummaryCard label="Closed sales" value={formatMoney(salesTotal)} hint={`${data.total} bill${data.total !== 1 ? "s" : ""}`} />
         <SummaryCard label="Table time" value={`${tableMinutes} min`} hint="from session bills" />
         <SummaryCard label="Items" value={formatMoney(itemTotal)} hint="food, cafe, drinks" />
-        <SummaryCard label="Open receipts" value={String(data.records.filter((record) => record.status === "OPEN").length)} hint="still in progress" />
       </div>
 
       {/* Filters */}

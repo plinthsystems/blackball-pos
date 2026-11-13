@@ -21,16 +21,16 @@ describe("OwnerDashboardPage", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "The Nine Admin" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Owner overview" })).toBeInTheDocument();
     expect(screen.queryByText("Today's revenue and station utilization.")).not.toBeInTheDocument();
     expect(screen.getByText("Today's revenue")).toBeInTheDocument();
     expect(screen.getByText("₹435.00")).toBeInTheDocument();
-    expect(screen.getByText("PS5 time")).toBeInTheDocument();
+    expect(screen.queryByText("PS5 time")).not.toBeInTheDocument();
     expect(screen.getByText("Food")).toBeInTheDocument();
     expect(screen.getByText("Cigarettes")).toBeInTheDocument();
     expect(screen.getByText("Beverages")).toBeInTheDocument();
     expect(screen.getByText("Royal Snooker")).toBeInTheDocument();
-    expect(screen.getByText("2.00h")).toBeInTheDocument();
+    expect(screen.queryByText("2.00h")).not.toBeInTheDocument();
   });
 
   it("renders the admin sales trend when provided", () => {

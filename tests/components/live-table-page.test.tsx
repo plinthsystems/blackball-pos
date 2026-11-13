@@ -7,6 +7,7 @@ describe("LiveTablePage", () => {
     render(
       <LiveTablePage
         counterBills={[]}
+        businessName="The Nine Snooker & Cafe"
         products={[
           { id: "product_tea", name: "Tea", category: "FOOD", priceAmount: 20 },
           { id: "product_water", name: "Water Bottle", category: "BEVERAGES", priceAmount: 20 }
@@ -90,6 +91,7 @@ describe("LiveTablePage", () => {
 
     expect(screen.getByRole("heading", { name: "Live Floor" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "The Nine Tables" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Booking QR" })).not.toBeInTheDocument();
     expect(screen.getByText("Pool")).toBeInTheDocument();
     expect(screen.getByText("Royal Snooker 1")).toBeInTheDocument();
     expect(screen.queryByText("PS5 1")).not.toBeInTheDocument();

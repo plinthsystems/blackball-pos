@@ -65,8 +65,8 @@ export function LoginForm() {
               <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-lime-300/30 bg-lime-500/10 text-2xl font-black text-lime-300 shadow-[0_0_30px_rgba(132,204,22,0.2)]">
                 TN
               </div>
-              <h1 className="text-2xl font-black tracking-tight text-white">The Nine</h1>
-              <p className="text-xs text-slate-400">Simple store POS</p>
+              <h1 className="text-2xl font-black tracking-tight text-white">The Nine Snooker & Cafe</h1>
+              <p className="text-xs text-slate-400">Store operations</p>
             </div>
 
             <div className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl sm:p-7">

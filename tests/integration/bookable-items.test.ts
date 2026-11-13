@@ -20,7 +20,7 @@ async function cleanup() {
   await Promise.all(
     createdRateGroupKeys.splice(0, createdRateGroupKeys.length).map(({ gameType, pricingGroup }) =>
       prisma.tablePricing.deleteMany({
-        where: { businessId: "seed-business", gameType: gameType as "SNOOKER" | "POOL" | "PS5", pricingGroup }
+        where: { businessId: "the-nine-store", gameType: gameType as "SNOOKER" | "POOL" | "PS5", pricingGroup }
       })
     )
   );
@@ -100,10 +100,10 @@ describe("bookable items integration", () => {
     createdIds.push(item!.id);
     await setBookableItemActiveAction({ id: item!.id, active: false });
 
-    const board = await getLiveTableBoard("seed-business");
+    const board = await getLiveTableBoard("the-nine-store");
     expect(board.some((table) => table.id === item!.id)).toBe(false);
 
-    const items = await getBookableItems("seed-business");
+    const items = await getBookableItems("the-nine-store");
     const listed = items.find((entry) => entry.id === item!.id);
     expect(listed?.active).toBe(false);
   });

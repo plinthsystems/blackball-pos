@@ -205,6 +205,11 @@ export async function seedTheNine(
     await db.employeeRole.create({ data: { employeeId: employee.id, roleId } });
   }
 
+  // Clear operational history before replacing the store inventory. Session rows
+  // reference tables, so they must be removed before the table reset below.
+  await db.billItem.deleteMany({ where: { businessId: store.id } });
+  await db.bill.deleteMany({ where: { businessId: store.id } });
+  await db.session.deleteMany({ where: { businessId: store.id } });
   await db.tablePricing.deleteMany({ where: { businessId: store.id } });
   await db.tablePricing.createMany({ data: THE_NINE_PRICING.map((rule) => ({ businessId: store.id, ...rule })) });
 
@@ -224,19 +229,45 @@ export async function seedTheNine(
 async function seedSampleSales(db: DatabaseClient, businessId: string) {
   await db.billItem.deleteMany({ where: { businessId } });
   await db.bill.deleteMany({ where: { businessId } });
+  await db.session.deleteMany({ where: { businessId } });
+  const [tables, admin] = await Promise.all([
+    db.clubTable.findMany({ where: { businessId }, orderBy: { number: "asc" } }),
+    db.employee.findFirst({ where: { businessId, accountType: "STORE_OWNER" } })
+  ]);
+  if (!admin) throw new Error("The Nine admin account is required before seeding sample sales");
   const samples = [
-    { total: 650, table: 350, items: 300 },
-    { total: 480, table: 200, items: 280 },
-    { total: 920, table: 700, items: 220 }
+    { total: 600, table: 300, items: 300, tableIndex: 3, rate: 400 },
+    { total: 480, table: 0, items: 480, tableIndex: null, rate: 0 },
+    { total: 470, table: 250, items: 220, tableIndex: 1, rate: 250 }
   ];
   for (const [index, sample] of samples.entries()) {
+    const openedAt = new Date(Date.now() - (index + 1) * 60 * 60 * 1000);
+    const closedAt = new Date(openedAt.getTime() + (index === 1 ? 0 : 45 * 60 * 1000));
+    const kind = sample.tableIndex === null ? "COUNTER" : "SESSION";
+    const session = sample.tableIndex === null
+      ? null
+      : await db.session.create({
+          data: {
+            businessId,
+            tableId: tables[sample.tableIndex]?.id ?? tables[0].id,
+            createdByEmployeeId: admin.id,
+            assignedEmployeeId: admin.id,
+            status: "COMPLETED",
+            startedAt: openedAt,
+            plannedEndAt: closedAt,
+            actualEndAt: closedAt,
+            hourlyRateSnapshot: sample.rate,
+            billableSecondsSnapshot: Math.floor((closedAt.getTime() - openedAt.getTime()) / 1000)
+          }
+        });
     const bill = await db.bill.create({
       data: {
         businessId,
-        kind: index === 1 ? "COUNTER" : "SESSION",
+        sessionId: session?.id,
+        kind,
         status: "CLOSED",
-        openedAt: new Date(Date.now() - (index + 1) * 60 * 60 * 1000),
-        closedAt: new Date(Date.now() - (index + 1) * 45 * 60 * 1000),
+        openedAt,
+        closedAt,
         tableAmountSnapshot: sample.table,
         itemTotalAmountSnapshot: sample.items,
         totalAmountSnapshot: sample.total

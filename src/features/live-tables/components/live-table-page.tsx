@@ -18,17 +18,13 @@ export function LiveTablePage({
   counterBills,
   isHqAdmin = false,
   canManageItems = false,
-  bookingLink = null,
-  bookingQrUrl = null,
-  businessName = "Store"
+  businessName = "The Nine Snooker & Cafe"
 }: {
   tables: LiveTableCardData[];
   products: ProductOption[];
   counterBills: CounterBillData[];
   isHqAdmin?: boolean;
   canManageItems?: boolean;
-  bookingLink?: string | null;
-  bookingQrUrl?: string | null;
   businessName?: string;
 }) {
   const tableStations = tables.filter((table) => table.gameType !== "PS5");
@@ -58,11 +54,7 @@ export function LiveTablePage({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <TableBoardToolbar
-          bookingLink={bookingLink}
-          bookingQrUrl={bookingQrUrl}
-          businessName={businessName}
-        />
+        <TableBoardToolbar businessName={businessName} />
         {!isHqAdmin && <StartCounterBillDialog />}
       </div>
       <StationSection title="The Nine Tables" tables={tableStations} products={products} isHqAdmin={isHqAdmin} />
