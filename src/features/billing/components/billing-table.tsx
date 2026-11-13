@@ -21,7 +21,7 @@ export function BillingTable({ records, expandedId, onToggle }: { records: Billi
       <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-12 text-center">
         <span className="material-symbols-outlined text-3xl text-slate-500" aria-hidden="true">receipt_long</span>
         <p className="mt-3 text-sm font-bold text-slate-200">No closed bills found</p>
-        <p className="mt-1 text-xs text-slate-500">Adjust the date or item filters to view other receipts.</p>
+        <p className="mt-1 text-xs text-slate-500">Try a different date range or bill type.</p>
       </div>
     );
   }

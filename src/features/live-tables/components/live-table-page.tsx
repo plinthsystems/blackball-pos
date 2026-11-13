@@ -17,8 +17,7 @@ export function LiveTablePage({
   products,
   counterBills,
   isHqAdmin = false,
-  canManageItems = false,
-  businessName = "The Nine Snooker & Cafe"
+  canManageItems = false
 }: {
   tables: LiveTableCardData[];
   products: ProductOption[];
@@ -54,7 +53,7 @@ export function LiveTablePage({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <TableBoardToolbar businessName={businessName} />
+        <TableBoardToolbar />
         {!isHqAdmin && <StartCounterBillDialog />}
       </div>
       <StationSection title="The Nine Tables" tables={tableStations} products={products} isHqAdmin={isHqAdmin} />

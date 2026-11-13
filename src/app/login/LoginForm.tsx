@@ -56,7 +56,7 @@ export function LoginForm() {
         <section className="flex items-center p-5 sm:p-8 lg:p-12">
           <div className="w-full space-y-6">
             <div className="flex items-center gap-3">
-              <img src="/the-nine/the-nine-logo.jpeg" alt="The Nine logo" className="h-16 w-16 rounded-xl border border-amber-300/20 object-cover object-center shadow-[0_0_24px_rgba(212,145,64,0.12)]" />
+              <img src="/the-nine/the-nine-logo-white.png" alt="The Nine logo" className="h-16 w-16 rounded-xl bg-white p-1 object-contain shadow-[0_0_24px_rgba(212,145,64,0.12)]" />
               <div className="space-y-1">
                 <h1 className="text-xl font-black tracking-tight text-white sm:text-2xl">The Nine Snooker & Cafe</h1>
                 <p className="text-xs text-slate-400">Store operations</p>

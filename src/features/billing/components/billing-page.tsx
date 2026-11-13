@@ -26,16 +26,11 @@ export function BillingPage({ data }: { data: BillingPageData }) {
     <div className="mx-auto max-w-6xl space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-800 pb-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-lime-300">The Nine Snooker & Cafe</p>
           <h1 className="mt-1 text-3xl font-black tracking-tight text-white">Billing</h1>
           <p className="mt-1 text-sm text-slate-400">Closed receipts with table time and item totals.</p>
         </div>
       </div>
-      <BillingFilters
-        staffOptions={data.staffOptions}
-        tableOptions={data.tables}
-        accountType="MANAGER"
-      />
+      <BillingFilters />
 
       <BillingTable records={data.records} expandedId={expandedId} onToggle={toggle} />
 

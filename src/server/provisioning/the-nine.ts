@@ -219,7 +219,7 @@ export async function seedTheNine(
   await db.product.deleteMany({ where: { businessId: store.id } });
   await db.product.createMany({ data: products.map((product) => ({ businessId: store.id, ...product })) });
 
-  if (options.includeSampleSales ?? true) {
+  if (options.includeSampleSales ?? false) {
     await seedSampleSales(db, store.id);
   }
 

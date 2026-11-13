@@ -1,122 +1,135 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
 
-const KIND_OPTIONS = [
-  { value: "ALL", label: "All kinds" },
-  { value: "SESSION", label: "Sessions" },
-  { value: "COUNTER", label: "Counter sales" }
+const DATE_RANGES = [
+  { value: "today", label: "Today" },
+  { value: "7d", label: "7 days" },
+  { value: "30d", label: "30 days" },
+  { value: "all", label: "All time" }
 ] as const;
 
-const CATEGORY_OPTIONS = [
-  { value: "ALL", label: "All categories" },
-  { value: "FOOD", label: "Food" },
-  { value: "CIGARETTES", label: "Cigarettes" },
-  { value: "BEVERAGES", label: "Beverages" }
+const BILL_KINDS = [
+  { value: "ALL", label: "All bills" },
+  { value: "SESSION", label: "Table time" },
+  { value: "COUNTER", label: "Counter" }
 ] as const;
 
-function dateInputProps() {
-  return {
-    type: "date" as const,
-    className:
-      "h-10 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white placeholder:text-slate-500 focus:border-lime-400 focus:outline-none"
-  };
+type DateRange = (typeof DATE_RANGES)[number]["value"];
+type BillKind = (typeof BILL_KINDS)[number]["value"];
+
+function formatDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-export function BillingFilters({
-  staffOptions: _staffOptions,
-  tableOptions: _tableOptions,
-  accountType: _accountType
-}: {
-  staffOptions: { id: string; name: string }[];
-  tableOptions: { id: string; number: string }[];
-  accountType: string;
-}) {
+function getDateRange(search: URLSearchParams): DateRange | null {
+  const from = search.get("dateFrom");
+  const to = search.get("dateTo");
+  const today = new Date();
+  const todayString = formatDate(today);
+  if (from === todayString && to === todayString) return "today";
+  for (const [value, days] of [["7d", 7], ["30d", 30]] as const) {
+    const start = new Date(today);
+    start.setDate(start.getDate() - days + 1);
+    if (from === formatDate(start) && to === todayString) return value;
+  }
+  return from || to ? null : "all";
+}
+
+export function BillingFilters({ total: _total }: {
+  total?: number;
+  staffOptions?: { id: string; name: string }[];
+  tableOptions?: { id: string; number: string }[];
+  accountType?: string;
+} = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const params = new URLSearchParams(searchParams.toString());
+  const activeRange = getDateRange(params);
+  const activeKind = (params.get("kind") as BillKind | null) ?? "ALL";
+  const hasFilters = Boolean(params.get("dateFrom") || params.get("dateTo") || (activeKind && activeKind !== "ALL"));
 
-  const createQueryString = useCallback(
-    (params: Record<string, string | undefined>) => {
-      const next = new URLSearchParams(searchParams?.toString() ?? "");
-      for (const [key, value] of Object.entries(params)) {
-        if (!value || value === "ALL") next.delete(key);
-        else next.set(key, value);
+  function apply(next: { range?: DateRange; kind?: BillKind }) {
+    const updated = new URLSearchParams(searchParams.toString());
+    updated.delete("page");
+    if (next.range) {
+      if (next.range === "all") {
+        updated.delete("dateFrom");
+        updated.delete("dateTo");
+      } else {
+        const days = next.range === "today" ? 1 : next.range === "7d" ? 7 : 30;
+        const end = new Date();
+        const start = new Date(end);
+        start.setDate(start.getDate() - days + 1);
+        updated.set("dateFrom", formatDate(start));
+        updated.set("dateTo", formatDate(end));
       }
-      next.delete("page");
-      return next.toString();
-    },
-    [searchParams]
-  );
-
-  const handleFilterChange = (key: string, value: string) => {
-    const query = createQueryString({ [key]: value });
+    }
+    if (next.kind) {
+      if (next.kind === "ALL") updated.delete("kind");
+      else updated.set("kind", next.kind);
+    }
+    const query = updated.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
-  };
+  }
 
-  const hasActiveFilters = Boolean(
-    searchParams?.get("status") ||
-      searchParams?.get("kind") ||
-      searchParams?.get("category") ||
-      searchParams?.get("dateFrom") ||
-      searchParams?.get("dateTo")
-  );
+  function clear() {
+    router.push(pathname);
+  }
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 sm:p-4">
-      <div className="flex flex-wrap items-end gap-4">
+    <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3 sm:p-4" aria-label="Billing filters">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
         <FilterGroup
-          label="Sale type"
-          options={KIND_OPTIONS}
-          value={searchParams?.get("kind") ?? "ALL"}
-          onChange={(value) => handleFilterChange("kind", value)}
+          icon="calendar_month"
+          label="Date range"
+          options={DATE_RANGES.map(({ value, label }) => ({ value, label }))}
+          value={activeRange ?? ""}
+          onChange={(value) => apply({ range: value as DateRange })}
         />
+        <div className="hidden h-10 w-px bg-slate-800 lg:block" aria-hidden="true" />
         <FilterGroup
-          label="Category"
-          options={CATEGORY_OPTIONS}
-          value={searchParams?.get("category") ?? "ALL"}
-          onChange={(value) => handleFilterChange("category", value)}
+          icon="receipt_long"
+          label="Bill type"
+          options={BILL_KINDS.map(({ value, label }) => ({ value, label }))}
+          value={activeKind}
+          onChange={(value) => apply({ kind: value as BillKind })}
         />
-        <div className="ml-auto flex flex-wrap items-end gap-2">
-          <label className="min-w-36 text-[10px] font-black uppercase tracking-widest text-slate-500">
-            From
-            <input {...dateInputProps()} aria-label="From" value={searchParams?.get("dateFrom") ?? ""} onChange={(event) => handleFilterChange("dateFrom", event.target.value)} />
-          </label>
-          <label className="min-w-36 text-[10px] font-black uppercase tracking-widest text-slate-500">
-            To
-            <input {...dateInputProps()} aria-label="To" value={searchParams?.get("dateTo") ?? ""} onChange={(event) => handleFilterChange("dateTo", event.target.value)} />
-          </label>
-          {hasActiveFilters ? (
-            <button
-              type="button"
-              onClick={() => router.push(pathname)}
-              className="h-10 rounded-lg border border-slate-700 px-3 text-xs font-bold text-slate-300 transition hover:border-lime-300/40 hover:text-white"
-            >
-              Reset filters
-            </button>
-          ) : null}
-        </div>
+        {hasFilters ? (
+          <button type="button" onClick={clear} className="inline-flex h-9 items-center gap-1.5 self-start rounded-lg border border-slate-800 px-3 text-xs font-semibold text-slate-400 transition hover:border-slate-600 hover:text-white lg:ml-auto lg:self-center">
+            <span className="material-symbols-outlined text-base" aria-hidden="true">filter_alt_off</span>
+            Clear filters
+          </button>
+        ) : null}
       </div>
-    </div>
+    </section>
   );
 }
 
 function FilterGroup<T extends readonly { value: string; label: string }[]>({
+  icon,
   label,
   options,
   value,
   onChange
 }: {
+  icon: string;
   label: string;
   options: T;
   value: string;
   onChange: (value: string) => void;
 }) {
   return (
-    <div>
-      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
-      <div className="flex flex-wrap gap-1 rounded-lg border border-slate-800 bg-slate-900/80 p-1">
+    <div className="min-w-0">
+      <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
+        <span className="material-symbols-outlined text-base text-slate-500" aria-hidden="true">{icon}</span>
+        {label}
+      </div>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={label}>
         {options.map((option) => {
           const selected = value === option.value;
           return (
@@ -125,7 +138,7 @@ function FilterGroup<T extends readonly { value: string; label: string }[]>({
               type="button"
               aria-pressed={selected}
               onClick={() => onChange(option.value)}
-              className={`rounded-md px-3 py-2 text-xs font-semibold transition ${selected ? "bg-lime-300 text-slate-950" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+              className={`min-h-9 rounded-lg border px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-300/70 ${selected ? "border-lime-300/30 bg-lime-300/10 text-lime-100" : "border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-900 hover:text-slate-100"}`}
             >
               {option.label}
             </button>
