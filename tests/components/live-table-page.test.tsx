@@ -14,7 +14,7 @@ describe("LiveTablePage", () => {
         tables={[
           {
             id: "table_1",
-            number: "P1",
+            number: "Pool",
             gameType: "POOL",
             status: "AVAILABLE",
             hourlyRate: 160,
@@ -35,7 +35,7 @@ describe("LiveTablePage", () => {
           },
           {
             id: "table_2",
-            number: "S1",
+            number: "Royal Snooker 1",
             gameType: "SNOOKER",
             status: "OCCUPIED",
             hourlyRate: 350,
@@ -89,20 +89,18 @@ describe("LiveTablePage", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Live Floor" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Snooker & Pool" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "PS5" })).toBeInTheDocument();
-    expect(screen.getByText("P1")).toBeInTheDocument();
-    expect(screen.getByText("S1")).toBeInTheDocument();
-    expect(screen.getByText("PS5 1")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "The Nine Tables" })).toBeInTheDocument();
+    expect(screen.getByText("Pool")).toBeInTheDocument();
+    expect(screen.getByText("Royal Snooker 1")).toBeInTheDocument();
+    expect(screen.queryByText("PS5 1")).not.toBeInTheDocument();
     expect(screen.queryByText(/Status:/)).not.toBeInTheDocument();
     expect(screen.queryByText("No active session")).not.toBeInTheDocument();
-    expect(screen.getByText(/₹200\.00\/hr/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start session for station P1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start session for station PS5 1" })).toBeInTheDocument();
+    expect(screen.getByText(/₹160\.00\/hr/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start session for station Pool" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start counter bill" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add items for station S1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "End session for station S1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Close bill and continue station S1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add items for station Royal Snooker 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "End session for station Royal Snooker 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close bill and continue station Royal Snooker 1" })).toBeInTheDocument();
     expect(screen.getByText(/Started/)).toBeInTheDocument();
     expect(screen.getByText("15:00")).toBeInTheDocument();
     expect(screen.getByText("Elapsed")).toBeInTheDocument();
@@ -118,7 +116,7 @@ describe("LiveTablePage", () => {
     expect(screen.getAllByText("₹590.00").length).toBeGreaterThan(0);
   });
 
-  it("renders PS5 member pricing in the gaming-style occupied card", () => {
+  it("does not render PS5 stations in The Nine's floor", () => {
     render(
       <LiveTablePage
         counterBills={[]}
@@ -155,12 +153,11 @@ describe("LiveTablePage", () => {
       />
     );
 
-    expect(screen.getByText("4 members · ₹250.00/hr")).toBeInTheDocument();
-    expect(screen.getByText("25:00")).toBeInTheDocument();
-    expect(screen.getByText("Live total")).toBeInTheDocument();
+    expect(screen.queryByText("PS5 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Live total")).not.toBeInTheDocument();
   });
 
-  it("shows only useful table summary counts", () => {
+  it("does not show summary status counts", () => {
     render(
       <LiveTablePage
         counterBills={[]}
@@ -175,12 +172,7 @@ describe("LiveTablePage", () => {
       />
     );
 
-    const counts = screen.getByLabelText("Table status counts");
-    expect(counts).toHaveTextContent("Available");
-    expect(counts).toHaveTextContent("Reserved");
-    expect(counts).toHaveTextContent("Occupied");
-    expect(counts).not.toHaveTextContent("Cleaning");
-    expect(counts).not.toHaveTextContent("Maintenance");
-    expect(counts).not.toHaveTextContent("Blocked");
+    expect(screen.queryByLabelText("Table status counts")).not.toBeInTheDocument();
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
   });
 });
