@@ -242,7 +242,7 @@ describe("getBillingPageData", () => {
         where: expect.objectContaining({
           status: "CLOSED",
           session: {
-            some: { assignedEmployeeId: "user_emp" }
+            is: { assignedEmployeeId: "user_emp" }
           }
         })
       })

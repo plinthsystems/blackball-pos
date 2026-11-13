@@ -93,7 +93,7 @@ function buildWhereClause(
     // Store users can only see closed bills they were assigned to
     where.status = "CLOSED" as BillingStatus;
     where.session = {
-      some: {
+      is: {
         assignedEmployeeId: employeeId
       }
     };
@@ -114,17 +114,11 @@ function buildWhereClause(
           : {})
       };
     }
-    if (filters.staffId) {
+    if (filters.staffId || filters.tableId) {
       where.session = {
-        some: {
-          assignedEmployeeId: filters.staffId
-        }
-      };
-    }
-    if (filters.tableId) {
-      where.session = {
-        some: {
-          tableId: filters.tableId
+        is: {
+          ...(filters.staffId ? { assignedEmployeeId: filters.staffId } : {}),
+          ...(filters.tableId ? { tableId: filters.tableId } : {})
         }
       };
     }

@@ -70,9 +70,13 @@ export function InventoryPage({ products }: { products: InventoryProduct[] }) {
   function importCsv() {
     if (!importRows) return;
     startTransition(async () => {
-      const result = await importInventoryAction(importRows);
-      setImportMessage(result.message);
-      if (result.ok) setImportRows(null);
+      try {
+        const result = await importInventoryAction(importRows);
+        setImportMessage(result.message);
+        if (result.ok) setImportRows(null);
+      } catch {
+        setImportMessage("Inventory import failed. Please try again.");
+      }
     });
   }
 
@@ -113,10 +117,12 @@ export function InventoryPage({ products }: { products: InventoryProduct[] }) {
         {importRows ? (
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/20 bg-amber-300/5 p-3">
             <p className="text-sm text-amber-100">{importRows.length} rows ready. Stock will be replaced for matching items.</p>
-            <Button type="button" variant="primary" disabled={isPending} onClick={importCsv}>{isPending ? "Importing…" : `Import ${importRows.length} items`}</Button>
+            <Button type="button" variant="primary" className="whitespace-nowrap" disabled={isPending} onClick={importCsv}>
+              {isPending ? <><Spinner />Importing…</> : `Import ${importRows.length} items`}
+            </Button>
           </div>
         ) : null}
-        {isPending && !importRows ? <p className="mt-3 text-sm text-cyan-200" role="status">Reading CSV…</p> : null}
+        {isPending && !importRows ? <p className="mt-3 inline-flex items-center gap-2 text-sm text-cyan-200" role="status"><Spinner />Reading CSV…</p> : null}
         {importMessage ? <p className={`mt-3 text-sm ${importMessage.includes("could not") || importMessage.startsWith("CSV") || importMessage.startsWith("Row") ? "text-rose-300" : "text-lime-200"}`} role="status">{importMessage}</p> : null}
       </section>
 
@@ -145,7 +151,7 @@ function InventoryRow({ product }: { product: InventoryProduct }) {
   const [stockUnit, setStockUnit] = useState(product.stockUnit);
   const [unitsPerPack, setUnitsPerPack] = useState(product.unitsPerPack);
   const [packs, setPacks] = useState(1);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [isSaving, startSaving] = useTransition();
   const [isRestocking, startRestock] = useTransition();
   const isPending = isSaving || isRestocking;
@@ -156,7 +162,7 @@ function InventoryRow({ product }: { product: InventoryProduct }) {
   function restock() {
     startRestock(async () => {
       const result = await restockProductAction({ id: product.id, packs });
-      setMessage(result.message);
+      setMessage({ text: result.message, ok: result.ok });
       if (result.ok) router.refresh();
     });
   }
@@ -164,33 +170,46 @@ function InventoryRow({ product }: { product: InventoryProduct }) {
   function saveSettings() {
     startSaving(async () => {
       const result = await updateInventoryProductAction({ id: product.id, stockUnit, unitsPerPack });
-      setMessage(result.message);
+      setMessage({ text: result.message, ok: result.ok });
       if (result.ok) router.refresh();
     });
   }
 
   return (
-    <article className="grid gap-3 px-4 py-4 text-sm text-slate-200 lg:grid-cols-[minmax(150px,1fr)_150px_200px_220px] lg:items-center">
-      <div className="min-w-0">
-        <strong className="block truncate text-white">{product.name}</strong>
-        <span className="text-xs text-slate-500">{categoryLabels[product.category]} · {formatMoney(product.priceAmount)} / {formatUnit(stockUnit)}</span>
+    <article className="grid gap-4 px-4 py-4 text-sm text-slate-200 xl:grid-cols-[minmax(0,1fr)_34rem] xl:items-center">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center">
+        <div className="min-w-0">
+          <strong className="block truncate text-white">{product.name}</strong>
+          <span className="text-xs text-slate-500">{categoryLabels[product.category]} · {formatMoney(product.priceAmount)} / {formatUnit(stockUnit)}</span>
+        </div>
+        <div className="min-w-0">
+          <strong className={lowStock ? "text-amber-200" : "text-lime-100"}>{formatUnits(product.stockOnHand, stockUnit)}</strong>
+          <span className="block text-[11px] leading-4 text-slate-500">{product.stockOnHand === 0 ? "Out of stock · " : ""}{lastStocked}{fullPacks}</span>
+        </div>
       </div>
-      <div>
-        <strong className={lowStock ? "text-amber-200" : "text-lime-100"}>{formatUnits(product.stockOnHand, stockUnit)}</strong>
-        <span className="block text-[11px] text-slate-500">{product.stockOnHand === 0 ? "Out of stock · " : ""}{lastStocked}{fullPacks}</span>
+      <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2">
+          <label className="block min-w-0 text-[10px] text-slate-500">Stock unit<input {...textInputProps()} id={`stock-unit-${product.id}`} className="mt-1 h-9 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-white" value={stockUnit} onChange={(event) => setStockUnit(event.target.value)} /></label>
+          <label className="block min-w-0 text-[10px] text-slate-500">Units / pack<input {...textInputProps()} id={`units-pack-${product.id}`} className="mt-1 h-9 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-white" type="number" min={1} value={unitsPerPack} onChange={(event) => setUnitsPerPack(Number(event.target.value))} /></label>
+          <Button type="button" className="h-9 whitespace-nowrap px-2.5" disabled={isPending || !stockUnit.trim() || unitsPerPack < 1} onClick={saveSettings}>
+            {isSaving ? <><Spinner />Saving…</> : "Save"}
+          </Button>
+        </div>
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+          <label className="block min-w-0 text-[10px] text-slate-500">Packs to add<input {...textInputProps()} id={`packs-${product.id}`} className="mt-1 h-9 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-white" type="number" min={1} value={packs} onChange={(event) => setPacks(Number(event.target.value))} /></label>
+          <Button type="button" variant="primary" className="h-9 whitespace-nowrap px-2.5" disabled={isPending || packs < 1} onClick={restock}>
+            {isRestocking ? <><Spinner />Adding…</> : "Add stock"}
+          </Button>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <label className="text-[10px] text-slate-500">Stock unit<input {...textInputProps()} id={`stock-unit-${product.id}`} className="mt-1 h-9 w-20 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-white" value={stockUnit} onChange={(event) => setStockUnit(event.target.value)} /></label>
-        <label className="text-[10px] text-slate-500">Units / pack<input {...textInputProps()} id={`units-pack-${product.id}`} className="mt-1 h-9 w-20 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-white" type="number" min={1} value={unitsPerPack} onChange={(event) => setUnitsPerPack(Number(event.target.value))} /></label>
-        <Button type="button" className="h-9 px-3" disabled={isPending || !stockUnit.trim() || unitsPerPack < 1} onClick={saveSettings}>{isSaving ? "Saving…" : "Save"}</Button>
-      </div>
-      <div className="flex items-center gap-2">
-        <label className="text-[10px] text-slate-500">Packs to add<input {...textInputProps()} id={`packs-${product.id}`} className="mt-1 h-9 w-20 rounded-lg border border-slate-700 bg-slate-900 px-2 text-xs text-white" type="number" min={1} value={packs} onChange={(event) => setPacks(Number(event.target.value))} /></label>
-        <Button type="button" variant="primary" className="h-9 px-3" disabled={isPending || packs < 1} onClick={restock}>{isRestocking ? "Adding…" : "Add stock"}</Button>
-      </div>
-      {message ? <p className="text-xs text-lime-200 lg:col-span-4" role="status">{message}</p> : null}
+      {isPending ? <p className="inline-flex items-center gap-2 text-xs text-cyan-200 xl:col-span-2" role="status"><Spinner />{isSaving ? "Saving inventory settings…" : "Adding stock…"}</p> : null}
+      {message ? <p className={`text-xs xl:col-span-2 ${message.ok ? "text-lime-200" : "text-rose-300"}`} role="status">{message.text}</p> : null}
     </article>
   );
+}
+
+function Spinner() {
+  return <span aria-hidden="true" className="inline-block size-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" />;
 }
 
 function formatUnit(unit: string) {
