@@ -16,6 +16,8 @@ describe("BillingTable", () => {
       closedAt: "2026-01-15T11:30:00.000Z",
       totalAmount: 315,
       tableAmount: 175,
+      tableDurationMinutes: 90,
+      tableHourlyRate: 400,
       itemTotal: 140,
       items: [
         { id: "item_1", name: "Tea", category: "FOOD" as const, quantity: 2, unitPrice: 30, lineTotal: 60 },
@@ -40,6 +42,8 @@ describe("BillingTable", () => {
       closedAt: null,
       totalAmount: 80,
       tableAmount: 0,
+      tableDurationMinutes: 0,
+      tableHourlyRate: 0,
       itemTotal: 80,
       items: [{ id: "item_3", name: "Sandwich", category: "FOOD" as const, quantity: 1, unitPrice: 80, lineTotal: 80 }],
       categorySummaries: [{ category: "FOOD" as const, total: 80 }],
