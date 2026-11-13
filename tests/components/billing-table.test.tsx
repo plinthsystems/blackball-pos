@@ -53,16 +53,14 @@ describe("BillingTable", () => {
     }
   ];
 
-  it("renders table header columns", () => {
+  it("renders receipt-oriented billing labels", () => {
     render(<BillingTable records={mockRecords} expandedId={null} onToggle={() => {}} />);
 
-    expect(screen.getByText("Date & Time")).toBeInTheDocument();
-    expect(screen.getByText("Kind")).toBeInTheDocument();
-    expect(screen.getByText("Table")).toBeInTheDocument();
-    expect(screen.getByText("Staff")).toBeInTheDocument();
-    expect(screen.getByText("Items")).toBeInTheDocument();
-    expect(screen.getByText("Total")).toBeInTheDocument();
-    expect(screen.getByText("Status")).toBeInTheDocument();
+    expect(screen.getByText("Billing history")).toBeInTheDocument();
+    expect(screen.getAllByText("Table time").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Table charge").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Items").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Grand total").length).toBeGreaterThan(0);
   });
 
   it("renders bill rows with key details", () => {
@@ -71,7 +69,7 @@ describe("BillingTable", () => {
     // Check the row content exists
     expect(screen.getByText("Session")).toBeInTheDocument();
     expect(screen.getByText("Counter")).toBeInTheDocument();
-    expect(screen.getByText("Table P1")).toBeInTheDocument();
+    expect(screen.getByText("P1")).toBeInTheDocument();
     expect(screen.getByText("Aarav Manager")).toBeInTheDocument();
     expect(screen.getByText("Riya Staff")).toBeInTheDocument();
     expect(screen.getByText("₹315.00")).toBeInTheDocument();
@@ -88,8 +86,8 @@ describe("BillingTable", () => {
   it("shows item count and item total per row", () => {
     render(<BillingTable records={mockRecords} expandedId={null} onToggle={() => {}} />);
 
-    expect(screen.getByText("2 items · ₹140.00")).toBeInTheDocument();
-    expect(screen.getByText("1 items · ₹80.00")).toBeInTheDocument();
+    expect(screen.getByText("2 · ₹140.00")).toBeInTheDocument();
+    expect(screen.getByText("1 · ₹80.00")).toBeInTheDocument();
   });
 
   it("shows customer name in expanded row when expanded", () => {
@@ -97,7 +95,7 @@ describe("BillingTable", () => {
 
     // Customer appears in expanded detail section (bold text)
     const rows = screen.getAllByText("Riya Shah");
-    expect(rows.length).toBeGreaterThan(1);
+    expect(rows).toHaveLength(1);
     expect(screen.getByText("9876543210")).toBeInTheDocument();
     expect(screen.getByText("Summary")).toBeInTheDocument();
   });
@@ -107,6 +105,9 @@ describe("BillingTable", () => {
 
     expect(screen.getByText("Item Breakdown")).toBeInTheDocument();
     expect(screen.getByText("Tea")).toBeInTheDocument();
+    expect(screen.getAllByText("Table time").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("90 min · ₹400.00/hr").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Grand total").length).toBeGreaterThan(0);
     // Check that the unit price is rendered (unique to this row)
     expect(screen.getByText("₹30.00 each")).toBeInTheDocument();
   });

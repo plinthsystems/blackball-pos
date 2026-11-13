@@ -33,102 +33,64 @@ export function BillingTable({ records, expandedId, onToggle }: { records: Billi
   }
 
   return (
-    <div className="overflow-hidden rounded-material border border-slate-700 bg-slate-900/80 shadow-material">
-      {/* Table header */}
-      <div className="hidden border-b border-slate-700/70 bg-slate-900/90 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 md:grid md:grid-cols-12">
-        <div className="col-span-2">Date & Time</div>
-        <div className="col-span-1">Kind</div>
-        <div className="col-span-2">Table</div>
-        <div className="col-span-1">Staff</div>
-        <div className="col-span-2">Items</div>
-        <div className="col-span-1">Total</div>
-        <div className="col-span-1">Status</div>
-        <div className="col-span-2 text-right">Actions</div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">Billing history</h2>
+        <span className="text-xs text-slate-500">Select a bill to see the full receipt</span>
       </div>
-
-      {/* Table body */}
-      <div className="divide-y divide-slate-700/50">
+      <div className="space-y-3">
         {records.map((record) => {
           const isExpanded = expandedId === record.id;
           const style = statusStyles[record.status] ?? statusStyles.OPEN;
 
           return (
             <div key={record.id}>
-              {/* Row */}
-              <div
-                className={`group cursor-pointer transition-colors hover:bg-slate-800/50 ${isExpanded ? "bg-slate-800/30" : ""}`}
+              <button
+                type="button"
+                className={`w-full rounded-material border border-slate-700 bg-slate-900/80 p-4 text-left shadow-material transition-colors hover:border-lime-300/30 hover:bg-slate-800/80 ${isExpanded ? "border-lime-300/40 bg-slate-800/60" : ""}`}
                 onClick={() => onToggle(record.id)}
               >
-                <div className="grid grid-cols-2 gap-3 px-4 py-3 md:grid-cols-12">
-                  {/* Date & Time */}
-                  <div className="col-span-2 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[18px] text-slate-400">{isExpanded ? "expand_less" : "expand_more"}</span>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <span className="material-symbols-outlined mt-0.5 text-[18px] text-slate-400">{isExpanded ? "expand_less" : "expand_more"}</span>
                     <div>
-                      <p className="text-sm font-bold text-white">{formatDate(record.openedAt)}</p>
-                      <p className="text-[10px] text-slate-500">
-                        {record.closedAt ? `Closed ${formatDate(record.closedAt)}` : "Still open"}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-black text-white">{record.tableNumber ?? "Counter sale"}</p>
+                        <span className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-300">{kindLabel[record.kind] ?? record.kind}</span>
+                        <span className={`rounded-md border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${style.classes}`}>{style.label}</span>
+                      </div>
+                      <p className="mt-1 flex flex-wrap gap-x-1 text-xs text-slate-500">
+                        <span>{formatDate(record.openedAt)}</span>
+                        <span>· {record.closedAt ? `Closed ${formatDate(record.closedAt)}` : "Live bill"}</span>
+                        {record.assignedStaffName ? <span>· <span className="text-slate-400">{record.assignedStaffName}</span></span> : null}
                       </p>
                     </div>
                   </div>
-
-                  {/* Kind */}
-                  <div className="col-span-1 flex items-center">
-                    <span className="rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-300">
-                      {kindLabel[record.kind] ?? record.kind}
-                    </span>
-                  </div>
-
-                  {/* Table */}
-                  <div className="col-span-2 flex items-center text-sm text-slate-300">
-                    {record.tableNumber ? (
-                      <span className="font-bold text-white">Table {record.tableNumber}</span>
-                    ) : (
-                      <span className="text-slate-500">—</span>
-                    )}
-                  </div>
-
-                  {/* Staff */}
-                  <div className="col-span-1 flex items-center text-sm text-slate-400">
-                    {record.assignedStaffName ? <span>{record.assignedStaffName}</span> : <span className="text-slate-600">—</span>}
-                  </div>
-
-                  {/* Items */}
-                  <div className="col-span-2 flex items-center text-sm text-slate-400">
-                    <span>{record.items.length} items · {formatMoney(record.itemTotal)}</span>
-                  </div>
-
-                  {/* Total */}
-                  <div className="col-span-1 flex items-center">
-                    <strong className="text-lg font-black text-lime-300">{formatMoney(record.totalAmount)}</strong>
-                  </div>
-
-                  {/* Status */}
-                  <div className="col-span-1 flex items-center">
-                    <span className={`rounded-md border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${style.classes}`}>
-                      {style.label}
-                    </span>
-                  </div>
-
-                  {/* Actions (desktop) */}
-                  <div className="col-span-2 hidden items-center justify-end gap-2 md:flex">
-                    {record.status === "OPEN" && (
-                      <>
-                        <span className="text-xs text-amber-300 font-semibold">⏳ Pending</span>
-                      </>
-                    )}
-                    {record.customerName && (
-                      <span className="text-xs text-slate-400">{record.customerName}</span>
-                    )}
+                  <div className="text-right">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Grand total</p>
+                    <strong className="text-2xl font-black text-lime-300">{formatMoney(record.totalAmount)}</strong>
                   </div>
                 </div>
-              </div>
-
-              {/* Expanded details */}
+                <div className="mt-4 grid gap-2 border-t border-slate-800 pt-3 sm:grid-cols-3">
+                  <ReceiptMetric label="Table time" value={record.tableDurationMinutes ? `${record.tableDurationMinutes} min · ${formatMoney(record.tableHourlyRate)}/hr` : "No table time"} />
+                  <ReceiptMetric label="Table charge" value={formatMoney(record.tableAmount)} />
+                  <ReceiptMetric label="Items" value={`${record.items.length} · ${formatMoney(record.itemTotal)}`} />
+                </div>
+              </button>
               {isExpanded && <BillDetails record={record} />}
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function ReceiptMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-bold text-white">{value}</p>
     </div>
   );
 }
@@ -163,19 +125,21 @@ function BillDetails({ record }: { record: BillingRecord }) {
           <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Summary</h4>
           <div className="space-y-1 text-sm">
             <div className="flex justify-between text-slate-400">
-              <span>Items</span>
-              <span className="text-white font-bold">{totalItems}</span>
+              <span>Table time</span>
+              <span className="text-right text-white font-bold">
+                {record.tableDurationMinutes ? `${record.tableDurationMinutes} min · ${formatMoney(record.tableHourlyRate)}/hr` : "No table time"}
+              </span>
             </div>
             <div className="flex justify-between text-slate-400">
               <span>Table charge</span>
               <span className="text-white font-bold">{formatMoney(record.tableAmount)}</span>
             </div>
             <div className="flex justify-between text-slate-400">
-              <span>Items total</span>
+              <span>Items ({totalItems})</span>
               <span className="text-white font-bold">{formatMoney(record.itemTotal)}</span>
             </div>
             <div className="mt-2 border-t border-slate-700 pt-2 flex justify-between">
-              <span className="text-sm font-black text-white">Grand Total</span>
+              <span className="text-sm font-black text-white">Grand total</span>
               <strong className="text-lg font-black text-lime-300">{formatMoney(record.totalAmount)}</strong>
             </div>
           </div>
