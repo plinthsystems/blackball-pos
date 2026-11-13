@@ -4,10 +4,10 @@ import { hashPassword } from "@/server/auth/auth-service";
 export const THE_NINE_STORE = {
   id: "the-nine-store",
   slug: "the-nine",
-  name: "The Nine",
+  name: "The Nine Snooker & Cafe",
   phone: "+91 90000 00000",
   email: "hello@thenine.local",
-  appName: "The Nine",
+  appName: "The Nine Snooker & Cafe",
   logoInitials: "TN",
   brandColor: "#12613d",
   accentColor: "#b98922"
@@ -66,19 +66,19 @@ const storePermissionKeys = [
   "bills.manage"
 ];
 
-const tables = [
-  { number: "Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "standard" },
-  { number: "Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "standard" },
-  { number: "Pool 1", gameType: GameType.POOL, pricingGroup: "standard" },
-  { number: "Pool 2", gameType: GameType.POOL, pricingGroup: "standard" },
-  { number: "PS5 1", gameType: GameType.PS5, pricingGroup: "players-2" }
-];
+export const THE_NINE_TABLES = [
+  { number: "Royal Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "royal" },
+  { number: "Royal Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "royal" },
+  { number: "Mini Snooker 1", gameType: GameType.SNOOKER, pricingGroup: "mini" },
+  { number: "Mini Snooker 2", gameType: GameType.SNOOKER, pricingGroup: "mini" },
+  { number: "Pool", gameType: GameType.POOL, pricingGroup: "standard" }
+] as const;
 
-const pricing = [
-  { gameType: GameType.SNOOKER, pricingGroup: "standard", durationMinutes: 60, priceAmount: "350.00" },
-  { gameType: GameType.POOL, pricingGroup: "standard", durationMinutes: 60, priceAmount: "200.00" },
-  { gameType: GameType.PS5, pricingGroup: "players-2", durationMinutes: 60, priceAmount: "150.00" }
-];
+export const THE_NINE_PRICING = [
+  { gameType: GameType.SNOOKER, pricingGroup: "royal", durationMinutes: 60, priceAmount: "400.00" },
+  { gameType: GameType.SNOOKER, pricingGroup: "mini", durationMinutes: 60, priceAmount: "250.00" },
+  { gameType: GameType.POOL, pricingGroup: "standard", durationMinutes: 60, priceAmount: "180.00" }
+] as const;
 
 const products = [
   { name: "Water Bottle", category: ProductCategory.BEVERAGES, priceAmount: "20.00" },
@@ -206,10 +206,10 @@ export async function seedTheNine(
   }
 
   await db.tablePricing.deleteMany({ where: { businessId: store.id } });
-  await db.tablePricing.createMany({ data: pricing.map((rule) => ({ businessId: store.id, ...rule })) });
+  await db.tablePricing.createMany({ data: THE_NINE_PRICING.map((rule) => ({ businessId: store.id, ...rule })) });
 
   await db.clubTable.deleteMany({ where: { businessId: store.id } });
-  await db.clubTable.createMany({ data: tables.map((table) => ({ businessId: store.id, ...table })) });
+  await db.clubTable.createMany({ data: THE_NINE_TABLES.map((table) => ({ businessId: store.id, ...table })) });
 
   await db.product.deleteMany({ where: { businessId: store.id } });
   await db.product.createMany({ data: products.map((product) => ({ businessId: store.id, ...product })) });
