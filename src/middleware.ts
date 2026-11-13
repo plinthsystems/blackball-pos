@@ -16,6 +16,10 @@ export async function middleware(request: NextRequest) {
   const demoIdentityAllowed = !isProduction() && Boolean(demoEmail);
   const isAuthenticated = Boolean(tokenPayload || demoIdentityAllowed);
 
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   // Allow public routes without auth checks
   if (
     pathname === "/" ||

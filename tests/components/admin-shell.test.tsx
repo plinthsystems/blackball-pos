@@ -53,11 +53,31 @@ describe("AdminShell", () => {
     );
 
     expect(screen.getByRole("link", { name: /Live Floor/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Billing/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Change Password/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Dashboard/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Rates/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Food\/Menu/ })).not.toBeInTheDocument();
-    expect(screen.getByText("Store User")).toBeInTheDocument();
+    expect(screen.getByText("Store")).toBeInTheDocument();
+  });
+
+  it("shows the focused admin navigation for The Nine admins", () => {
+    render(
+      <AdminShell
+        account={{ name: "The Nine Admin", accountType: "STORE_OWNER", permissions: [] }}
+      >
+        <div>Content</div>
+      </AdminShell>
+    );
+
+    expect(screen.getByRole("link", { name: /Dashboard/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Live Floor/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Billing/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Menu & Settings/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Rates/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Franchise HQ/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Platform Setup/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Admin")).toBeInTheDocument();
   });
 
   it("shows Franchise HQ link for HQ admins", () => {
@@ -106,7 +126,7 @@ describe("AdminShell", () => {
         <div>Content</div>
       </AdminShell>
     );
-    expect(screen.getByText("Store Owner")).toBeInTheDocument();
+    expect(screen.getByText("Admin")).toBeInTheDocument();
 
     rerender(
       <AdminShell account={{ name: "HQ Director", accountType: "HQ_ADMIN", permissions: ["hq.dashboard.read"] }}>
@@ -119,6 +139,7 @@ describe("AdminShell", () => {
   it("renders the store switcher when the organization has stores", () => {
     render(
       <AdminShell
+        account={{ name: "Legacy Manager", accountType: "MANAGER", permissions: [] }}
         organization={{
           id: "org1",
           name: "BlackBall Franchise",

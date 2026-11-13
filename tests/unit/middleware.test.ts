@@ -42,7 +42,6 @@ describe("middleware", () => {
 
   describe("public routes", () => {
     it.each([
-      "/",
       "/login",
       "/magic-login",
       "/docs",
@@ -57,6 +56,12 @@ describe("middleware", () => {
     ])("passes through unauthenticated request to %s", async (pathname) => {
       const response = await middleware(makeRequest(pathname));
       expect(response.status).toBe(200);
+    });
+
+    it("redirects the root entry directly to login", async () => {
+      const response = await middleware(makeRequest("/"));
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe("http://localhost:3000/login");
     });
   });
 

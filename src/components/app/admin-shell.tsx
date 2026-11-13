@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import type { AccountType, OrganizationContext, TenantBranding } from "@/server/auth/current-employee";
 import { StoreSwitcher } from "./store-switcher";
 
-const navItems = [
+const legacyNavItems = [
   { href: "/platform/setup", label: "Platform Setup", icon: "add_business", permission: "platform.setup.manage" },
   { href: "/hq/dashboard", label: "Franchise HQ", icon: "corporate_fare", permission: "hq.dashboard.read" },
   { href: "/dashboard", label: "Dashboard", icon: "monitoring", permission: "dashboard.read" },
@@ -17,6 +17,19 @@ const navItems = [
   { href: "/rates", label: "Rates", icon: "currency_rupee", permission: "rates.manage" }
 ];
 
+const theNineAdminNavItems = [
+  { href: "/dashboard", label: "Dashboard", icon: "monitoring" },
+  { href: "/live-tables", label: "Live Floor", icon: "grid_view" },
+  { href: "/billing", label: "Billing", icon: "receipt_long" },
+  { href: "/settings", label: "Menu & Settings", icon: "restaurant" },
+  { href: "/rates", label: "Rates", icon: "currency_rupee" }
+] as const;
+
+const theNineStoreNavItems = [
+  { href: "/live-tables", label: "Live Floor", icon: "grid_view" },
+  { href: "/billing", label: "Billing", icon: "receipt_long" }
+] as const;
+
 type ShellAccount = {
   name: string;
   email?: string;
@@ -25,17 +38,17 @@ type ShellAccount = {
 };
 
 const fallbackBranding: TenantBranding = {
-  appName: "Black Ball",
-  logoInitials: "BB",
-  businessName: "Pool & Snooker Cafe",
+  appName: "The Nine",
+  logoInitials: "TN",
+  businessName: "The Nine",
   brandColor: "#12613d",
   accentColor: "#b98922"
 };
 
 const fallbackAccount: ShellAccount = {
-  name: "Manager",
+  name: "The Nine Admin",
   email: "manager@example.com",
-  accountType: "MANAGER",
+  accountType: "STORE_OWNER",
   permissions: ["dashboard.read", "tables.read", "products.manage", "rates.manage"]
 };
 
@@ -52,13 +65,13 @@ export function AdminShell({
   businessId?: string;
   organization?: OrganizationContext;
 }) {
-  const visibleNavItems = navItems.filter((item) => account.permissions.includes(item.permission));
+  const visibleNavItems = getVisibleNavItems(account);
   const accountLabelMap: Record<AccountType, string> = {
     PLATFORM_ADMIN: "Platform Admin",
     HQ_ADMIN: "Franchise HQ Director",
-    STORE_OWNER: "Store Owner",
+    STORE_OWNER: "Admin",
     MANAGER: "Store Manager",
-    STORE_USER: "Store User"
+    STORE_USER: "Store"
   };
   const accountLabel = accountLabelMap[account.accountType] ?? "Store User";
 
@@ -100,7 +113,7 @@ export function AdminShell({
           <div className="flex items-center justify-between">
             <BrandMark branding={tenantBranding} compact />
             <div className="flex items-center gap-3">
-              {organization && organization.businesses.length > 0 && (
+              {organization && organization.businesses.length > 0 && !["STORE_OWNER", "STORE_USER"].includes(account.accountType) && (
                 <StoreSwitcher
                   currentBusinessId={businessId}
                   organizationName={organization.name}
@@ -137,6 +150,16 @@ export function AdminShell({
       </div>
     </div>
   );
+}
+
+function getVisibleNavItems(account: ShellAccount) {
+  if (account.accountType === "STORE_OWNER") {
+    return theNineAdminNavItems;
+  }
+  if (account.accountType === "STORE_USER") {
+    return theNineStoreNavItems;
+  }
+  return legacyNavItems.filter((item) => account.permissions.includes(item.permission));
 }
 
 function BrandMark({ branding, compact = false }: { branding: TenantBranding; compact?: boolean }) {
