@@ -16,11 +16,7 @@ describe("mapRateSettings", () => {
     expect(rates.map((rate) => `${rate.label}:${rate.hourlyRate}`)).toEqual([
       "Royal Snooker:350",
       "Mini Snooker:330",
-      "Pool:160",
-      "PS5 · 1 player:100",
-      "PS5 · 2 players:150",
-      "PS5 · 3 players:200",
-      "PS5 · 4 players:250"
+      "Pool:160"
     ]);
   });
 });

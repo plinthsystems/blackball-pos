@@ -132,7 +132,9 @@ describe("getOwnerDashboardData", () => {
         { label: "PS5", hours: 0 }
       ],
       closedBillCount: 0,
-      openBillCount: 0
+      openBillCount: 0,
+      reportingWindow: "today",
+      dailyTrend: []
     });
   });
 });

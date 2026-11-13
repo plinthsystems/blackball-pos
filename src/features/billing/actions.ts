@@ -5,6 +5,7 @@ import { prisma } from "@/server/db/prisma";
 import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
 import { requirePermission } from "@/server/auth/permissions";
 import { DomainError } from "@/server/domain/errors";
+import { calculateBillSegmentTableAmount } from "@/server/domain/bill-summary";
 
 type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 
@@ -26,9 +27,13 @@ export async function closeBillAction(input: { billId: string }): Promise<Action
     const now = new Date();
     const itemTotal = bill.items.reduce((sum, item) => sum + Number(item.lineTotalAmount), 0);
     const tableAmount = bill.kind === "SESSION" && bill.session
-      ? calculateTableAmount(bill.session.startedAt, now)
+      ? calculateBillSegmentTableAmount({
+          startedAt: bill.openedAt,
+          endedAt: now,
+          hourlyRate: Number(bill.session.hourlyRateSnapshot)
+        })
       : 0;
-    const total = itemTotal + tableAmount;
+    const total = Math.round((itemTotal + tableAmount) * 100) / 100;
 
     await prisma.bill.update({
       where: { id: bill.id },
@@ -78,13 +83,6 @@ export async function cancelBillAction(input: { billId: string }): Promise<Actio
       ? { ok: false, message: error.message }
       : { ok: false, message: "Failed to cancel bill." };
   }
-}
-
-function calculateTableAmount(startedAt: Date, closedAt: Date): number {
-  const elapsedMs = closedAt.getTime() - startedAt.getTime();
-  if (elapsedMs <= 0) return 0;
-  const billableMinutes = Math.ceil(elapsedMs / 60000);
-  return Math.round((billableMinutes / 60) * 350 * 100) / 100; // default hourly rate
 }
 
 function formatMoney(amount: number): string {

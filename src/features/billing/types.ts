@@ -27,6 +27,8 @@ export type BillingRecord = {
   closedAt: string | null;
   totalAmount: number;
   tableAmount: number;
+  tableDurationMinutes: number;
+  tableHourlyRate: number;
   itemTotal: number;
   items: BillItemRow[];
   categorySummaries: CategorySummary[];

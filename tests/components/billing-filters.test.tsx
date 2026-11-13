@@ -1,168 +1,75 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BillingFilters } from "@/features/billing/components/billing-filters";
 
-// Mock Next.js navigation hooks
-vi.mock("next/navigation", async () => {
-  const actual = await vi.importActual("next/navigation");
-  return {
-    ...actual,
-    usePathname: vi.fn(),
-    useRouter: vi.fn(() => ({ push: vi.fn() })),
-    useSearchParams: vi.fn(() => new URLSearchParams())
-  };
-});
+const { mockPush, mockSearchParams } = vi.hoisted(() => ({
+  mockPush: vi.fn(),
+  mockSearchParams: new URLSearchParams()
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/billing",
+  useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => mockSearchParams
+}));
 
 describe("BillingFilters", () => {
-  const staffOptions = [
-    { id: "emp_1", name: "Aarav" },
-    { id: "emp_2", name: "Riya" }
-  ];
-  const tableOptions = [
-    { id: "tbl_1", number: "P1" },
-    { id: "tbl_2", number: "S1" }
-  ];
-
-  it("renders all filter inputs", () => {
-    render(
-      <BillingFilters
-        staffOptions={staffOptions}
-        tableOptions={tableOptions}
-        accountType="MANAGER"
-      />
-    );
-
-    expect(screen.getByLabelText("Status")).toBeInTheDocument();
-    expect(screen.getByLabelText("Kind")).toBeInTheDocument();
-    expect(screen.getByLabelText("Category")).toBeInTheDocument();
-    expect(screen.getByLabelText("From")).toBeInTheDocument();
-    expect(screen.getByLabelText("To")).toBeInTheDocument();
-    expect(screen.getByLabelText("Staff")).toBeInTheDocument();
-    expect(screen.getByLabelText("Table")).toBeInTheDocument();
+  beforeEach(() => {
+    mockPush.mockClear();
+    mockSearchParams.forEach((_value, key) => mockSearchParams.delete(key));
   });
 
-  it("shows status options", () => {
-    render(
-      <BillingFilters
-        staffOptions={staffOptions}
-        tableOptions={tableOptions}
-        accountType="MANAGER"
-      />
-    );
+  afterEach(() => cleanup());
 
-    const statusSelect = screen.getByLabelText("Status");
-    expect(statusSelect).toHaveValue("ALL");
-    // Check that options exist in the DOM
-    expect(screen.getByText("Open")).toBeInTheDocument();
-    expect(screen.getByText("Closed")).toBeInTheDocument();
-    expect(screen.getByText("Cancelled")).toBeInTheDocument();
+  it("shows only the basic date range and bill type controls", () => {
+    render(<BillingFilters />);
+
+    expect(screen.getByRole("group", { name: "Date range" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Bill type" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Today" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "7 days" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "30 days" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All time" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All bills" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Table time" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Counter" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
-  it("shows kind options", () => {
-    render(
-      <BillingFilters
-        staffOptions={staffOptions}
-        tableOptions={tableOptions}
-        accountType="MANAGER"
-      />
-    );
+  it("marks the default date and bill type as selected", () => {
+    render(<BillingFilters />);
 
-    const kindSelect = screen.getByLabelText("Kind");
-    expect(kindSelect).toHaveValue("ALL");
-    expect(screen.getByText("Session")).toBeInTheDocument();
-    expect(screen.getByText("Counter")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All time" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "All bills" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("shows category options", () => {
-    render(
-      <BillingFilters
-        staffOptions={staffOptions}
-        tableOptions={tableOptions}
-        accountType="MANAGER"
-      />
-    );
+  it("updates the URL with the selected bill type", () => {
+    render(<BillingFilters />);
 
-    const categorySelect = screen.getByLabelText("Category");
-    expect(categorySelect).toHaveValue("ALL");
-    expect(screen.getByText("Food")).toBeInTheDocument();
-    expect(screen.getByText("Cigarettes")).toBeInTheDocument();
-    expect(screen.getByText("Beverages")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Table time" }));
+
+    expect(mockPush).toHaveBeenCalledWith("/billing?kind=SESSION");
   });
 
-  it("shows staff filter for MANAGER role", () => {
-    render(
-      <BillingFilters
-        staffOptions={staffOptions}
-        tableOptions={tableOptions}
-        accountType="MANAGER"
-      />
-    );
+  it("applies a date shortcut and retains the current bill type", () => {
+    mockSearchParams.set("kind", "COUNTER");
+    mockSearchParams.set("page", "3");
+    render(<BillingFilters />);
 
-    expect(screen.getByLabelText("Staff")).toBeInTheDocument();
-    expect(screen.getByText("All Staff")).toBeInTheDocument();
-    expect(screen.getByText("Aarav")).toBeInTheDocument();
-    expect(screen.getByText("Riya")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "7 days" }));
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush.mock.calls[0][0]).toMatch(/^\/billing\?kind=COUNTER&dateFrom=\d{4}-\d{2}-\d{2}&dateTo=\d{4}-\d{2}-\d{2}$/);
   });
 
-  it("hides staff filter for STORE_USER role", () => {
-    render(
-      <BillingFilters
-        staffOptions={staffOptions}
-        tableOptions={tableOptions}
-        accountType="STORE_USER"
-      />
-    );
+  it("shows a clear action only when filters are active", () => {
+    const { rerender } = render(<BillingFilters />);
+    expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
 
-    expect(screen.queryByLabelText("Staff")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Table")).not.toBeInTheDocument();
-  });
+    mockSearchParams.set("kind", "COUNTER");
+    rerender(<BillingFilters />);
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
 
-  it("hides table filter for STORE_USER role", () => {
-    render(
-      <BillingFilters
-        staffOptions={staffOptions}
-        tableOptions={tableOptions}
-        accountType="STORE_USER"
-      />
-    );
-
-    expect(screen.queryByLabelText("Table")).not.toBeInTheDocument();
-  });
-
-  it("shows date input fields", () => {
-    render(
-      <BillingFilters
-        staffOptions={staffOptions}
-        tableOptions={tableOptions}
-        accountType="MANAGER"
-      />
-    );
-
-    expect(screen.getByLabelText("From")).toHaveAttribute("type", "date");
-    expect(screen.getByLabelText("To")).toHaveAttribute("type", "date");
-  });
-
-  it("calls router.push when filter changes", () => {
-    const mockPush = vi.fn();
-
-    // Re-import with mocked router
-    vi.doMock("next/navigation", () => ({
-      usePathname: vi.fn(() => "/billing"),
-      useRouter: vi.fn(() => ({ push: mockPush })),
-      useSearchParams: vi.fn(() => new URLSearchParams())
-    }));
-
-    render(
-      <BillingFilters
-        staffOptions={staffOptions}
-        tableOptions={tableOptions}
-        accountType="MANAGER"
-      />
-    );
-
-    // The filter should call router.push on change
-    const statusSelect = screen.getByLabelText("Status") as HTMLSelectElement;
-    statusSelect.value = "OPEN";
-    statusSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(mockPush).toHaveBeenCalledWith("/billing");
   });
 });

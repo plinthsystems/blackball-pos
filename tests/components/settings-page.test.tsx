@@ -6,12 +6,6 @@ describe("MenuSettingsPage", () => {
   it("renders menu products with add and update controls", () => {
     render(
       <MenuSettingsPage
-        branding={{
-          appName: "Cue City POS",
-          logoInitials: "CC",
-          brandColor: "#14532d",
-          accentColor: "#b98922"
-        }}
         products={[
           { id: "product_1", name: "Water Bottle", category: "BEVERAGES", priceAmount: 20, active: true },
           { id: "product_2", name: "Sandwich", category: "FOOD", priceAmount: 80, active: true }
@@ -19,33 +13,26 @@ describe("MenuSettingsPage", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Business Profile & Menu" })).toBeInTheDocument();
-    expect(screen.getByText("Manage Food, Cigarettes, and Beverages. Price changes affect only new bill items.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Menu" })).toBeInTheDocument();
+    expect(screen.getByText("Manage the items your team can add to a bill.")).toBeInTheDocument();
     expect(screen.getByText("Water Bottle")).toBeInTheDocument();
     expect(screen.getAllByText("Food").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Add item" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Update price" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Save price" })).toHaveLength(2);
+    expect(screen.getByText("keyboard_arrow_down")).toBeInTheDocument();
   });
 
-  it("renders polished business profile controls instead of raw tenant branding controls", () => {
+  it("keeps business profile and booking QR details out of the store settings", () => {
     render(
       <MenuSettingsPage
-        branding={{
-          appName: "Cue City POS",
-          logoInitials: "CC",
-          brandColor: "#14532d",
-          accentColor: "#b98922"
-        }}
         products={[]}
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Business Profile" })).toBeInTheDocument();
-    expect(screen.getByText("Keep your club identity clear without changing the whole software theme.")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Cue City POS")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("CC")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Brand color")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Primary identity color")).toHaveValue("#14532d");
-    expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Business Profile" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Keep your club identity clear without changing the whole software theme.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save profile" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Booking link (QR)")).not.toBeInTheDocument();
+    expect(screen.queryByText("Customer Online Booking")).not.toBeInTheDocument();
   });
 });
