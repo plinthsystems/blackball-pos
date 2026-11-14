@@ -9,6 +9,7 @@ import { TableBoardToolbar } from "./table-board-toolbar";
 import { TableGrid } from "./table-grid";
 import { StartCounterBillDialog } from "@/features/sessions/components/start-counter-bill-dialog";
 import { AddSessionItemDialog } from "@/features/sessions/components/add-session-item-dialog";
+import { EditBillItemsDialog } from "@/features/sessions/components/edit-bill-items-dialog";
 import { Button } from "@/components/ui/button";
 import { closeCounterBillAction } from "../actions";
 
@@ -85,6 +86,7 @@ function StationSection({ title, tables, products, isHqAdmin }: { title: string;
 function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData; products: ProductOption[]; isHqAdmin?: boolean }) {
   const router = useRouter();
   const [itemsOpen, setItemsOpen] = useState(false);
+  const [editItemsOpen, setEditItemsOpen] = useState(false);
 
   return (
     <div className="rounded-material border border-slate-700 bg-slate-900/80 p-3 text-slate-100">
@@ -105,6 +107,7 @@ function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData;
       {!isHqAdmin ? (
         <div className="mt-3 flex gap-2">
           <Button type="button" className="h-9 px-3" onClick={() => setItemsOpen(true)}>Add items</Button>
+          {bill.items.length ? <Button type="button" className="h-9 px-3" onClick={() => setEditItemsOpen(true)}>Edit items</Button> : null}
           <Button
             type="button"
             variant="primary"
@@ -121,6 +124,7 @@ function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData;
         <p className="mt-3 text-xs text-amber-300 font-semibold">Read-Only HQ Oversight Mode</p>
       )}
       <AddSessionItemDialog billId={bill.id} tableNumber={bill.label} products={products} open={itemsOpen} onOpenChange={setItemsOpen} />
+      <EditBillItemsDialog billLabel={bill.label} items={bill.items} open={editItemsOpen} onOpenChange={setEditItemsOpen} />
     </div>
   );
 }

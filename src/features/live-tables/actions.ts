@@ -20,6 +20,7 @@ import {
   endSessionSchema,
   extendSessionSchema,
   removeBillItemSchema,
+  updateBillItemQuantitySchema,
   startCounterBillSchema,
   startWalkInSessionSchema,
   tableStatusSchema
@@ -319,6 +320,65 @@ export async function removeBillItemAction(input: unknown): Promise<ActionResult
     revalidatePath("/live-tables");
     revalidatePath("/settings");
     return { ok: true, message: "Item removed from bill." };
+  } catch (error) {
+    return actionError(error);
+  }
+}
+
+export async function updateBillItemQuantityAction(input: unknown): Promise<ActionResult> {
+  try {
+    const context = await getCurrentEmployeeContext();
+    requirePermission(context, "bills.manage");
+    const parsed = updateBillItemQuantitySchema.parse(input);
+
+    await prisma.$transaction(async (tx) => {
+      const item = await tx.billItem.findFirst({
+        where: { id: parsed.billItemId, businessId: context.businessId, bill: { status: "OPEN" } },
+        select: { id: true, productId: true, quantity: true, unitPriceAmount: true }
+      });
+      if (!item) {
+        throw new DomainError("SESSION_NOT_ACTIVE", "Open bill item was not found.");
+      }
+
+      const quantityDifference = parsed.quantity - item.quantity;
+      if (quantityDifference > 0 && item.productId) {
+        const product = await tx.product.findFirst({
+          where: { id: item.productId, businessId: context.businessId },
+          select: { trackInventory: true }
+        });
+        if (product?.trackInventory) {
+          const stockUpdate = await tx.product.updateMany({
+            where: {
+              id: item.productId,
+              businessId: context.businessId,
+              trackInventory: true,
+              stockOnHand: { gte: quantityDifference }
+            },
+            data: { stockOnHand: { decrement: quantityDifference } }
+          });
+          if (stockUpdate.count !== 1) {
+            throw new DomainError("INSUFFICIENT_STOCK", "Not enough stock available.");
+          }
+        }
+      } else if (quantityDifference < 0 && item.productId) {
+        await tx.product.updateMany({
+          where: { id: item.productId, businessId: context.businessId, trackInventory: true },
+          data: { stockOnHand: { increment: Math.abs(quantityDifference) } }
+        });
+      }
+
+      await tx.billItem.update({
+        where: { id: item.id },
+        data: {
+          quantity: parsed.quantity,
+          lineTotalAmount: Math.round(Number(item.unitPriceAmount) * parsed.quantity * 100) / 100
+        }
+      });
+    });
+
+    revalidatePath("/live-tables");
+    revalidatePath("/settings");
+    return { ok: true, message: "Bill item quantity updated." };
   } catch (error) {
     return actionError(error);
   }

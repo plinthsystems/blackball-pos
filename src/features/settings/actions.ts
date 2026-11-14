@@ -11,7 +11,8 @@ import {
   inventoryImportSchema,
   inventoryProductSettingsSchema,
   productFormSchema,
-  restockProductSchema
+  restockProductSchema,
+  setInventoryStockSchema
 } from "@/features/sessions/schemas";
 
 export async function updateBookingSettingsAction(input: unknown): Promise<ActionResult> {
@@ -109,6 +110,29 @@ export async function restockProductAction(input: unknown): Promise<ActionResult
     return { ok: true, message: "Stock added." };
   } catch {
     return { ok: false, message: "Stock could not be added." };
+  }
+}
+
+export async function setInventoryStockAction(input: unknown): Promise<ActionResult> {
+  try {
+    const context = await getCurrentEmployeeContext();
+    requirePermission(context, "products.manage");
+    const parsed = setInventoryStockSchema.parse(input);
+    const updated = await prisma.product.updateMany({
+      where: { id: parsed.id, businessId: context.businessId, active: true, trackInventory: true },
+      data: { stockOnHand: parsed.stockOnHand, stockUpdatedAt: new Date() }
+    });
+    if (updated.count !== 1) {
+      return { ok: false, message: "Inventory item was not found." };
+    }
+    revalidatePath("/inventory");
+    revalidatePath("/live-tables");
+    return { ok: true, message: "On-hand stock updated." };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { ok: false, message: "Enter a whole-number stock quantity of zero or more." };
+    }
+    return { ok: false, message: "Stock could not be updated. Please try again." };
   }
 }
 

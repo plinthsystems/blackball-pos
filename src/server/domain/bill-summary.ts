@@ -1,3 +1,5 @@
+import { calculateProratedTableCharge } from "./session-calculations";
+
 export type BillItemCategory = "FOOD" | "CAFE" | "CIGARETTES" | "BEVERAGES";
 
 export type BillSummary = {
@@ -46,8 +48,7 @@ export function calculateBillSegmentTableAmount({
   hourlyRate: number;
 }) {
   const elapsedSeconds = Math.max(0, Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000));
-  const billableMinutes = elapsedSeconds === 0 ? 0 : Math.ceil(elapsedSeconds / 60);
-  return roundMoney((billableMinutes / 60) * hourlyRate);
+  return calculateProratedTableCharge({ billableSeconds: elapsedSeconds, hourlyRate });
 }
 
 function roundMoney(amount: number) {

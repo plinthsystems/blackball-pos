@@ -12,6 +12,7 @@ import { BookingCountdown } from "./booking-countdown";
 import { StartWalkInDialog } from "@/features/sessions/components/start-walk-in-dialog";
 import { EndSessionDialog } from "@/features/sessions/components/end-session-dialog";
 import { AddSessionItemDialog } from "@/features/sessions/components/add-session-item-dialog";
+import { EditBillItemsDialog } from "@/features/sessions/components/edit-bill-items-dialog";
 import { LiveClock } from "./live-clock";
 
 const statusTone: Record<LiveTableStatus, "neutral" | "success" | "warning" | "danger" | "info"> = {
@@ -51,6 +52,7 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
   const router = useRouter();
   const [startOpen, setStartOpen] = useState(false);
   const [itemsOpen, setItemsOpen] = useState(false);
+  const [editItemsOpen, setEditItemsOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   const [billDetailsOpen, setBillDetailsOpen] = useState(false);
   const session = table.status === "OCCUPIED" ? table.currentSession : null;
@@ -153,6 +155,11 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
               <Button className="h-9 px-3" aria-label={`Add items for station ${table.number}`} onClick={() => setItemsOpen(true)}>
                 Add items
               </Button>
+              {bill?.items.length ? (
+                <Button className="h-9 px-3" aria-label={`Edit bill items for station ${table.number}`} onClick={() => setEditItemsOpen(true)}>
+                  Edit items
+                </Button>
+              ) : null}
               <Button variant="primary" className="h-9 px-3" aria-label={`Stop session for station ${table.number}`} onClick={() => setEndOpen(true)}>
                 Stop
               </Button>
@@ -186,6 +193,14 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
             open={itemsOpen}
             onOpenChange={setItemsOpen}
           />
+          {bill ? (
+            <EditBillItemsDialog
+              billLabel={table.number}
+              items={bill.items}
+              open={editItemsOpen}
+              onOpenChange={setEditItemsOpen}
+            />
+          ) : null}
           <EndSessionDialog sessionId={session.id} tableNumber={table.number} open={endOpen} onOpenChange={setEndOpen} />
         </>
       ) : null}

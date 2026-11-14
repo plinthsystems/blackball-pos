@@ -3,10 +3,11 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { Field, textInputProps } from "@/components/ui/field";
 import { formatMoney } from "@/lib/money";
 import type { ProductCategory } from "@/features/live-tables/types";
-import { importInventoryAction, restockProductAction, updateInventoryProductAction } from "@/features/settings/actions";
+import { importInventoryAction, restockProductAction, setInventoryStockAction, updateInventoryProductAction } from "@/features/settings/actions";
 import { inventoryCsvSample, inventoryCsvTemplate, parseInventoryCsv, type InventoryCsvRow } from "./csv";
 
 export type InventoryProduct = {
@@ -152,9 +153,13 @@ function InventoryRow({ product }: { product: InventoryProduct }) {
   const [unitsPerPack, setUnitsPerPack] = useState(product.unitsPerPack);
   const [packs, setPacks] = useState(1);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustedStock, setAdjustedStock] = useState(product.stockOnHand);
+  const [adjustMessage, setAdjustMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [isSaving, startSaving] = useTransition();
   const [isRestocking, startRestock] = useTransition();
-  const isPending = isSaving || isRestocking;
+  const [isAdjusting, startAdjust] = useTransition();
+  const isPending = isSaving || isRestocking || isAdjusting;
   const lastStocked = product.stockUpdatedAt ? `Stock added ${new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(product.stockUpdatedAt))}` : "Not recorded";
   const fullPacks = unitsPerPack > 1 ? ` · ${Math.floor(product.stockOnHand / unitsPerPack)} full packs` : "";
   const lowStock = product.stockOnHand <= unitsPerPack;
@@ -175,6 +180,22 @@ function InventoryRow({ product }: { product: InventoryProduct }) {
     });
   }
 
+  function saveStockCount() {
+    startAdjust(async () => {
+      try {
+        const result = await setInventoryStockAction({ id: product.id, stockOnHand: adjustedStock });
+        setAdjustMessage({ text: result.message, ok: result.ok });
+        setMessage({ text: result.message, ok: result.ok });
+        if (result.ok) {
+          setAdjustOpen(false);
+          router.refresh();
+        }
+      } catch {
+        setAdjustMessage({ text: "Stock could not be updated. Please try again.", ok: false });
+      }
+    });
+  }
+
   return (
     <article className="grid gap-4 px-4 py-4 text-sm text-slate-200 xl:grid-cols-[minmax(0,1fr)_34rem] xl:items-center">
       <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center">
@@ -185,6 +206,7 @@ function InventoryRow({ product }: { product: InventoryProduct }) {
         <div className="min-w-0">
           <strong className={lowStock ? "text-amber-200" : "text-lime-100"}>{formatUnits(product.stockOnHand, stockUnit)}</strong>
           <span className="block text-[11px] leading-4 text-slate-500">{product.stockOnHand === 0 ? "Out of stock · " : ""}{lastStocked}{fullPacks}</span>
+          <Button type="button" className="mt-1 h-7 px-2 text-[11px]" disabled={isPending} onClick={() => { setAdjustedStock(product.stockOnHand); setAdjustMessage(null); setAdjustOpen(true); }}>Adjust stock</Button>
         </div>
       </div>
       <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
@@ -202,8 +224,30 @@ function InventoryRow({ product }: { product: InventoryProduct }) {
           </Button>
         </div>
       </div>
-      {isPending ? <p className="inline-flex items-center gap-2 text-xs text-cyan-200 xl:col-span-2" role="status"><Spinner />{isSaving ? "Saving inventory settings…" : "Adding stock…"}</p> : null}
+      {isPending ? <p className="inline-flex items-center gap-2 text-xs text-cyan-200 xl:col-span-2" role="status"><Spinner />{isSaving ? "Saving inventory settings…" : isAdjusting ? "Saving stock count…" : "Adding stock…"}</p> : null}
       {message ? <p className={`text-xs xl:col-span-2 ${message.ok ? "text-lime-200" : "text-rose-300"}`} role="status">{message.text}</p> : null}
+      <Dialog
+        open={adjustOpen}
+        title={`Set stock · ${product.name}`}
+        onOpenChange={(nextOpen) => { if (!isAdjusting) setAdjustOpen(nextOpen); }}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-300">Enter the physical on-hand count in {stockUnit}. This replaces the current count of {product.stockOnHand}.</p>
+          <label className="block text-xs font-semibold text-slate-400" htmlFor={`adjust-stock-${product.id}`}>
+            New on-hand quantity ({stockUnit})
+            <input {...textInputProps()} id={`adjust-stock-${product.id}`} type="number" min={0} max={9999999} step={1} value={adjustedStock} disabled={isAdjusting} onChange={(event) => setAdjustedStock(Number(event.target.value))} className="mt-1 h-11 w-full rounded-material border border-slate-600 bg-slate-950 px-3 text-sm text-white" />
+          </label>
+          <p className={`min-h-5 text-sm ${adjustMessage?.ok === false ? "text-rose-300" : "text-cyan-200"}`} role="status" aria-live="polite">
+            {isAdjusting ? <span className="inline-flex items-center gap-2"><Spinner />Saving stock count…</span> : adjustMessage?.text}
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" disabled={isAdjusting} onClick={() => setAdjustOpen(false)}>Cancel</Button>
+            <Button type="button" variant="primary" disabled={isAdjusting || !Number.isInteger(adjustedStock) || adjustedStock < 0 || adjustedStock > 9999999} onClick={saveStockCount}>
+              {isAdjusting ? "Saving…" : "Set stock"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </article>
   );
 }

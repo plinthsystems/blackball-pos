@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/server/db/prisma";
 
 export type AccountType = "PLATFORM_ADMIN" | "HQ_ADMIN" | "STORE_OWNER" | "MANAGER" | "STORE_USER";
@@ -124,7 +125,7 @@ const defaultBranding = {
   accentColor: "#b98922"
 };
 
-export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContext> {
+export const getCurrentEmployeeContext = cache(async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContext> {
   const identity = await getRequestIdentity();
   if (!identity.email) {
     return buildDeniedContext();
@@ -180,7 +181,7 @@ export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContex
   }
 
   return buildFallbackContext(identity.tenantSlug ?? "the-nine", identity.email ?? process.env.THE_NINE_ADMIN_EMAIL ?? "admin@thenine.local");
-}
+});
 
 export function buildCurrentEmployeeContext(
   employee: EmployeeWithTenantAccess,

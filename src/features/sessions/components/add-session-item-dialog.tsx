@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addBillItemAction } from "@/features/live-tables/actions";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ export function AddSessionItemDialog({
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const requestInFlight = useRef(false);
 
   const selectedProduct = useMemo(() => products.find((product) => product.id === productId), [productId, products]);
   const previewTotal = selectedProduct ? selectedProduct.priceAmount * quantity : 0;
@@ -44,20 +45,39 @@ export function AddSessionItemDialog({
   const quantityLimit = selectedProduct?.trackInventory ? stockOnHand : 99;
 
   function addItem() {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
+    setMessage(null);
     startTransition(async () => {
-      const result = await addBillItemAction({ billId, productId, quantity });
-      setMessage(result.message);
-      if (result.ok) {
-        onOpenChange(false);
-        setQuantity(1);
+      try {
+        const result = await addBillItemAction({ billId, productId, quantity });
+        setMessage(result.message);
+        if (result.ok) {
+          onOpenChange(false);
+          setQuantity(1);
+          router.refresh();
+        }
+      } catch {
+        setMessage("We couldn't confirm the item was added. Refresh the bill before retrying to avoid a duplicate.");
         router.refresh();
+      } finally {
+        requestInFlight.current = false;
       }
     });
   }
 
   return (
     <>
-      <Dialog open={open} title={`Add items to ${tableNumber}`} onOpenChange={onOpenChange}>
+      <Dialog
+        open={open}
+        title={`Add items to ${tableNumber}`}
+        onOpenChange={(nextOpen) => {
+          if (!isPending) {
+            if (nextOpen) setMessage(null);
+            onOpenChange(nextOpen);
+          }
+        }}
+      >
         {products.length === 0 ? (
           <p className="text-sm text-slate-400">No menu products are active yet.</p>
         ) : (
@@ -101,8 +121,11 @@ export function AddSessionItemDialog({
               <span className="text-slate-400">Line total</span>
               <strong>{formatMoney(previewTotal)}</strong>
             </div>
+            <p className="min-h-5 text-sm text-cyan-200" role="status" aria-live="polite">
+              {isPending ? "Adding item to the bill… please wait." : message && !message.startsWith("Item added") ? message : null}
+            </p>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="button" variant="ghost" disabled={isPending} onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="button" variant="primary" disabled={isPending || !productId || quantity < 1 || quantity > quantityLimit} onClick={addItem}>
                 {isPending ? "Adding…" : "Add to bill"}
               </Button>
