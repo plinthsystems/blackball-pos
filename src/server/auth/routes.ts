@@ -15,9 +15,7 @@ export function getDefaultRouteForPermissions(permissions: string[]) {
 }
 
 export function getDefaultRouteForAccountType(accountType: string, mustChangePassword = false) {
-  if (mustChangePassword) {
-    return "/change-password";
-  }
+  void mustChangePassword;
   if (accountType === "PLATFORM_ADMIN") {
     return "/platform/setup";
   }

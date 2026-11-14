@@ -89,7 +89,6 @@ export function AdminShell({
           ))}
         </nav>
         <div className="absolute inset-x-0 bottom-0 space-y-2 border-t border-lime-300/15 p-3">
-          {account.accountType !== "STORE_USER" ? <Link href="/change-password" className="flex h-10 items-center gap-3 rounded-material px-3 text-sm font-bold text-slate-300 hover:bg-amber-500/10 hover:text-amber-300"><span className="material-symbols-outlined text-amber-400">lock</span>Change Password</Link> : null}
           <SignOutButton />
         </div>
       </aside>

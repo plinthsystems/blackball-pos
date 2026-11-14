@@ -59,13 +59,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 3. PASSWORD-RESET GUARD: force password change before any other page
-  if (
-    tokenPayload?.mustChangePassword &&
-    !pathname.startsWith("/change-password") &&
-    !pathname.startsWith("/api/")
-  ) {
-    return NextResponse.redirect(new URL("/change-password", request.url));
+  if (pathname.startsWith("/change-password")) {
+    const destination = getDefaultRouteForAccountType(tokenPayload?.accountType ?? "STORE_OWNER");
+    return NextResponse.redirect(new URL(destination, request.url));
   }
 
   // 2. AUTHORIZATION GUARD: Enforce role-based access for Platform/HQ routes
