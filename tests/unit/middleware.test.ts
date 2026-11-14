@@ -154,13 +154,13 @@ describe("middleware", () => {
     });
   });
 
-  describe("password-change guard", () => {
-    it("redirects a must-change-password user away from pages to /change-password", async () => {
+  describe("legacy password-change flag", () => {
+    it("does not redirect a must-change-password user away from authorized pages", async () => {
       const response = await middleware(
         makeRequest("/dashboard", { auth_session: tokenFor({ mustChangePassword: true }) })
       );
-      expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toBe("http://localhost:3000/change-password");
+      expect(response.status).toBe(200);
+      expect(response.headers.get("location")).toBeNull();
     });
 
     it("lets API requests through for must-change-password users", async () => {

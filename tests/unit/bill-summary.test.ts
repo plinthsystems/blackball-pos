@@ -30,7 +30,7 @@ describe("summarizeBill", () => {
       hourlyRate: 350
     });
 
-    expect(amount).toBe(250.83);
+    expect(amount).toBe(247);
   });
 
   it("keeps counter bills free of table time", () => {

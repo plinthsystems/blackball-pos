@@ -72,13 +72,13 @@ describe("updateHourlyRateAction", () => {
     expect(mocks.prisma.tablePricing.update).not.toHaveBeenCalled();
   });
 
-  it("returns ok:false when a password change is still required", async () => {
+  it("allows an authorized employee when the legacy password-change flag is set", async () => {
     mocks.context.mockResolvedValue(makeEmployeeContext({ mustChangePassword: true }));
 
     const result = await updateHourlyRateAction({ id: "rate-1", hourlyRate: 200 });
 
-    expect(result).toEqual({ ok: false, message: "Hourly rate could not be updated." });
-    expect(mocks.prisma.tablePricing.update).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true, message: "Hourly rate updated." });
+    expect(mocks.prisma.tablePricing.update).toHaveBeenCalled();
   });
 
   it("rejects invalid input (missing id / negative rate) with ok:false", async () => {

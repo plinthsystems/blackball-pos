@@ -29,7 +29,7 @@ describe("AdminShell", () => {
     expect(screen.queryByText("Cue City Sports")).not.toBeInTheDocument();
     expect(screen.queryByText("BlackBall POS")).not.toBeInTheDocument();
     expect(within(screen.getByRole("navigation", { name: "Admin navigation" })).getByRole("link", { name: /Dashboard/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Change Password/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Change Password/ })).not.toBeInTheDocument();
     expect(screen.queryByText("Operations")).not.toBeInTheDocument();
   });
 
