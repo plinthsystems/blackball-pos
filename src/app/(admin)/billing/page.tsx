@@ -28,6 +28,9 @@ export default async function BillingRoute(props: {
   // Parse filters from URL search params
   const parsed = filterSchema.safeParse(searchParams);
   const filters: BillingFilters = parsed.success ? { ...parsed.data, search: parsed.data.q } : { page: 1, pageSize: 50 };
+  // Keep bill search available even if a different, stale URL filter is invalid.
+  const query = searchParams.q;
+  filters.search = typeof query === "string" ? query : Array.isArray(query) ? query.at(-1) ?? "" : "";
 
   // Convert "ALL" to undefined for the query
   const queryFilters: BillingFilters = { ...filters };

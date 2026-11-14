@@ -240,9 +240,10 @@ export async function addBillItemAction(input: unknown): Promise<ActionResult> {
 
       const unitPrice = Number(product.priceAmount);
       const lineTotal = Math.round(unitPrice * parsed.quantity * 100) / 100;
-      if (product.trackInventory) {
+      const trackInventory = product.trackInventory || product.category === "CIGARETTES" || product.category === "BEVERAGES";
+      if (trackInventory) {
         const stockUpdate = await tx.product.updateMany({
-          where: { id: product.id, businessId: context.businessId, active: true, trackInventory: true, stockOnHand: { gte: parsed.quantity } },
+          where: { id: product.id, businessId: context.businessId, active: true, stockOnHand: { gte: parsed.quantity } },
           data: { stockOnHand: { decrement: parsed.quantity } }
         });
         if (stockUpdate.count !== 1) {
@@ -306,11 +307,11 @@ export async function removeBillItemAction(input: unknown): Promise<ActionResult
       if (item.productId) {
         const product = await tx.product.findFirst({
           where: { id: item.productId, businessId: context.businessId },
-          select: { trackInventory: true }
+          select: { trackInventory: true, category: true }
         });
-        if (product?.trackInventory) {
+        if (product && (product.trackInventory || product.category === "CIGARETTES" || product.category === "BEVERAGES")) {
           await tx.product.updateMany({
-            where: { id: item.productId, businessId: context.businessId, trackInventory: true },
+            where: { id: item.productId, businessId: context.businessId },
             data: { stockOnHand: { increment: item.quantity } }
           });
         }
@@ -341,17 +342,17 @@ export async function updateBillItemQuantityAction(input: unknown): Promise<Acti
       }
 
       const quantityDifference = parsed.quantity - item.quantity;
-      if (quantityDifference > 0 && item.productId) {
+      if (item.productId) {
         const product = await tx.product.findFirst({
           where: { id: item.productId, businessId: context.businessId },
-          select: { trackInventory: true }
+          select: { trackInventory: true, category: true }
         });
-        if (product?.trackInventory) {
+        const trackInventory = Boolean(product && (product.trackInventory || product.category === "CIGARETTES" || product.category === "BEVERAGES"));
+        if (quantityDifference > 0 && trackInventory) {
           const stockUpdate = await tx.product.updateMany({
             where: {
               id: item.productId,
               businessId: context.businessId,
-              trackInventory: true,
               stockOnHand: { gte: quantityDifference }
             },
             data: { stockOnHand: { decrement: quantityDifference } }
@@ -359,12 +360,12 @@ export async function updateBillItemQuantityAction(input: unknown): Promise<Acti
           if (stockUpdate.count !== 1) {
             throw new DomainError("INSUFFICIENT_STOCK", "Not enough stock available.");
           }
+        } else if (quantityDifference < 0 && trackInventory) {
+          await tx.product.updateMany({
+            where: { id: item.productId, businessId: context.businessId },
+            data: { stockOnHand: { increment: Math.abs(quantityDifference) } }
+          });
         }
-      } else if (quantityDifference < 0 && item.productId) {
-        await tx.product.updateMany({
-          where: { id: item.productId, businessId: context.businessId, trackInventory: true },
-          data: { stockOnHand: { increment: Math.abs(quantityDifference) } }
-        });
       }
 
       await tx.billItem.update({

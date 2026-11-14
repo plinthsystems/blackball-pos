@@ -21,7 +21,7 @@ export async function getBillingPageData(
   const skip = (page - 1) * pageSize;
 
   // Role-based access: STORE_USER sees only their own closed bills
-  const whereClause = buildWhereClause(businessId, filters, context.accountType, context.employeeId);
+  const whereClause = await buildWhereClause(businessId, filters, context.accountType, context.employeeId);
 
   const [bills, totalCount, staffOptions, tables] = await Promise.all([
     prisma.bill.findMany({
@@ -80,12 +80,12 @@ export async function getBillingPageData(
   };
 }
 
-function buildWhereClause(
+async function buildWhereClause(
   businessId: string,
   filters: BillingFilters,
   accountType: AccountType,
   employeeId: string
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   const where: Record<string, unknown> = { businessId };
 
   // Role-based restriction
@@ -135,10 +135,16 @@ function buildWhereClause(
 
   const search = filters.search?.trim();
   if (search) {
-    const contains = { contains: search, mode: "insensitive" };
+    const contains = { contains: search, mode: "insensitive" as const };
+    const matchingCustomers = await prisma.customer.findMany({
+      where: { businessId, name: contains },
+      select: { id: true }
+    });
     where.OR = [
       { label: contains },
-      { session: { is: { customer: { is: { name: contains } } } } },
+      ...(matchingCustomers.length > 0
+        ? [{ session: { is: { customerId: { in: matchingCustomers.map((customer) => customer.id) } } } }]
+        : []),
       { session: { is: { table: { is: { number: contains } } } } },
       { items: { some: { nameSnapshot: contains } } }
     ];

@@ -57,6 +57,7 @@ export async function createOrUpdateProductAction(input: unknown): Promise<Actio
           priceAmount: parsed.priceAmount,
           ...(parsed.stockUnit ? { stockUnit: parsed.stockUnit } : {}),
           ...(parsed.unitsPerPack ? { unitsPerPack: parsed.unitsPerPack } : {}),
+          trackInventory: parsed.category === "CIGARETTES" || parsed.category === "BEVERAGES",
           active: true
         }
       });
@@ -69,7 +70,7 @@ export async function createOrUpdateProductAction(input: unknown): Promise<Actio
           priceAmount: parsed.priceAmount,
           stockUnit: parsed.stockUnit ?? (parsed.category === "CIGARETTES" ? "stick" : "unit"),
           unitsPerPack: parsed.unitsPerPack ?? (parsed.category === "CIGARETTES" ? 10 : 1),
-          trackInventory: parsed.category === "CIGARETTES"
+          trackInventory: parsed.category === "CIGARETTES" || parsed.category === "BEVERAGES"
         }
       });
     }
@@ -119,7 +120,7 @@ export async function setInventoryStockAction(input: unknown): Promise<ActionRes
     requirePermission(context, "products.manage");
     const parsed = setInventoryStockSchema.parse(input);
     const updated = await prisma.product.updateMany({
-      where: { id: parsed.id, businessId: context.businessId, active: true, trackInventory: true },
+      where: { id: parsed.id, businessId: context.businessId, active: true, category: { in: ["CIGARETTES", "BEVERAGES"] } },
       data: { stockOnHand: parsed.stockOnHand, stockUpdatedAt: new Date() }
     });
     if (updated.count !== 1) {
