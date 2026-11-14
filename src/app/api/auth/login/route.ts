@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/server/db/prisma";
 import { createSessionToken, verifyPassword } from "@/server/auth/auth-service";
 import { checkRateLimit, clientIpFromRequest } from "@/server/auth/rate-limit";
+import { getDefaultRouteForAccountType } from "@/server/auth/routes";
 
 export async function POST(request: Request) {
   try {
@@ -45,14 +46,7 @@ export async function POST(request: Request) {
       mustChangePassword: employee.mustChangePassword
     });
 
-    const redirectUrl =
-      employee.accountType === "PLATFORM_ADMIN"
-        ? "/platform/setup"
-        : employee.accountType === "HQ_ADMIN"
-          ? "/hq/dashboard"
-          : employee.mustChangePassword
-            ? "/change-password"
-            : "/dashboard";
+    const redirectUrl = getDefaultRouteForAccountType(employee.accountType, employee.mustChangePassword);
 
     const response = NextResponse.json({ success: true, redirectUrl });
     response.cookies.set("auth_session", token, {

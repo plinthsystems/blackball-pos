@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getAuthSecret, verifySessionTokenEdge } from "@/server/auth/auth-service";
+import { getDefaultRouteForAccountType } from "@/server/auth/routes";
 
 const isProduction = () => process.env.NODE_ENV === "production";
 
@@ -15,6 +16,10 @@ export async function middleware(request: NextRequest) {
   const demoIdentityAllowed = !isProduction() && Boolean(demoEmail);
   const isAuthenticated = Boolean(tokenPayload || demoIdentityAllowed);
 
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   // Allow public routes without auth checks
   if (
     pathname === "/" ||
@@ -28,6 +33,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/integrations") ||
     pathname.startsWith("/_next") ||
+    pathname.startsWith("/the-nine/") ||
     pathname.startsWith("/favicon")
   ) {
     // If visiting /login while authenticated, redirect to role dashboard
@@ -35,7 +41,12 @@ export async function middleware(request: NextRequest) {
       const accountType = tokenPayload?.accountType;
       const isPlatformAdmin = accountType === "PLATFORM_ADMIN" || (!isProduction() && Boolean(demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@")));
       const isHq = accountType === "HQ_ADMIN" || (!isProduction() && Boolean(demoEmail?.includes("hq.")));
-      return NextResponse.redirect(new URL(isPlatformAdmin ? "/platform/setup" : isHq ? "/hq/dashboard" : "/dashboard", request.url));
+      const defaultRoute = isPlatformAdmin
+        ? "/platform/setup"
+        : isHq
+          ? "/hq/dashboard"
+          : getDefaultRouteForAccountType(accountType ?? "STORE_OWNER", tokenPayload?.mustChangePassword);
+      return NextResponse.redirect(new URL(defaultRoute, request.url));
     }
     return NextResponse.next();
   }
@@ -48,13 +59,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 3. PASSWORD-RESET GUARD: force password change before any other page
-  if (
-    tokenPayload?.mustChangePassword &&
-    !pathname.startsWith("/change-password") &&
-    !pathname.startsWith("/api/")
-  ) {
-    return NextResponse.redirect(new URL("/change-password", request.url));
+  if (pathname.startsWith("/change-password")) {
+    const destination = getDefaultRouteForAccountType(tokenPayload?.accountType ?? "STORE_OWNER");
+    return NextResponse.redirect(new URL(destination, request.url));
   }
 
   // 2. AUTHORIZATION GUARD: Enforce role-based access for Platform/HQ routes
@@ -74,6 +81,13 @@ export async function middleware(request: NextRequest) {
       (!isProduction() && Boolean(demoEmail?.includes("hq.") || demoEmail?.includes("platform.") || demoEmail?.startsWith("platform@")));
     if (!isHqAdmin) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
+  if (pathname.startsWith("/demo")) {
+    const canUseDemo = tokenPayload?.accountType === "PLATFORM_ADMIN" || tokenPayload?.accountType === "HQ_ADMIN";
+    if (!canUseDemo) {
+      return NextResponse.redirect(new URL(getDefaultRouteForAccountType(tokenPayload?.accountType ?? "STORE_USER"), request.url));
     }
   }
 

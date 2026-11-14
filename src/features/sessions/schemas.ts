@@ -31,6 +31,11 @@ export const removeBillItemSchema = z.object({
   billItemId: z.string().min(1)
 });
 
+export const updateBillItemQuantitySchema = z.object({
+  billItemId: z.string().min(1),
+  quantity: z.coerce.number().int().min(1).max(99)
+});
+
 export const closeCounterBillSchema = z.object({
   billId: z.string().min(1)
 });
@@ -47,7 +52,43 @@ export const productFormSchema = z.object({
   id: z.string().min(1).optional(),
   name: z.string().trim().min(1).max(120),
   category: z.enum(["FOOD", "CIGARETTES", "BEVERAGES"]),
-  priceAmount: z.coerce.number().min(0).max(999999)
+  priceAmount: z.coerce.number().min(0).max(999999),
+  stockUnit: z.string().trim().min(1).max(24).optional(),
+  unitsPerPack: z.coerce.number().int().min(1).max(9999).optional()
+});
+
+export const restockProductSchema = z.object({
+  id: z.string().min(1),
+  packs: z.coerce.number().int().min(1).max(9999)
+});
+
+export const setInventoryStockSchema = z.object({
+  id: z.string().min(1),
+  stockOnHand: z.coerce.number().int().min(0).max(9999999)
+});
+
+export const inventoryProductSettingsSchema = z.object({
+  id: z.string().min(1),
+  stockUnit: z.string().trim().min(1).max(24),
+  unitsPerPack: z.coerce.number().int().min(1).max(9999)
+});
+
+export const inventoryImportSchema = z.array(z.object({
+  name: z.string().trim().min(1).max(120),
+  category: z.enum(["FOOD", "CIGARETTES", "BEVERAGES"]),
+  priceAmount: z.coerce.number().min(0).max(999999),
+  stockUnit: z.string().trim().min(1).max(24),
+  unitsPerPack: z.coerce.number().int().min(1).max(9999),
+  stockOnHand: z.coerce.number().int().min(0).max(9999999)
+})).min(1).max(1000).superRefine((rows, context) => {
+  const seen = new Set<string>();
+  rows.forEach((row, index) => {
+    const key = `${row.category}:${row.name.toLocaleLowerCase()}`;
+    if (seen.has(key)) {
+      context.addIssue({ code: "custom", path: [index, "name"], message: "Duplicate item name and category." });
+    }
+    seen.add(key);
+  });
 });
 
 export const rateFormSchema = z.object({

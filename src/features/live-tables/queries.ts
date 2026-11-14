@@ -111,7 +111,11 @@ export async function getProductOptions(businessId: string): Promise<ProductOpti
     id: product.id,
     name: product.name,
     category: product.category,
-    priceAmount: Number(product.priceAmount)
+    priceAmount: Number(product.priceAmount),
+    trackInventory: product.trackInventory || product.category === "CIGARETTES" || product.category === "BEVERAGES",
+    stockOnHand: product.stockOnHand,
+    stockUnit: product.stockUnit,
+    unitsPerPack: product.unitsPerPack
   }));
 }
 

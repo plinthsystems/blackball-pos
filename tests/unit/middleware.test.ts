@@ -42,7 +42,6 @@ describe("middleware", () => {
 
   describe("public routes", () => {
     it.each([
-      "/",
       "/login",
       "/magic-login",
       "/docs",
@@ -57,6 +56,12 @@ describe("middleware", () => {
     ])("passes through unauthenticated request to %s", async (pathname) => {
       const response = await middleware(makeRequest(pathname));
       expect(response.status).toBe(200);
+    });
+
+    it("redirects the root entry directly to login", async () => {
+      const response = await middleware(makeRequest("/"));
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe("http://localhost:3000/login");
     });
   });
 
@@ -102,6 +107,13 @@ describe("middleware", () => {
       expect(response.headers.get("location")).toBe("http://localhost:3000/dashboard");
     });
 
+    it("redirects a store account to /live-tables", async () => {
+      const response = await middleware(
+        makeRequest("/login", { auth_session: tokenFor({ accountType: "STORE_USER" }) })
+      );
+      expect(response.headers.get("location")).toBe("http://localhost:3000/live-tables");
+    });
+
     it("redirects a platform admin to /platform/setup", async () => {
       const response = await middleware(
         makeRequest("/login", { auth_session: tokenFor({ accountType: "PLATFORM_ADMIN" }) })
@@ -142,13 +154,13 @@ describe("middleware", () => {
     });
   });
 
-  describe("password-change guard", () => {
-    it("redirects a must-change-password user away from pages to /change-password", async () => {
+  describe("legacy password-change flag", () => {
+    it("does not redirect a must-change-password user away from authorized pages", async () => {
       const response = await middleware(
         makeRequest("/dashboard", { auth_session: tokenFor({ mustChangePassword: true }) })
       );
-      expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toBe("http://localhost:3000/change-password");
+      expect(response.status).toBe(200);
+      expect(response.headers.get("location")).toBeNull();
     });
 
     it("lets API requests through for must-change-password users", async () => {
@@ -204,6 +216,16 @@ describe("middleware", () => {
         makeRequest("/hq/dashboard", { demo_user_email: "hq.admin@blackball.example" })
       );
       expect(response.status).toBe(200);
+    });
+  });
+
+  describe("demo route guard", () => {
+    it("redirects normal store accounts away from the demo route", async () => {
+      const response = await middleware(
+        makeRequest("/demo", { auth_session: tokenFor({ accountType: "STORE_USER" }) })
+      );
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe("http://localhost:3000/live-tables");
     });
   });
 });

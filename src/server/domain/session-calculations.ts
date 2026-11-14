@@ -36,6 +36,14 @@ export function calculateMinuteBasedTableCharge(input: {
   billableSeconds: number;
   hourlyRate: number;
 }) {
-  const billableMinutes = Math.ceil(Math.max(0, input.billableSeconds) / 60);
-  return Math.round(((billableMinutes * input.hourlyRate) / 60) * 100) / 100;
+  return calculateProratedTableCharge(input);
+}
+
+export function calculateProratedTableCharge(input: {
+  billableSeconds: number;
+  hourlyRate: number;
+}) {
+  const elapsedSeconds = Math.max(0, Math.floor(input.billableSeconds));
+  const amountInPaise = Math.round((elapsedSeconds * input.hourlyRate * 100) / 3600);
+  return Math.ceil(amountInPaise / 100);
 }

@@ -22,32 +22,20 @@ export function BillingPage({ data }: { data: BillingPageData }) {
   // Pagination
   const currentPage = searchParams.get("page") ? parseInt(searchParams.get("page")!, 10) : 1;
   const totalPages = Math.ceil(data.total / (data.filters.pageSize ?? 50));
-
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="mx-auto max-w-6xl space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-800 pb-4">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-normal text-white">Billing Records</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            {data.total} record{data.total !== 1 ? "s" : ""} found
-          </p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-white">Billing</h1>
+          <p className="mt-1 text-sm text-slate-400">Closed receipts with table time and item totals.</p>
         </div>
       </div>
+      <BillingFilters />
 
-      {/* Filters */}
-      <BillingFilters
-        staffOptions={data.staffOptions}
-        tableOptions={data.tables}
-        accountType="MANAGER"
-      />
-
-      {/* Table */}
       <BillingTable records={data.records} expandedId={expandedId} onToggle={toggle} />
 
-      {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 border-t border-slate-800 pt-4">
           <p className="text-sm text-slate-400">
             Page {currentPage} of {totalPages}
           </p>

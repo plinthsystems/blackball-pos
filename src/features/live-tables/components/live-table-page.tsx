@@ -9,6 +9,7 @@ import { TableBoardToolbar } from "./table-board-toolbar";
 import { TableGrid } from "./table-grid";
 import { StartCounterBillDialog } from "@/features/sessions/components/start-counter-bill-dialog";
 import { AddSessionItemDialog } from "@/features/sessions/components/add-session-item-dialog";
+import { EditBillItemsDialog } from "@/features/sessions/components/edit-bill-items-dialog";
 import { Button } from "@/components/ui/button";
 import { closeCounterBillAction } from "../actions";
 
@@ -17,24 +18,16 @@ export function LiveTablePage({
   products,
   counterBills,
   isHqAdmin = false,
-  canManageItems = false,
-  bookingLink = null,
-  bookingQrUrl = null,
-  businessName = "Store"
+  canManageItems = false
 }: {
   tables: LiveTableCardData[];
   products: ProductOption[];
   counterBills: CounterBillData[];
   isHqAdmin?: boolean;
   canManageItems?: boolean;
-  bookingLink?: string | null;
-  bookingQrUrl?: string | null;
   businessName?: string;
 }) {
   const tableStations = tables.filter((table) => table.gameType !== "PS5");
-  const ps5Stations = tables.filter((table) => table.gameType === "PS5");
-  const activeCount = tables.filter((table) => table.status === "OCCUPIED").length;
-  const availableCount = tables.filter((table) => table.status === "AVAILABLE").length;
   const emptyInventory = tables.length === 0;
 
   return (
@@ -61,22 +54,10 @@ export function LiveTablePage({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <TableBoardToolbar
-          tables={tables}
-          bookingLink={bookingLink}
-          bookingQrUrl={bookingQrUrl}
-          businessName={businessName}
-        />
+        <TableBoardToolbar />
         {!isHqAdmin && <StartCounterBillDialog />}
       </div>
-      <section className="grid gap-3 md:grid-cols-4" aria-label="Live floor summary">
-        <SummaryTile label="Active" value={activeCount} tone="lime" />
-        <SummaryTile label="Available" value={availableCount} tone="cyan" />
-        <SummaryTile label="Counter bills" value={counterBills.length} tone="amber" />
-        <SummaryTile label="Stations" value={tables.length} tone="slate" />
-      </section>
-      <StationSection title="Snooker & Pool" tables={tableStations} products={products} isHqAdmin={isHqAdmin} />
-      <StationSection title="PS5" tables={ps5Stations} products={products} isHqAdmin={isHqAdmin} />
+      <StationSection title="The Nine Tables" tables={tableStations} products={products} isHqAdmin={isHqAdmin} />
       {counterBills.length > 0 ? (
         <section className="rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material">
           <h2 className="text-lg font-semibold">Counter bills</h2>
@@ -87,22 +68,6 @@ export function LiveTablePage({
           </div>
         </section>
       ) : null}
-    </div>
-  );
-}
-
-function SummaryTile({ label, value, tone }: { label: string; value: number; tone: "lime" | "cyan" | "amber" | "slate" }) {
-  const toneClass = {
-    lime: "text-lime-300",
-    cyan: "text-cyan-300",
-    amber: "text-amber-300",
-    slate: "text-slate-100"
-  }[tone];
-
-  return (
-    <div className="rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{label}</p>
-      <strong className={`mt-1 block font-mono text-3xl font-black ${toneClass}`}>{value}</strong>
     </div>
   );
 }
@@ -121,6 +86,7 @@ function StationSection({ title, tables, products, isHqAdmin }: { title: string;
 function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData; products: ProductOption[]; isHqAdmin?: boolean }) {
   const router = useRouter();
   const [itemsOpen, setItemsOpen] = useState(false);
+  const [editItemsOpen, setEditItemsOpen] = useState(false);
 
   return (
     <div className="rounded-material border border-slate-700 bg-slate-900/80 p-3 text-slate-100">
@@ -141,6 +107,7 @@ function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData;
       {!isHqAdmin ? (
         <div className="mt-3 flex gap-2">
           <Button type="button" className="h-9 px-3" onClick={() => setItemsOpen(true)}>Add items</Button>
+          {bill.items.length ? <Button type="button" className="h-9 px-3" onClick={() => setEditItemsOpen(true)}>Edit items</Button> : null}
           <Button
             type="button"
             variant="primary"
@@ -157,6 +124,7 @@ function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData;
         <p className="mt-3 text-xs text-amber-300 font-semibold">Read-Only HQ Oversight Mode</p>
       )}
       <AddSessionItemDialog billId={bill.id} tableNumber={bill.label} products={products} open={itemsOpen} onOpenChange={setItemsOpen} />
+      <EditBillItemsDialog billLabel={bill.label} items={bill.items} open={editItemsOpen} onOpenChange={setEditItemsOpen} />
     </div>
   );
 }

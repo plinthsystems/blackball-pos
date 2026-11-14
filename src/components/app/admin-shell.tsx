@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { AccountType, OrganizationContext, TenantBranding } from "@/server/auth/current-employee";
 import { StoreSwitcher } from "./store-switcher";
 
-const navItems = [
+const legacyNavItems = [
   { href: "/platform/setup", label: "Platform Setup", icon: "add_business", permission: "platform.setup.manage" },
   { href: "/hq/dashboard", label: "Franchise HQ", icon: "corporate_fare", permission: "hq.dashboard.read" },
   { href: "/dashboard", label: "Dashboard", icon: "monitoring", permission: "dashboard.read" },
@@ -13,9 +14,21 @@ const navItems = [
   { href: "/tables", label: "Bookable Items", icon: "sports", permission: "tables.manage" },
   { href: "/bookings", label: "Bookings", icon: "calendar_month", permission: "bookings.manage" },
   { href: "/billing", label: "Billing", icon: "receipt_long", permission: "billing.read" },
-  { href: "/settings", label: "Food/Menu", icon: "restaurant", permission: "products.manage" },
-  { href: "/rates", label: "Rates", icon: "currency_rupee", permission: "rates.manage" }
+  { href: "/settings", label: "Food/Menu", icon: "restaurant", permission: "products.manage" }
 ];
+
+const theNineAdminNavItems = [
+  { href: "/dashboard", label: "Dashboard", icon: "monitoring" },
+  { href: "/live-tables", label: "Live Floor", icon: "grid_view" },
+  { href: "/billing", label: "Billing", icon: "receipt_long" },
+  { href: "/settings", label: "Menu", icon: "restaurant" },
+  { href: "/inventory", label: "Inventory", icon: "inventory_2" }
+] as const;
+
+const theNineStoreNavItems = [
+  { href: "/live-tables", label: "Live Floor", icon: "grid_view" },
+  { href: "/billing", label: "Billing", icon: "receipt_long" }
+] as const;
 
 type ShellAccount = {
   name: string;
@@ -25,17 +38,17 @@ type ShellAccount = {
 };
 
 const fallbackBranding: TenantBranding = {
-  appName: "Black Ball",
-  logoInitials: "BB",
-  businessName: "Pool & Snooker Cafe",
+  appName: "The Nine Snooker & Cafe",
+  logoInitials: "TN",
+  businessName: "The Nine Snooker & Cafe",
   brandColor: "#12613d",
   accentColor: "#b98922"
 };
 
 const fallbackAccount: ShellAccount = {
-  name: "Manager",
+  name: "The Nine Admin",
   email: "manager@example.com",
-  accountType: "MANAGER",
+  accountType: "STORE_OWNER",
   permissions: ["dashboard.read", "tables.read", "products.manage", "rates.manage"]
 };
 
@@ -52,15 +65,8 @@ export function AdminShell({
   businessId?: string;
   organization?: OrganizationContext;
 }) {
-  const visibleNavItems = navItems.filter((item) => account.permissions.includes(item.permission));
-  const accountLabelMap: Record<AccountType, string> = {
-    PLATFORM_ADMIN: "Platform Admin",
-    HQ_ADMIN: "Franchise HQ Director",
-    STORE_OWNER: "Store Owner",
-    MANAGER: "Store Manager",
-    STORE_USER: "Store User"
-  };
-  const accountLabel = accountLabelMap[account.accountType] ?? "Store User";
+  const pathname = usePathname();
+  const visibleNavItems = getVisibleNavItems(account);
 
   return (
     <div className="min-h-screen bg-background text-charcoal">
@@ -73,7 +79,7 @@ export function AdminShell({
             <Link
               key={item.href}
               href={item.href}
-              className="flex h-10 items-center gap-3 rounded-material px-3 text-sm font-bold text-slate-300 hover:bg-lime-300/10 hover:text-lime-100"
+              className={`flex h-11 items-center gap-3 rounded-material px-3 text-sm font-bold transition ${pathname === item.href ? "bg-lime-300/15 text-lime-100" : "text-slate-300 hover:bg-lime-300/10 hover:text-lime-100"}`}
             >
               <span className="material-symbols-outlined text-[20px] text-lime-300" aria-hidden="true">
                 {item.icon}
@@ -81,76 +87,58 @@ export function AdminShell({
               {item.label}
             </Link>
           ))}
-          <div className="mt-4 border-t border-lime-300/15 pt-3">
-            <Link
-              href="/change-password"
-              title="Change password"
-              className="flex h-10 items-center gap-3 rounded-material px-3 text-sm font-bold text-slate-300 hover:bg-amber-500/10 hover:text-amber-300"
-            >
-              <span className="material-symbols-outlined text-[20px] text-amber-400" aria-hidden="true">
-                lock
-              </span>
-              Change Password
-            </Link>
-          </div>
         </nav>
+        <div className="absolute inset-x-0 bottom-0 space-y-2 border-t border-lime-300/15 p-3">
+          <SignOutButton />
+        </div>
       </aside>
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 border-b border-lime-300/15 bg-slate-950/85 px-4 py-3 backdrop-blur lg:px-6">
-          <div className="flex items-center justify-between">
-            <BrandMark branding={tenantBranding} compact />
-            <div className="flex items-center gap-3">
-              {organization && organization.businesses.length > 0 && (
-                <StoreSwitcher
-                  currentBusinessId={businessId}
-                  organizationName={organization.name}
-                  organizationType={organization.type}
-                  stores={organization.businesses}
-                />
-              )}
-              <div className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase text-cyan-100">
-                {accountLabel}
-              </div>
-              <Link
-                href="/change-password"
-                title="Change password"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-300 hover:border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-300 transition"
-              >
-                <span className="material-symbols-outlined text-[16px]">lock</span>
-                <span>Password</span>
-              </Link>
-              <button
-                onClick={async () => {
-                  await fetch("/api/auth/logout", { method: "POST" });
-                  window.location.href = "/login";
-                }}
-                title="Sign Out"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-300 hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-300 transition"
-              >
-                <span className="material-symbols-outlined text-[16px]">logout</span>
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            </div>
-          </div>
-        </header>
-        <main className="px-4 py-5 lg:px-6">{children}</main>
+        {organization && organization.businesses.length > 0 && !["STORE_OWNER", "STORE_USER"].includes(account.accountType) ? (
+          <div className="hidden justify-end px-6 pt-3 lg:flex"><StoreSwitcher currentBusinessId={businessId} organizationName={organization.name} organizationType={organization.type} stores={organization.businesses} /></div>
+        ) : null}
+        <main className="px-4 py-5 pb-24 lg:px-6 lg:pb-6">{children}</main>
       </div>
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid border-t border-lime-300/20 bg-slate-950/95 px-1 py-2 backdrop-blur lg:hidden" style={{ gridTemplateColumns: `repeat(${visibleNavItems.length + 1}, minmax(0, 1fr))` }} aria-label="Store navigation">
+        {visibleNavItems.map((item) => (
+          <Link key={item.href} href={item.href} className={`flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-bold ${pathname === item.href ? "text-lime-200" : "text-slate-400"}`}>
+            <span className="material-symbols-outlined text-xl" aria-hidden="true">{item.icon}</span>{item.label}
+          </Link>
+        ))}
+        <button type="button" onClick={signOut} className="flex flex-col items-center gap-1 rounded-lg py-1 text-[10px] font-bold text-slate-400"><span className="material-symbols-outlined text-xl">logout</span>Logout</button>
+      </nav>
     </div>
   );
 }
 
-function BrandMark({ branding, compact = false }: { branding: TenantBranding; compact?: boolean }) {
+function SignOutButton() {
+  return <button type="button" onClick={signOut} className="flex h-10 w-full items-center gap-3 rounded-material px-3 text-sm font-bold text-slate-300 hover:bg-rose-500/10 hover:text-rose-300"><span className="material-symbols-outlined">logout</span>Logout</button>;
+}
+
+async function signOut() {
+  await fetch("/api/auth/logout", { method: "POST" });
+  window.location.href = "/login";
+}
+
+function getVisibleNavItems(account: ShellAccount) {
+  if (account.accountType === "STORE_OWNER") {
+    return theNineAdminNavItems;
+  }
+  if (account.accountType === "STORE_USER") {
+    return theNineStoreNavItems;
+  }
+  return legacyNavItems.filter((item) => account.permissions.includes(item.permission));
+}
+
+function BrandMark({ branding }: { branding: TenantBranding }) {
   return (
     <div className="flex items-center gap-3">
-      <div
-        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/25 bg-slate-900 text-sm font-black text-white shadow-[0_0_22px_rgba(34,211,238,0.14)]"
-      >
-        <span className="absolute inset-1 rounded-full border" style={{ borderColor: branding.brandColor }} aria-hidden="true" />
-        {branding.logoInitials}
-      </div>
+      <img
+        src="/the-nine/the-nine-logo-white.png"
+        alt="The Nine logo"
+        className="h-11 w-11 rounded-xl bg-white p-1 object-contain shadow-[0_0_22px_rgba(212,145,64,0.14)]"
+      />
       <div>
-        <p className={compact ? "text-sm font-black text-white" : "text-sm font-black text-white"}>{branding.appName}</p>
-        {!compact ? <p className="text-xs text-cyan-100/60">{branding.businessName}</p> : null}
+        <p className="text-sm font-black text-white">{branding.appName}</p>
       </div>
     </div>
   );

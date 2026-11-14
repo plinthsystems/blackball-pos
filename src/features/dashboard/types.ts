@@ -11,10 +11,20 @@ export type BusyHoursRow = {
   hours: number;
 };
 
+export type DashboardWindow = "today" | "7d" | "30d";
+
+export type DailyRevenueRow = {
+  date: string;
+  revenue: number;
+  closedBills: number;
+};
+
 export type OwnerDashboardData = {
   totalRevenue: number;
   revenue: DashboardRevenue;
   busyHours: BusyHoursRow[];
   closedBillCount: number;
   openBillCount: number;
+  reportingWindow?: DashboardWindow;
+  dailyTrend?: DailyRevenueRow[];
 };

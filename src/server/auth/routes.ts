@@ -13,3 +13,17 @@ export function getDefaultRouteForPermissions(permissions: string[]) {
 
   return "/live-tables";
 }
+
+export function getDefaultRouteForAccountType(accountType: string, mustChangePassword = false) {
+  void mustChangePassword;
+  if (accountType === "PLATFORM_ADMIN") {
+    return "/platform/setup";
+  }
+  if (accountType === "HQ_ADMIN") {
+    return "/hq/dashboard";
+  }
+  if (accountType === "STORE_USER") {
+    return "/live-tables";
+  }
+  return "/dashboard";
+}

@@ -43,7 +43,8 @@ const mocks = vi.hoisted(() => {
       billItem: model(),
       product: model(),
       session: model(),
-      business: model()
+      business: model(),
+      customer: model()
     },
     context: vi.fn(),
     revalidatePath: vi.fn(),
@@ -87,6 +88,11 @@ describe("startWalkInSessionAction", () => {
     mocks.prisma.tablePricing.findUnique.mockReset();
     mocks.prisma.bill.create.mockReset();
     mocks.prisma.business.findUnique.mockReset();
+    mocks.prisma.customer.findFirst.mockReset();
+    mocks.prisma.customer.findFirst.mockResolvedValue(null);
+    mocks.prisma.customer.create.mockReset();
+    mocks.prisma.customer.create.mockResolvedValue({ id: "customer_1" });
+    mocks.prisma.customer.update.mockReset();
     mocks.sendManualBookingShareMessage.mockReset();
     mocks.sendManualBookingShareMessage.mockResolvedValue(true);
   });
@@ -109,6 +115,7 @@ describe("startWalkInSessionAction", () => {
       durationMinutes: 60,
       ps5MemberCount: null,
       hourlyRateSnapshot: 180,
+      customerId: null,
       assignedEmployeeId: "emp-2",
       now: expect.any(Date)
     });
@@ -369,8 +376,13 @@ describe("addBillItemAction", () => {
       id: "p1",
       name: "Cold Coffee",
       category: "BEVERAGES",
-      priceAmount: "120"
+      priceAmount: "120",
+      trackInventory: true,
+      stockOnHand: 8,
+      stockUnit: "bottles"
     });
+    mocks.prisma.product.updateMany.mockReset();
+    mocks.prisma.product.updateMany.mockResolvedValue({ count: 1 });
     mocks.prisma.billItem.create.mockReset();
     mocks.prisma.billItem.create.mockResolvedValue({});
   });
@@ -379,6 +391,10 @@ describe("addBillItemAction", () => {
     const result = await addBillItemAction({ billId: "b1", productId: "p1", quantity: 2 });
 
     expect(result).toEqual({ ok: true, message: "Item added to bill." });
+    expect(mocks.prisma.product.updateMany).toHaveBeenCalledWith({
+      where: { id: "p1", businessId: "biz-1", active: true, trackInventory: true, stockOnHand: { gte: 2 } },
+      data: { stockOnHand: { decrement: 2 } }
+    });
     expect(mocks.prisma.billItem.create).toHaveBeenCalledWith({
       data: {
         businessId: "biz-1",
@@ -400,6 +416,15 @@ describe("addBillItemAction", () => {
     const result = await addBillItemAction({ billId: "b1", productId: "p1", quantity: 1 });
 
     expect(result).toEqual({ ok: false, message: "Open bill or product was not found." });
+    expect(mocks.prisma.billItem.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects orders that exceed available stock", async () => {
+    mocks.prisma.product.updateMany.mockResolvedValue({ count: 0 });
+
+    const result = await addBillItemAction({ billId: "b1", productId: "p1", quantity: 2 });
+
+    expect(result).toEqual({ ok: false, message: "Not enough stock available." });
     expect(mocks.prisma.billItem.create).not.toHaveBeenCalled();
   });
 
@@ -477,13 +502,19 @@ describe("removeBillItemAction", () => {
     mocks.context.mockReset();
     mocks.context.mockResolvedValue(makeEmployeeContext());
     mocks.revalidatePath.mockReset();
+    txThrough();
     mocks.prisma.billItem.findFirst.mockReset();
     mocks.prisma.billItem.findFirst.mockResolvedValue({
       id: "bi1",
+      productId: "p1",
+      quantity: 2,
       bill: { kind: "SESSION" }
     });
+    mocks.prisma.product.findFirst.mockResolvedValue({ trackInventory: true });
     mocks.prisma.billItem.delete.mockReset();
     mocks.prisma.billItem.delete.mockResolvedValue({});
+    mocks.prisma.product.updateMany.mockReset();
+    mocks.prisma.product.updateMany.mockResolvedValue({ count: 1 });
   });
 
   it("deletes an item from an open bill", async () => {
@@ -492,7 +523,11 @@ describe("removeBillItemAction", () => {
     expect(result).toEqual({ ok: true, message: "Item removed from bill." });
     expect(mocks.prisma.billItem.findFirst).toHaveBeenCalledWith({
       where: { id: "bi1", businessId: "biz-1", bill: { status: "OPEN" } },
-      select: { id: true, bill: { select: { kind: true } } }
+      select: { id: true, productId: true, quantity: true, bill: { select: { kind: true } } }
+    });
+    expect(mocks.prisma.product.updateMany).toHaveBeenCalledWith({
+      where: { id: "p1", businessId: "biz-1", trackInventory: true },
+      data: { stockOnHand: { increment: 2 } }
     });
     expect(mocks.prisma.billItem.delete).toHaveBeenCalledWith({ where: { id: "bi1" } });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/live-tables");

@@ -84,6 +84,16 @@ describe("POST /api/auth/login", () => {
     expect(cookieValue(response, "demo_store_slug")).toBe("my-store");
   });
 
+  it("redirects a store account directly to the live floor", async () => {
+    prismaMock.employee.findFirst.mockResolvedValue(
+      employeeFixture({ accountType: "STORE_USER", email: "store@thenine.local" })
+    );
+
+    const response = await POST(loginRequest({ email: "store@thenine.local", password: "secret123" }));
+
+    expect(await response.json()).toEqual({ success: true, redirectUrl: "/live-tables" });
+  });
+
   it("trims the email and matches case-insensitively", async () => {
     prismaMock.employee.findFirst.mockResolvedValue(employeeFixture());
 
@@ -105,13 +115,13 @@ describe("POST /api/auth/login", () => {
     expect(await response.json()).toEqual({ success: true, redirectUrl });
   });
 
-  it("sends a must-change-password employee to /change-password", async () => {
+  it("sends a must-change-password employee to the normal account route", async () => {
     prismaMock.employee.findFirst.mockResolvedValue(
       employeeFixture({ mustChangePassword: true })
     );
 
     const response = await POST(loginRequest({ email: "owner@x.com", password: "secret123" }));
-    expect(await response.json()).toEqual({ success: true, redirectUrl: "/change-password" });
+    expect(await response.json()).toEqual({ success: true, redirectUrl: "/dashboard" });
   });
 
   it("does not set demo cookies and marks auth_session Secure in production", async () => {

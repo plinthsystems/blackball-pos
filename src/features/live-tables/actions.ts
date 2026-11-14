@@ -20,6 +20,7 @@ import {
   endSessionSchema,
   extendSessionSchema,
   removeBillItemSchema,
+  updateBillItemQuantitySchema,
   startCounterBillSchema,
   startWalkInSessionSchema,
   tableStatusSchema
@@ -77,6 +78,35 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
       throw new DomainError("PRICING_NOT_FOUND", "Hourly rate was not found for this station.");
     }
 
+    let customerId: string | null = null;
+    if (parsed.customerName || parsed.customerPhone) {
+      const existingCustomer = parsed.customerPhone
+        ? await prisma.customer.findFirst({
+            where: { businessId: context.businessId, phone: parsed.customerPhone },
+            select: { id: true, name: true }
+          })
+        : null;
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+        if (parsed.customerName && parsed.customerName !== existingCustomer.name) {
+          await prisma.customer.update({
+            where: { id: existingCustomer.id, businessId: context.businessId },
+            data: { name: parsed.customerName }
+          });
+        }
+      } else {
+        const customer = await prisma.customer.create({
+          data: {
+            businessId: context.businessId,
+            name: parsed.customerName || "Walk-in customer",
+            phone: parsed.customerPhone || null
+          },
+          select: { id: true }
+        });
+        customerId = customer.id;
+      }
+    }
+
     const session = await services().sessions.startWalkInSession({
       businessId: context.businessId,
       employeeId: context.employeeId,
@@ -84,6 +114,7 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
       durationMinutes: parsed.durationMinutes,
       ps5MemberCount,
       hourlyRateSnapshot: Number(pricing.priceAmount),
+      customerId,
       assignedEmployeeId: parsed.assignedEmployeeId ?? context.employeeId,
       now: new Date()
     });
@@ -199,7 +230,7 @@ export async function addBillItemAction(input: unknown): Promise<ActionResult> {
             businessId: context.businessId,
             active: true
           },
-          select: { id: true, name: true, category: true, priceAmount: true }
+          select: { id: true, name: true, category: true, priceAmount: true, trackInventory: true }
         })
       ]);
 
@@ -209,6 +240,17 @@ export async function addBillItemAction(input: unknown): Promise<ActionResult> {
 
       const unitPrice = Number(product.priceAmount);
       const lineTotal = Math.round(unitPrice * parsed.quantity * 100) / 100;
+      const trackInventory = product.trackInventory || product.category === "CIGARETTES" || product.category === "BEVERAGES";
+      if (trackInventory) {
+        const stockUpdate = await tx.product.updateMany({
+          where: { id: product.id, businessId: context.businessId, active: true, stockOnHand: { gte: parsed.quantity } },
+          data: { stockOnHand: { decrement: parsed.quantity } }
+        });
+        if (stockUpdate.count !== 1) {
+          throw new DomainError("INSUFFICIENT_STOCK", "Not enough stock available.");
+        }
+      }
+
       await tx.billItem.create({
         data: {
           businessId: context.businessId,
@@ -253,18 +295,91 @@ export async function removeBillItemAction(input: unknown): Promise<ActionResult
     const context = await getCurrentEmployeeContext();
     requirePermission(context, "bills.manage");
     const parsed = removeBillItemSchema.parse(input);
-    const item = await prisma.billItem.findFirst({
-      where: { id: parsed.billItemId, businessId: context.businessId, bill: { status: "OPEN" } },
-      select: { id: true, bill: { select: { kind: true } } }
-    });
-    if (!item) {
-      throw new DomainError("SESSION_NOT_ACTIVE", "Open bill item was not found.");
-    }
+    await prisma.$transaction(async (tx) => {
+      const item = await tx.billItem.findFirst({
+        where: { id: parsed.billItemId, businessId: context.businessId, bill: { status: "OPEN" } },
+        select: { id: true, productId: true, quantity: true, bill: { select: { kind: true } } }
+      });
+      if (!item) {
+        throw new DomainError("SESSION_NOT_ACTIVE", "Open bill item was not found.");
+      }
 
-    await prisma.billItem.delete({ where: { id: item.id } });
+      if (item.productId) {
+        const product = await tx.product.findFirst({
+          where: { id: item.productId, businessId: context.businessId },
+          select: { trackInventory: true, category: true }
+        });
+        if (product && (product.trackInventory || product.category === "CIGARETTES" || product.category === "BEVERAGES")) {
+          await tx.product.updateMany({
+            where: { id: item.productId, businessId: context.businessId },
+            data: { stockOnHand: { increment: item.quantity } }
+          });
+        }
+      }
+      await tx.billItem.delete({ where: { id: item.id } });
+    });
     revalidatePath("/live-tables");
     revalidatePath("/settings");
     return { ok: true, message: "Item removed from bill." };
+  } catch (error) {
+    return actionError(error);
+  }
+}
+
+export async function updateBillItemQuantityAction(input: unknown): Promise<ActionResult> {
+  try {
+    const context = await getCurrentEmployeeContext();
+    requirePermission(context, "bills.manage");
+    const parsed = updateBillItemQuantitySchema.parse(input);
+
+    await prisma.$transaction(async (tx) => {
+      const item = await tx.billItem.findFirst({
+        where: { id: parsed.billItemId, businessId: context.businessId, bill: { status: "OPEN" } },
+        select: { id: true, productId: true, quantity: true, unitPriceAmount: true }
+      });
+      if (!item) {
+        throw new DomainError("SESSION_NOT_ACTIVE", "Open bill item was not found.");
+      }
+
+      const quantityDifference = parsed.quantity - item.quantity;
+      if (item.productId) {
+        const product = await tx.product.findFirst({
+          where: { id: item.productId, businessId: context.businessId },
+          select: { trackInventory: true, category: true }
+        });
+        const trackInventory = Boolean(product && (product.trackInventory || product.category === "CIGARETTES" || product.category === "BEVERAGES"));
+        if (quantityDifference > 0 && trackInventory) {
+          const stockUpdate = await tx.product.updateMany({
+            where: {
+              id: item.productId,
+              businessId: context.businessId,
+              stockOnHand: { gte: quantityDifference }
+            },
+            data: { stockOnHand: { decrement: quantityDifference } }
+          });
+          if (stockUpdate.count !== 1) {
+            throw new DomainError("INSUFFICIENT_STOCK", "Not enough stock available.");
+          }
+        } else if (quantityDifference < 0 && trackInventory) {
+          await tx.product.updateMany({
+            where: { id: item.productId, businessId: context.businessId },
+            data: { stockOnHand: { increment: Math.abs(quantityDifference) } }
+          });
+        }
+      }
+
+      await tx.billItem.update({
+        where: { id: item.id },
+        data: {
+          quantity: parsed.quantity,
+          lineTotalAmount: Math.round(Number(item.unitPriceAmount) * parsed.quantity * 100) / 100
+        }
+      });
+    });
+
+    revalidatePath("/live-tables");
+    revalidatePath("/settings");
+    return { ok: true, message: "Bill item quantity updated." };
   } catch (error) {
     return actionError(error);
   }

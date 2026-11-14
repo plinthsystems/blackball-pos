@@ -204,50 +204,50 @@ model Business {
 }
 
 model BusinessSettings {
-  id                   String   @id @default(cuid())
-  businessId           String   @unique
-  appName              String   @default("Black Ball")
-  logoInitials         String   @default("BB")
-  brandColor           String   @default("#12613d")
-  accentColor          String   @default("#b98922")
-  gstNumber            String?
-  taxRateBasisPoints   Int      @default(1800)
-  bookingBufferMinutes Int      @default(10)
-  bookingMinLeadMinutes Int     @default(90)
-  bookingEnabled       Boolean  @default(true)
-  requireConfirmation  Boolean  @default(false)
-  bookingWindowDays    Int      @default(14)
-  bookingOpenHour      Int      @default(10)
-  bookingCloseHour     Int      @default(23)
-  bookingCloseNextDay  Boolean  @default(false)
-  paymentProvider      PaymentProvider @default(NONE)
-  bookingAdvanceAmount Decimal  @default(0) @db.Decimal(12, 2)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  business             Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  id                    String          @id @default(cuid())
+  businessId            String          @unique
+  appName               String          @default("Black Ball")
+  logoInitials          String          @default("BB")
+  brandColor            String          @default("#12613d")
+  accentColor           String          @default("#b98922")
+  gstNumber             String?
+  taxRateBasisPoints    Int             @default(1800)
+  bookingBufferMinutes  Int             @default(10)
+  bookingMinLeadMinutes Int             @default(90)
+  bookingEnabled        Boolean         @default(true)
+  requireConfirmation   Boolean         @default(false)
+  bookingWindowDays     Int             @default(14)
+  bookingOpenHour       Int             @default(10)
+  bookingCloseHour      Int             @default(23)
+  bookingCloseNextDay   Boolean         @default(false)
+  paymentProvider       PaymentProvider @default(NONE)
+  bookingAdvanceAmount  Decimal         @default(0) @db.Decimal(12, 2)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  business              Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
 model Employee {
-  id                  String        @id @default(cuid())
-  businessId          String?
-  organizationId      String?
-  franchiseeId        String?
-  name                String
-  email               String
-  passwordHash        String?
-  phone               String?
-  accountType         AccountType   @default(STORE_USER)
-  active              Boolean       @default(true)
-  mustChangePassword  Boolean       @default(false)
-  createdAt           DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  business         Business?     @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  franchisee       Franchisee?   @relation(fields: [franchiseeId], references: [id], onDelete: SetNull)
-  roles            EmployeeRole[]
-  assignedSessions Session[]     @relation("AssignedEmployee")
-  createdSessions  Session[]     @relation("CreatedByEmployee")
-  auditLogs        AuditLog[]
+  id                 String         @id @default(cuid())
+  businessId         String?
+  organizationId     String?
+  franchiseeId       String?
+  name               String
+  email              String
+  passwordHash       String?
+  phone              String?
+  accountType        AccountType    @default(STORE_USER)
+  active             Boolean        @default(true)
+  mustChangePassword Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  business           Business?      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  organization       Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  franchisee         Franchisee?    @relation(fields: [franchiseeId], references: [id], onDelete: SetNull)
+  roles              EmployeeRole[]
+  assignedSessions   Session[]      @relation("AssignedEmployee")
+  createdSessions    Session[]      @relation("CreatedByEmployee")
+  auditLogs          AuditLog[]
 
   @@index([organizationId])
   @@index([franchiseeId])
@@ -329,71 +329,76 @@ model ClubTable {
 }
 
 model Booking {
-  id                String              @id @default(cuid())
+  id                String               @id @default(cuid())
   businessId        String
   tableId           String
   customerId        String?
-  status            BookingStatus       @default(PENDING)
+  status            BookingStatus        @default(PENDING)
   startsAt          DateTime
   endsAt            DateTime
   lockedUntil       DateTime?
   paymentStatus     BookingPaymentStatus @default(UNPAID)
   paymentProvider   String?
   paymentExternalId String?
-  advanceAmount     Decimal             @default(0) @db.Decimal(12, 2)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  business          Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  table             ClubTable           @relation(fields: [tableId], references: [id], onDelete: Restrict)
-  customer          Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  advanceAmount     Decimal              @default(0) @db.Decimal(12, 2)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  business          Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  table             ClubTable            @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  customer          Customer?            @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   @@index([businessId, tableId, status, startsAt, endsAt])
 }
 
 model Session {
-  id                  String             @id @default(cuid())
-  businessId          String
-  tableId             String
-  customerId          String?
-  assignedEmployeeId  String?
-  createdByEmployeeId String
-  status              SessionStatus      @default(ACTIVE)
-  startedAt           DateTime
-  plannedEndAt        DateTime
-  actualEndAt         DateTime?
-  pausedAt            DateTime?
-  ps5MemberCount      Int?
-  hourlyRateSnapshot  Decimal            @default(0) @db.Decimal(12, 2)
-  billableSecondsSnapshot Int            @default(0)
-  version             Int                @default(1)
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  business            Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  table               ClubTable          @relation(fields: [tableId], references: [id], onDelete: Restrict)
-  customer            Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  assignedEmployee    Employee?          @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
-  createdByEmployee   Employee           @relation("CreatedByEmployee", fields: [createdByEmployeeId], references: [id], onDelete: Restrict)
-  pauses              SessionPause[]
-  extensions          SessionExtension[]
-  invoices            Invoice[]
-  items               SessionItem[]
-  bills               Bill[]
+  id                      String             @id @default(cuid())
+  businessId              String
+  tableId                 String
+  customerId              String?
+  assignedEmployeeId      String?
+  createdByEmployeeId     String
+  status                  SessionStatus      @default(ACTIVE)
+  startedAt               DateTime
+  plannedEndAt            DateTime
+  actualEndAt             DateTime?
+  pausedAt                DateTime?
+  ps5MemberCount          Int?
+  hourlyRateSnapshot      Decimal            @default(0) @db.Decimal(12, 2)
+  billableSecondsSnapshot Int                @default(0)
+  version                 Int                @default(1)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  business                Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  table                   ClubTable          @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  customer                Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedEmployee        Employee?          @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
+  createdByEmployee       Employee           @relation("CreatedByEmployee", fields: [createdByEmployeeId], references: [id], onDelete: Restrict)
+  pauses                  SessionPause[]
+  extensions              SessionExtension[]
+  invoices                Invoice[]
+  items                   SessionItem[]
+  bills                   Bill[]
 
   @@index([businessId, tableId, status, startedAt, plannedEndAt])
 }
 
 model Product {
-  id          String          @id @default(cuid())
-  businessId  String
-  name        String
-  category    ProductCategory
-  priceAmount Decimal         @db.Decimal(12, 2)
-  active      Boolean         @default(true)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  sessionItems SessionItem[]
-  billItems   BillItem[]
+  id             String          @id @default(cuid())
+  businessId     String
+  name           String
+  category       ProductCategory
+  priceAmount    Decimal         @db.Decimal(12, 2)
+  trackInventory Boolean         @default(false)
+  stockOnHand    Int             @default(0)
+  stockUnit      String          @default("unit")
+  unitsPerPack   Int             @default(1)
+  stockUpdatedAt DateTime?
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sessionItems   SessionItem[]
+  billItems      BillItem[]
 
   @@index([businessId, category, active])
 }
@@ -457,11 +462,11 @@ model SessionItem {
 }
 
 model SessionPause {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   sessionId String
   pausedAt  DateTime
   resumedAt DateTime?
-  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session   Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
 
 model SessionExtension {
@@ -520,22 +525,22 @@ model Payment {
 }
 
 model SubscriptionPlan {
-  id                    String         @id @default(cuid())
-  organizationId        String?
-  code                  String
-  name                  String
-  description           String?
-  billingCycle          BillingCycle   @default(MONTHLY)
-  baseAmount            Decimal        @db.Decimal(12, 2)
-  pricePerOutletAmount  Decimal        @default(0) @db.Decimal(12, 2)
-  setupFeeAmount        Decimal        @default(0) @db.Decimal(12, 2)
-  includedOutletCount   Int            @default(1)
-  features              Json
-  active                Boolean        @default(true)
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
-  organization          Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  subscriptions         Subscription[]
+  id                   String         @id @default(cuid())
+  organizationId       String?
+  code                 String
+  name                 String
+  description          String?
+  billingCycle         BillingCycle   @default(MONTHLY)
+  baseAmount           Decimal        @db.Decimal(12, 2)
+  pricePerOutletAmount Decimal        @default(0) @db.Decimal(12, 2)
+  setupFeeAmount       Decimal        @default(0) @db.Decimal(12, 2)
+  includedOutletCount  Int            @default(1)
+  features             Json
+  active               Boolean        @default(true)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  organization         Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscriptions        Subscription[]
 
   @@unique([organizationId, code])
   @@index([active, billingCycle])
@@ -567,20 +572,20 @@ model Subscription {
 }
 
 model RoyaltyRule {
-  id                  String        @id @default(cuid())
-  organizationId      String
-  franchiseeId        String?
-  name                String
-  basis               RoyaltyBasis  @default(GROSS_SALES)
-  rateBasisPoints     Int           @default(0)
-  fixedAmount         Decimal       @default(0) @db.Decimal(12, 2)
-  minimumAmount       Decimal       @default(0) @db.Decimal(12, 2)
-  active              Boolean       @default(true)
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  organization        Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  franchisee          Franchisee?   @relation(fields: [franchiseeId], references: [id], onDelete: Cascade)
-  invoices            RoyaltyInvoice[]
+  id              String           @id @default(cuid())
+  organizationId  String
+  franchiseeId    String?
+  name            String
+  basis           RoyaltyBasis     @default(GROSS_SALES)
+  rateBasisPoints Int              @default(0)
+  fixedAmount     Decimal          @default(0) @db.Decimal(12, 2)
+  minimumAmount   Decimal          @default(0) @db.Decimal(12, 2)
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  franchisee      Franchisee?      @relation(fields: [franchiseeId], references: [id], onDelete: Cascade)
+  invoices        RoyaltyInvoice[]
 
   @@index([organizationId, active])
   @@index([franchiseeId, active])

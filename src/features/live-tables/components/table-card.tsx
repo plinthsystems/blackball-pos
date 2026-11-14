@@ -10,10 +10,9 @@ import type { LiveTableCardData, LiveTableGameType, LiveTableStatus, ProductCate
 import { TableStatusMenu } from "./table-status-menu";
 import { BookingCountdown } from "./booking-countdown";
 import { StartWalkInDialog } from "@/features/sessions/components/start-walk-in-dialog";
-import { ExtendSessionDialog } from "@/features/sessions/components/extend-session-dialog";
 import { EndSessionDialog } from "@/features/sessions/components/end-session-dialog";
 import { AddSessionItemDialog } from "@/features/sessions/components/add-session-item-dialog";
-import { closeBillAndContinueSessionAction } from "../actions";
+import { EditBillItemsDialog } from "@/features/sessions/components/edit-bill-items-dialog";
 import { LiveClock } from "./live-clock";
 
 const statusTone: Record<LiveTableStatus, "neutral" | "success" | "warning" | "danger" | "info"> = {
@@ -53,8 +52,9 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
   const router = useRouter();
   const [startOpen, setStartOpen] = useState(false);
   const [itemsOpen, setItemsOpen] = useState(false);
-  const [extendOpen, setExtendOpen] = useState(false);
+  const [editItemsOpen, setEditItemsOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
+  const [billDetailsOpen, setBillDetailsOpen] = useState(false);
   const session = table.status === "OCCUPIED" ? table.currentSession : null;
   const bill = session?.currentBill ?? null;
   const sessionRate = session?.hourlyRateSnapshot ?? table.hourlyRate;
@@ -62,10 +62,6 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
     table.gameType === "PS5" && session?.ps5MemberCount
       ? `${session.ps5MemberCount} ${session.ps5MemberCount === 1 ? "member" : "members"} · ${formatMoney(sessionRate)}/hr`
       : `${gameTypeLabel[table.gameType]} · ${formatMoney(sessionRate)}/hr`;
-  const durationSeconds = session
-    ? Math.max(1, Math.floor((new Date(session.plannedEndAt).getTime() - new Date(session.startedAt).getTime()) / 1000))
-    : 1;
-  const progressPercent = session ? Math.min(100, Math.round((session.elapsedSeconds / durationSeconds) * 100)) : 0;
 
   return (
     <article
@@ -102,42 +98,49 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
               </div>
               <LiveClock initialSeconds={session.elapsedSeconds} variant="digital" />
             </div>
-            <div>
-              <div className="mb-1 flex justify-between text-xs text-slate-400">
-                <span>Started {formatClockTime(new Date(session.startedAt))}</span>
-                <span>Ends {formatClockTime(new Date(session.plannedEndAt))}</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-800">
-                <div className="h-full rounded-full bg-gradient-to-r from-lime-300 via-cyan-300 to-amber-300" style={{ width: `${progressPercent}%` }} />
-              </div>
-            </div>
+            <p className="text-xs text-slate-400">Started {formatClockTime(new Date(session.startedAt))}</p>
             <div className="rounded-material border border-slate-700 bg-slate-900/90 p-3">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{bill?.label ?? "Current bill"}</span>
                 <div className="text-right">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-lime-200/70">Live total</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-lime-200/70">Total so far</p>
                   <strong className="text-xl text-white">{formatMoney(session.billSummary.grandTotal)}</strong>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <BillMetric label="Station" amount={session.billSummary.tableAmount} />
-                {billCategories.map((category) => (
-                  <BillMetric key={category} label={billCategoryLabels[category]} amount={session.billSummary.categoryTotals[category]} />
-                ))}
-                <BillMetric label="Total" amount={session.billSummary.grandTotal} />
+              <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-700/70 pt-2 text-xs text-slate-400">
+                <span>Table time <strong className="text-slate-200">{formatMoney(session.billSummary.tableAmount)}</strong></span>
+                <span>Items <strong className="text-slate-200">{formatMoney(session.billSummary.itemTotal)}</strong></span>
               </div>
-            </div>
-            {bill?.items.length ? (
-              <div className="space-y-1 rounded-material border border-slate-700 bg-slate-900/80 p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Ordered items</p>
-                {bill.items.map((item) => (
-                  <div key={item.id} className="flex justify-between gap-3">
-                    <span>{item.name} x{item.quantity}</span>
-                    <strong>{formatMoney(item.lineTotalAmount)}</strong>
+              <button
+                type="button"
+                className="mt-3 text-xs font-semibold text-cyan-200 transition hover:text-white"
+                aria-expanded={billDetailsOpen}
+                onClick={() => setBillDetailsOpen((open) => !open)}
+              >
+                {billDetailsOpen ? "Hide bill details" : "Show bill details"}
+              </button>
+              {billDetailsOpen ? (
+                <div className="mt-3 space-y-3 border-t border-slate-700/70 pt-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <BillMetric label="Station" amount={session.billSummary.tableAmount} />
+                    {billCategories.map((category) => (
+                      <BillMetric key={category} label={billCategoryLabels[category]} amount={session.billSummary.categoryTotals[category]} />
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : null}
+                  {bill?.items.length ? (
+                    <div className="space-y-1 rounded-material border border-slate-700 bg-slate-950/70 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Ordered items</p>
+                      {bill.items.map((item) => (
+                        <div key={item.id} className="flex justify-between gap-3">
+                          <span>{item.name} x{item.quantity}</span>
+                          <strong>{formatMoney(item.lineTotalAmount)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : (
           <div className="space-y-2">
@@ -152,20 +155,14 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
               <Button className="h-9 px-3" aria-label={`Add items for station ${table.number}`} onClick={() => setItemsOpen(true)}>
                 Add items
               </Button>
-              <Button
-                className="h-9 px-3"
-                aria-label={`Close bill and continue station ${table.number}`}
-                onClick={async () => {
-                  await closeBillAndContinueSessionAction({ sessionId: session.id });
-                  router.refresh();
-                }}
-              >
-                Close bill
+              {bill?.items.length ? (
+                <Button className="h-9 px-3" aria-label={`Edit bill items for station ${table.number}`} onClick={() => setEditItemsOpen(true)}>
+                  Edit items
+                </Button>
+              ) : null}
+              <Button variant="primary" className="h-9 px-3" aria-label={`Stop session for station ${table.number}`} onClick={() => setEndOpen(true)}>
+                Stop
               </Button>
-              <Button variant="primary" className="h-9 px-3" aria-label={`End session for station ${table.number}`} onClick={() => setEndOpen(true)}>
-                End
-              </Button>
-              <Button className="h-9 px-3" onClick={() => setExtendOpen(true)}>Extend</Button>
             </>
           ) : table.status === "AVAILABLE" ? (
             <Button variant="primary" className="h-9 px-3" aria-label={`Start session for station ${table.number}`} onClick={() => setStartOpen(true)}>
@@ -184,8 +181,6 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
         tableId={table.id}
         tableNumber={table.number}
         gameType={table.gameType}
-        hourlyRate={table.hourlyRate}
-        ps5MemberRates={table.ps5MemberRates}
         open={startOpen}
         onOpenChange={setStartOpen}
       />
@@ -198,7 +193,14 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
             open={itemsOpen}
             onOpenChange={setItemsOpen}
           />
-          <ExtendSessionDialog sessionId={session.id} tableNumber={table.number} open={extendOpen} onOpenChange={setExtendOpen} />
+          {bill ? (
+            <EditBillItemsDialog
+              billLabel={table.number}
+              items={bill.items}
+              open={editItemsOpen}
+              onOpenChange={setEditItemsOpen}
+            />
+          ) : null}
           <EndSessionDialog sessionId={session.id} tableNumber={table.number} open={endOpen} onOpenChange={setEndOpen} />
         </>
       ) : null}

@@ -27,6 +27,8 @@ export type BillingRecord = {
   closedAt: string | null;
   totalAmount: number;
   tableAmount: number;
+  tableDurationMinutes: number;
+  tableHourlyRate: number;
   itemTotal: number;
   items: BillItemRow[];
   categorySummaries: CategorySummary[];
@@ -36,6 +38,7 @@ export type BillingRecord = {
 };
 
 export type BillingFilters = {
+  search?: string | null;
   dateFrom?: string | null;
   dateTo?: string | null;
   status?: BillingStatus | "ALL";
