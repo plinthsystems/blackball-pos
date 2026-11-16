@@ -28,19 +28,19 @@ describe("RatesPage", () => {
     actions.updateHourlyRateAction.mockResolvedValue({ ok: true, message: "Rate updated." });
   });
 
-  it("renders editable hourly rates for tables and PS5", () => {
+  it("renders editable hourly rates for The Nine tables only", () => {
     render(<RatesPage rates={defaultRates} />);
 
     expect(screen.getByRole("heading", { name: "Hourly Rates" })).toBeInTheDocument();
     expect(screen.getByText("Royal Snooker")).toBeInTheDocument();
     expect(screen.getByText("Mini Snooker")).toBeInTheDocument();
     expect(screen.getByText("Pool")).toBeInTheDocument();
-    expect(screen.getByText("PS5 · 1 player")).toBeInTheDocument();
-    expect(screen.getByText("PS5 · 4 players")).toBeInTheDocument();
+    expect(screen.queryByText("PS5 · 1 player")).not.toBeInTheDocument();
+    expect(screen.queryByText("PS5 · 4 players")).not.toBeInTheDocument();
     expect(screen.queryByText("Rate for Royal Snooker")).not.toBeInTheDocument();
     expect(screen.getByRole("spinbutton", { name: "Rate for Royal Snooker" })).toBeInTheDocument();
-    expect(screen.getByRole("spinbutton", { name: "Rate for PS5 · 4 players" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Update rate" })).toHaveLength(7);
+    expect(screen.queryByRole("spinbutton", { name: "Rate for PS5 · 4 players" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Update rate" })).toHaveLength(3);
   });
 
   it("saves a row when the Update rate button is clicked", async () => {

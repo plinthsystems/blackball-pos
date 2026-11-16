@@ -51,8 +51,7 @@ describe("getRateSettings", () => {
     expect(rates.map((rate) => `${rate.label}:${rate.hourlyRate}`)).toEqual([
       "Royal Snooker:350",
       "Mini Snooker:330",
-      "Pool:160",
-      "PS5 · 2 players:150"
+      "Pool:160"
     ]);
   });
 

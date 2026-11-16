@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import type { LiveTableCardData, LiveTableStatus } from "../types";
-import { useRouter } from "next/navigation";
 import { updateTableStatusAction } from "../actions";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +14,6 @@ const MANUAL_TARGETS: Array<{ status: LiveTableStatus; label: string; icon: stri
 ];
 
 export function TableStatusMenu({ table, canUpdateStatus }: { table: LiveTableCardData; canUpdateStatus?: boolean }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +41,6 @@ export function TableStatusMenu({ table, canUpdateStatus }: { table: LiveTableCa
     setBusy(false);
     if (result.ok) {
       setOpen(false);
-      router.refresh();
     } else {
       setError(result.message);
     }

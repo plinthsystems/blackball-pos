@@ -27,13 +27,13 @@ describe("session calculations", () => {
     expect(amount).toBe(700);
   });
 
-  it("prices table play by actual minutes from an hourly rate", () => {
+  it("prices table play by actual elapsed time and rounds up to whole rupees", () => {
     const amount = calculateMinuteBasedTableCharge({
       billableSeconds: 15 * 60,
       hourlyRate: 350
     });
 
-    expect(amount).toBe(87.5);
+    expect(amount).toBe(88);
   });
 
   describe("rate snapshot behavior", () => {

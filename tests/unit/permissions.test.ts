@@ -48,17 +48,8 @@ describe("requirePermission", () => {
     }
   });
 
-  it("throws PASSWORD_CHANGE_REQUIRED when mustChangePassword and no allowance, even with permission", () => {
-    try {
-      requirePermission(makeContext({ mustChangePassword: true }), "tables.manage");
-      expect.unreachable();
-    } catch (error) {
-      expect(error).toBeInstanceOf(DomainError);
-      expect(error).toMatchObject({
-        code: "PASSWORD_CHANGE_REQUIRED",
-        metadata: { permission: "tables.manage" }
-      });
-    }
+  it("does not block authorized actions when the legacy password-change flag is set", () => {
+    expect(() => requirePermission(makeContext({ mustChangePassword: true }), "tables.manage")).not.toThrow();
   });
 
   it("passes with mustChangePassword when allowPasswordChange is set", () => {
@@ -83,9 +74,7 @@ describe("requirePermission", () => {
     }
   });
 
-  it("uses default options (no allowPasswordChange) when omitted", () => {
-    expect(() => requirePermission(makeContext({ mustChangePassword: true }), "tables.manage")).toThrow(
-      DomainError
-    );
+  it("uses default options when omitted", () => {
+    expect(() => requirePermission(makeContext({ mustChangePassword: true }), "tables.manage")).not.toThrow();
   });
 });

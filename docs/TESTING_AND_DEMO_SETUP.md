@@ -1,105 +1,67 @@
-# Multi-Tenancy & Developer Testing Setup Guide
+# The Nine — Local Testing Setup
 
-This document explains the testing setup, the multi-tenant architecture,
-and the pre-configured demo accounts. It also covers the 1-click Magic
-Login tools for fast developer iteration, QA testing, and stakeholder
-walkthroughs.
+The default local setup is now a single store: **The Nine**. The franchise,
+HQ, and enterprise modules remain in the codebase, but they are not part of
+the normal store workflow.
 
----
+## Fast local setup
 
-## 1. Overview & Core Business Models
+1. Start a PostgreSQL database and copy `.env.example` to `.env`.
+2. Set `AUTH_SECRET` to any local-only secret, then run:
 
-The application supports **two primary multitenancy business models**:
+   ```bash
+   npm ci
+   npx prisma generate
+   npx prisma migrate dev
+   npm run prisma:seed
+   npm run dev
+   ```
 
-1. **🏢 Franchise Business Model (Multi-Outlet Enterprise):**
-   - **Central HQ Account:** Franchisor Directors who oversee all outlets in their group, view combined revenue, manage global rate rules, and switch outlet context (`/hq/dashboard`).
-   - **Outlet Manager Accounts:** Store Managers restricted strictly to their assigned outlet (`/live-tables`).
+3. Open [http://localhost:3000/](http://localhost:3000/). It goes directly to
+   The Nine login screen.
 
-2. **🏬 Independent B2B SaaS Model (Standalone Store):**
-   - Single-store owners who run independent pool/snooker clubs (`/dashboard`).
+## Login accounts
 
----
+Both accounts are created by the seed. The default local password is
+`Password@123`; change it with `THE_NINE_DEFAULT_PASSWORD` before seeding if
+needed.
 
-## 2. Seed Data & Credentials
+| Role | Email | Opens |
+| --- | --- | --- |
+| Admin | `admin@thenine.local` | Dashboard, Live Floor, Billing, Menu & Settings, Rates |
+| Store | `store@thenine.local` | Live Floor, Billing |
 
-### Default Password for ALL Test Accounts:
-```text
-Password@123
-```
+Admin dashboard ranges are available at `/dashboard`, `/dashboard?range=7d`,
+and `/dashboard?range=30d`.
 
-To reset or seed the demo database at any time, run:
+## Reset local data
+
+This clears the current database contents and recreates only The Nine's store
+data, tables, products, rates, accounts, and sample sales history. Run it only
+against the intended local database:
+
 ```bash
-npx tsx prisma/seed.ts
+RESET_THE_NINE=true npx tsx scripts/reset-the-nine.ts
 ```
 
----
+The script refuses to run unless `RESET_THE_NINE=true`. Production also needs
+the separate `RESET_THE_NINE_PRODUCTION=true` safeguard.
 
-### 👑 Category 1: Franchise HQ Directors (Master HQ View)
+## Verification commands
 
-| Organization Name | Director Name | Email | Password | Target Destination |
-| :--- | :--- | :--- | :--- | :--- |
-| **BlackBall Franchise Group** | Vikram Malhotra | `hq.blackball@example.com` | `Password@123` | `/hq/dashboard` |
-| **CueNation Franchise Group** | Anish Roy | `hq.cuenation@example.com` | `Password@123` | `/hq/dashboard` |
+```bash
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
+```
 
----
+The Playwright checks expect the database to be seeded and the app to be
+available at `http://127.0.0.1:3000`.
 
-### 🏪 Category 2: Franchise Outlet Managers (Single Outlet View)
+## Preserved modules
 
-| Franchise Group | Store / Outlet Name | Manager Name | Email | Password | Store Slug |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **BlackBall** | Koramangala | Rahul Sharma | `owner@cueclub.example` | `Password@123` | `seed-business` |
-| **BlackBall** | MG Road | Sanjay Patel | `manager.mgroad@blackball.example` | `Password@123` | `outlet-mg-road` |
-| **BlackBall** | Indiranagar | Priya Nair | `manager.indiranagar@blackball.example` | `Password@123` | `outlet-indiranagar` |
-| **CueNation** | Whitefield | Karthik Verma | `whitefield.manager@cuenation.example` | `Password@123` | `outlet-whitefield` |
-| **CueNation** | HSR Layout | Deepak Rao | `hsr.manager@cuenation.example` | `Password@123` | `outlet-hsr` |
-
----
-
-### 🏬 Category 3: Independent B2B SaaS Owners (Standalone Store View)
-
-| Club Name | Location | Owner Name | Email | Password | Store Slug |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Royal Snooker Club** | JP Nagar | Arjun Reddy | `owner@royalsnooker.example` | `Password@123` | `saas-royal-snooker` |
-| **Break & Run Lounge** | BTM | Varun Mehta | `owner@breakandrun.example` | `Password@123` | `saas-break-and-run` |
-| **GameZone PS5 & Cue** | Hebbal | Karan Singh | `owner@gamezone.example` | `Password@123` | `saas-gamezone` |
-
----
-
-## 3. Dev 1-Click Magic Login Link Generator
-
-To switch between user roles and stores instantly without re-typing passwords, use the **Dev Magic Login Generator** page:
-
-👉 **`http://localhost:3000/magic-login`**
-
-### Direct 1-Click Magic Links for Quick Copy-Pasting:
-
-- **BlackBall HQ Director:**  
-  `http://localhost:3000/api/auth/magic-login?email=hq.blackball%40example.com&store=seed-business`
-
-- **CueNation HQ Director:**  
-  `http://localhost:3000/api/auth/magic-login?email=hq.cuenation%40example.com&store=outlet-whitefield`
-
-- **BlackBall Koramangala Manager:**  
-  `http://localhost:3000/api/auth/magic-login?email=owner%40cueclub.example&store=seed-business`
-
-- **BlackBall MG Road Manager:**  
-  `http://localhost:3000/api/auth/magic-login?email=manager.mgroad%40blackball.example&store=outlet-mg-road`
-
-- **Royal Snooker Standalone Owner:**  
-  `http://localhost:3000/api/auth/magic-login?email=owner%40royalsnooker.example&store=saas-royal-snooker`
-
----
-
-## 4. How Authentication & Sessions Work Under the Hood
-
-1. **Authentication Protocol:**  
-   Standard login (`/login`) uses HMAC-SHA256 token generation. Password hashes are salted using Node native `crypto.scryptSync`.
-
-2. **Session Cookies:**  
-   Sessions are stored in browser `HttpOnly` cookies (`auth_session`). `HttpOnly` prevents client-side XSS token theft.
-
-3. **Route Protection Middleware (`src/middleware.ts`):**  
-   Protects app routes (`/hq/*`, `/dashboard`, `/live-tables`, `/rates`, `/settings`). Unauthenticated requests are automatically redirected to `/login`.
-
-4. **Multi-Tenant Context Scoping (`src/server/auth/current-employee.ts`):**  
-   Reads active session tokens and `demo_store_slug` cookies to resolve exact store permissions, live floor tables, rate configs, and billing records for that store only.
+Franchise organizations, HQ analytics, platform setup, public booking,
+payments, WhatsApp, and the developer magic-login flow are still present for
+future expansion. They are intentionally not shown in The Nine's minimal
+navigation.

@@ -8,20 +8,25 @@ import type {
   ProductCategory
 } from "./types";
 import type { CurrentEmployeeContext, AccountType } from "@/server/auth/current-employee";
+import { calculateBillSegmentTableAmount } from "@/server/domain/bill-summary";
+import { addDaysToDateKey, storeDateStart, STORE_TIME_ZONE } from "@/lib/time";
+import { getRecordedFoodMenuDiscount, isFoodMenuDiscountItem } from "@/server/domain/food-discount";
+import { calculateBillableSeconds } from "@/server/domain/session-calculations";
 
 export async function getBillingPageData(
   businessId: string,
   filters: BillingFilters,
-  context: CurrentEmployeeContext
+  context: CurrentEmployeeContext,
+  now = new Date()
 ): Promise<BillingPageData> {
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 50;
   const skip = (page - 1) * pageSize;
 
   // Role-based access: STORE_USER sees only their own closed bills
-  const whereClause = buildWhereClause(businessId, filters, context.accountType, context.employeeId);
+  const whereClause = await buildWhereClause(businessId, filters, context.accountType, context.employeeId);
 
-  const [bills, totalCount, staffOptions, tables] = await Promise.all([
+  const [bills, totalCount] = await Promise.all([
     prisma.bill.findMany({
       where: whereClause,
       orderBy: { openedAt: "desc" },
@@ -39,6 +44,10 @@ export async function getBillingPageData(
             lineTotalAmount: true
           }
         },
+        payments: {
+          orderBy: { createdAt: "asc" },
+          select: { id: true, method: true, amount: true, createdAt: true }
+        },
         session: {
           select: {
             table: { select: { number: true } },
@@ -47,52 +56,46 @@ export async function getBillingPageData(
             startedAt: true,
             actualEndAt: true,
             plannedEndAt: true,
-            status: true
+            pausedAt: true,
+            hourlyRateSnapshot: true,
+            billableSecondsSnapshot: true,
+            status: true,
+            pauses: { select: { pausedAt: true, resumedAt: true } }
           }
         }
       }
     }),
-    prisma.bill.count({ where: whereClause }),
-    prisma.employee.findMany({
-      where: { businessId, active: true },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" }
-    }),
-    prisma.clubTable.findMany({
-      where: { businessId, active: true },
-      select: { id: true, number: true },
-      orderBy: { number: "asc" }
-    })
+    prisma.bill.count({ where: whereClause })
   ]);
 
-  const records = bills.map((bill) => mapBillToRecord(bill));
+  const records = bills.map((bill) => mapBillToRecord(bill, now));
 
   return {
     records,
     total: totalCount,
     filters,
-    staffOptions: staffOptions.map((e) => ({ id: e.id, name: e.name })),
-    tables: tables.map((t) => ({ id: t.id, number: t.number }))
+    staffOptions: [],
+    tables: []
   };
 }
 
-function buildWhereClause(
+async function buildWhereClause(
   businessId: string,
   filters: BillingFilters,
   accountType: AccountType,
   employeeId: string
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   const where: Record<string, unknown> = { businessId };
 
   // Role-based restriction
   if (accountType === "STORE_USER") {
-    // Store users can only see closed bills they were assigned to
+    // Store users see their own session bills and all counter bills for this store.
+    // Counter bills have no session, so a session-only scope hides them.
     where.status = "CLOSED" as BillingStatus;
-    where.session = {
-      some: {
-        assignedEmployeeId: employeeId
-      }
-    };
+    where.OR = [
+      { kind: "COUNTER" },
+      { session: { is: { assignedEmployeeId: employeeId } } }
+    ];
   } else {
     // Managers and above see bills based on filter
     if (filters.status && filters.status !== "ALL") {
@@ -104,23 +107,17 @@ function buildWhereClause(
     if (filters.dateFrom || filters.dateTo) {
       where.openedAt = {
         ...(where.openedAt as Record<string, unknown> ?? {}),
-        ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
+        ...(filters.dateFrom ? { gte: storeDateStart(filters.dateFrom) } : {}),
         ...(filters.dateTo
-          ? { lte: (() => { const d = new Date(filters.dateTo); d.setHours(23, 59, 59, 999); return d; })() }
+          ? { lt: storeDateStart(addDaysToDateKey(filters.dateTo, 1)) }
           : {})
       };
     }
-    if (filters.staffId) {
+    if (filters.staffId || filters.tableId) {
       where.session = {
-        some: {
-          assignedEmployeeId: filters.staffId
-        }
-      };
-    }
-    if (filters.tableId) {
-      where.session = {
-        some: {
-          tableId: filters.tableId
+        is: {
+          ...(filters.staffId ? { assignedEmployeeId: filters.staffId } : {}),
+          ...(filters.tableId ? { tableId: filters.tableId } : {})
         }
       };
     }
@@ -135,6 +132,25 @@ function buildWhereClause(
     };
   }
 
+  const search = filters.search?.trim();
+  if (search) {
+    const contains = { contains: search, mode: "insensitive" as const };
+    const matchingCustomers = await prisma.customer.findMany({
+      where: { businessId, name: contains },
+      select: { id: true }
+    });
+    where.AND = [{
+      OR: [
+        { label: contains },
+        ...(matchingCustomers.length > 0
+          ? [{ session: { is: { customerId: { in: matchingCustomers.map((customer) => customer.id) } } } }]
+          : []),
+        { session: { is: { table: { is: { number: contains } } } } },
+        { items: { some: { nameSnapshot: contains } } }
+      ]
+    }];
+  }
+
   return where;
 }
 
@@ -143,6 +159,7 @@ function mapBillToRecord(bill: {
   label: string | null;
   kind: BillingKind;
   status: BillingStatus;
+  paymentStatus: "UNPAID" | "PARTIAL" | "PAID";
   openedAt: Date;
   closedAt: Date | null;
   tableAmountSnapshot: unknown;
@@ -156,6 +173,7 @@ function mapBillToRecord(bill: {
     unitPriceAmount: unknown;
     lineTotalAmount: unknown;
   }>;
+  payments: Array<{ id: string; method: "CASH" | "CARD" | "UPI" | "SPLIT"; amount: unknown; createdAt: Date }>;
   session: {
     table: { number: string } | null;
     customer: { name: string | null; phone: string | null } | null;
@@ -163,13 +181,22 @@ function mapBillToRecord(bill: {
     startedAt: Date;
     actualEndAt: Date | null;
     plannedEndAt: Date;
+    pausedAt: Date | null;
+    hourlyRateSnapshot: unknown;
+    billableSecondsSnapshot: number;
     status: string;
+    pauses: Array<{ pausedAt: Date; resumedAt: Date | null }>;
   } | null;
-}): BillingRecord {
+}, now: Date): BillingRecord {
   const tableNumber = bill.session?.table?.number ?? null;
   const staffName = bill.session?.assignedEmployee?.name ?? null;
   const customerName = bill.session?.customer?.name ?? null;
   const customerPhone = bill.session?.customer?.phone ?? null;
+  const billStartedAt = bill.session && bill.label === "Bill 1" ? bill.session.startedAt : bill.openedAt;
+  const pauses = [...(bill.session?.pauses ?? [])];
+  if (bill.session?.status === "PAUSED" && bill.session.pausedAt && !pauses.some((pause) => !pause.resumedAt)) {
+    pauses.push({ pausedAt: bill.session.pausedAt, resumedAt: null });
+  }
 
   const categoryMap = new Map<string, { total: number }>();
   const addItemCategory = (category: ProductCategory, amount: number) => {
@@ -186,19 +213,54 @@ function mapBillToRecord(bill: {
     total: data.total
   }));
 
+  const itemTotalFromLines = roundMoney(bill.items.reduce((sum, item) => sum + Number(item.lineTotalAmount), 0));
+  const tableHourlyRate = bill.session ? Number(bill.session.hourlyRateSnapshot) : 0;
+  const tableEnd = bill.status === "OPEN" ? now : bill.closedAt;
+  const tableDurationSeconds = bill.session && tableEnd
+    ? calculateBillableSeconds({ startedAt: billStartedAt, endedAt: tableEnd, pauses })
+    : 0;
+  const tableDurationMinutes = Math.ceil(tableDurationSeconds / 60);
+  const calculatedOpenTableAmount = bill.kind === "SESSION" && bill.session && bill.status === "OPEN"
+    ? calculateBillSegmentTableAmount({ startedAt: billStartedAt, endedAt: now, hourlyRate: tableHourlyRate, pauses })
+    : 0;
+  const tableAmount = bill.status === "OPEN"
+    ? calculatedOpenTableAmount
+    : Number(bill.tableAmountSnapshot);
+  const itemTotal = bill.status === "OPEN" ? itemTotalFromLines : Number(bill.itemTotalAmountSnapshot);
+  const totalAmount = bill.status === "OPEN" ? roundMoney(tableAmount + itemTotal) : Number(bill.totalAmountSnapshot);
+  const discountAmount = getRecordedFoodMenuDiscount(bill.items);
+  const itemSubtotal = roundMoney(itemTotal + discountAmount);
+  const payments = bill.payments.map((payment) => ({
+    id: payment.id,
+    method: payment.method === "CASH" ? "CASH" as const : "UPI" as const,
+    amount: Number(payment.amount),
+    createdAt: payment.createdAt.toISOString()
+  }));
+  const recordedPaidAmount = roundMoney(payments.reduce((sum, payment) => sum + payment.amount, 0));
+  const paidAmount = bill.paymentStatus === "PAID" && payments.length === 0 ? totalAmount : recordedPaidAmount;
+
   return {
     id: bill.id,
     label: bill.label ?? "Bill",
     kind: bill.kind,
     status: bill.status,
+    paymentStatus: bill.paymentStatus,
     tableNumber,
-    sessionLabel: bill.session ? formatSessionLabel(bill.session) : null,
-    openedAt: bill.openedAt.toISOString(),
+    sessionLabel: bill.session ? formatSessionLabel(billStartedAt, bill.closedAt ?? bill.session.actualEndAt ?? bill.session.plannedEndAt) : null,
+    openedAt: billStartedAt.toISOString(),
     closedAt: bill.closedAt?.toISOString() ?? null,
-    totalAmount: Number(bill.totalAmountSnapshot),
-    tableAmount: Number(bill.tableAmountSnapshot),
-    itemTotal: Number(bill.itemTotalAmountSnapshot),
-    items: bill.items.map((item) => ({
+    totalAmount,
+    tableAmount,
+    tableDurationMinutes,
+    tableDurationSeconds,
+    tableHourlyRate,
+    itemTotal,
+    itemSubtotal,
+    discountAmount,
+    paidAmount,
+    remainingAmount: roundMoney(Math.max(0, totalAmount - paidAmount)),
+    payments,
+    items: bill.items.filter((item) => !isFoodMenuDiscountItem({ name: item.nameSnapshot })).map((item) => ({
       id: item.id,
       name: item.nameSnapshot,
       category: item.category,
@@ -213,32 +275,26 @@ function mapBillToRecord(bill: {
   };
 }
 
-function formatSessionLabel(session: {
-  startedAt: Date;
-  actualEndAt: Date | null;
-  plannedEndAt: Date;
-  status: string;
-}): string {
+function roundMoney(amount: number) {
+  return Math.round(amount * 100) / 100;
+}
+
+function formatSessionLabel(startedAt: Date, endedAt: Date): string {
   const start = new Intl.DateTimeFormat("en-IN", {
+    timeZone: STORE_TIME_ZONE,
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit"
-  }).format(new Date(session.startedAt));
+  }).format(startedAt);
 
-  const end = session.actualEndAt
-    ? new Intl.DateTimeFormat("en-IN", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit"
-      }).format(new Date(session.actualEndAt))
-    : new Intl.DateTimeFormat("en-IN", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit"
-      }).format(new Date(session.plannedEndAt));
+  const end = new Intl.DateTimeFormat("en-IN", {
+    timeZone: STORE_TIME_ZONE,
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(endedAt);
 
-  return `${start} → ${end}`;
+  return `${start} → ${end} IST`;
 }

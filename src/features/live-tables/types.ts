@@ -8,11 +8,17 @@ export type ProductOption = {
   name: string;
   category: ProductCategory;
   priceAmount: number;
+  trackInventory: boolean;
+  stockOnHand: number;
+  stockUnit: string;
+  unitsPerPack: number;
 };
 
 export type LiveBillSummary = {
   tableAmount: number;
   categoryTotals: Record<"FOOD" | "CIGARETTES" | "BEVERAGES", number>;
+  discountAmount?: number;
+  itemSubtotal?: number;
   itemTotal: number;
   grandTotal: number;
 };

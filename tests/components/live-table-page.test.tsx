@@ -1,20 +1,67 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { LiveTablePage } from "@/features/live-tables/components/live-table-page";
 
 describe("LiveTablePage", () => {
-  it("renders table states and primary session actions", () => {
+  it("shows an open-ended Pool session with a Stop action", () => {
     render(
       <LiveTablePage
         counterBills={[]}
+        businessName="The Nine Snooker & Cafe"
+        products={[]}
+        tables={[{
+          id: "pool_1",
+          number: "Pool",
+          gameType: "POOL",
+          status: "OCCUPIED",
+          hourlyRate: 180,
+          currentSession: {
+            id: "session_pool",
+            status: "ACTIVE",
+            customerName: "Walk-in customer",
+            startedAt: "2026-07-23T10:00:00.000Z",
+            plannedEndAt: "2026-07-23T11:00:00.000Z",
+            elapsedSeconds: 900,
+            ps5MemberCount: null,
+            hourlyRateSnapshot: 180,
+            billEstimate: 45,
+            billSummary: {
+              tableAmount: 45,
+              categoryTotals: { FOOD: 0, CIGARETTES: 0, BEVERAGES: 0 },
+              itemTotal: 0,
+              grandTotal: 45
+            },
+            currentBill: null,
+            assignedStaffName: null
+          },
+          recentBill: null
+        }]}
+      />
+    );
+
+    const poolCard = screen.getByRole("heading", { name: "Pool" }).closest("article");
+    expect(poolCard).not.toBeNull();
+    expect(poolCard).toHaveTextContent("Started");
+    expect(poolCard).not.toHaveTextContent("Ends");
+    expect(poolCard).toHaveTextContent("Stop");
+    expect(poolCard).not.toHaveTextContent("Extend");
+  });
+
+  it("keeps active bill details collapsed until staff asks to see them", async () => {
+    const user = userEvent.setup();
+    render(
+      <LiveTablePage
+        counterBills={[]}
+        businessName="The Nine Snooker & Cafe"
         products={[
-          { id: "product_tea", name: "Tea", category: "FOOD", priceAmount: 20 },
-          { id: "product_water", name: "Water Bottle", category: "BEVERAGES", priceAmount: 20 }
+          { id: "product_tea", name: "Tea", category: "FOOD", priceAmount: 20, trackInventory: false, stockOnHand: 25, stockUnit: "servings", unitsPerPack: 1 },
+          { id: "product_water", name: "Water Bottle", category: "BEVERAGES", priceAmount: 20, trackInventory: true, stockOnHand: 12, stockUnit: "bottles", unitsPerPack: 1 }
         ]}
         tables={[
           {
             id: "table_1",
-            number: "P1",
+            number: "Pool",
             gameType: "POOL",
             status: "AVAILABLE",
             hourlyRate: 160,
@@ -35,7 +82,7 @@ describe("LiveTablePage", () => {
           },
           {
             id: "table_2",
-            number: "S1",
+            number: "Royal Snooker 1",
             gameType: "SNOOKER",
             status: "OCCUPIED",
             hourlyRate: 350,
@@ -89,36 +136,37 @@ describe("LiveTablePage", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Live Floor" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Snooker & Pool" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "PS5" })).toBeInTheDocument();
-    expect(screen.getByText("P1")).toBeInTheDocument();
-    expect(screen.getByText("S1")).toBeInTheDocument();
-    expect(screen.getByText("PS5 1")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "The Nine Tables" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Booking QR" })).not.toBeInTheDocument();
+    expect(screen.getByText("Pool")).toBeInTheDocument();
+    expect(screen.getByText("Royal Snooker 1")).toBeInTheDocument();
+    expect(screen.queryByText("PS5 1")).not.toBeInTheDocument();
     expect(screen.queryByText(/Status:/)).not.toBeInTheDocument();
     expect(screen.queryByText("No active session")).not.toBeInTheDocument();
-    expect(screen.getByText(/₹200\.00\/hr/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start session for station P1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start session for station PS5 1" })).toBeInTheDocument();
+    expect(screen.getByText(/₹160\.00\/hr/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start session for station Pool" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start counter bill" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add items for station S1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "End session for station S1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Close bill and continue station S1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add items for station Royal Snooker 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop session for station Royal Snooker 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Close bill and continue station Royal Snooker 1" })).not.toBeInTheDocument();
     expect(screen.getByText(/Started/)).toBeInTheDocument();
+    expect(screen.queryByText(/Ends/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Extend/ })).not.toBeInTheDocument();
     expect(screen.getByText("15:00")).toBeInTheDocument();
     expect(screen.getByText("Elapsed")).toBeInTheDocument();
     expect(screen.getByText("Playing now")).toBeInTheDocument();
-    expect(screen.getByText("Station")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show bill details" })).toBeInTheDocument();
+    expect(screen.queryByText("Food")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tea x2")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show bill details" }));
     expect(screen.getByText("Food")).toBeInTheDocument();
-    expect(screen.getByText("Cigarettes")).toBeInTheDocument();
-    expect(screen.getByText("Beverages")).toBeInTheDocument();
-    expect(screen.getByText("Total")).toBeInTheDocument();
     expect(screen.getByText("Tea x2")).toBeInTheDocument();
     expect(screen.getByText("Water Bottle x2")).toBeInTheDocument();
     expect(screen.getByText("Last total ₹120.00")).toBeInTheDocument();
     expect(screen.getAllByText("₹590.00").length).toBeGreaterThan(0);
   });
 
-  it("renders PS5 member pricing in the gaming-style occupied card", () => {
+  it("does not render PS5 stations in The Nine's floor", () => {
     render(
       <LiveTablePage
         counterBills={[]}
@@ -155,12 +203,11 @@ describe("LiveTablePage", () => {
       />
     );
 
-    expect(screen.getByText("4 members · ₹250.00/hr")).toBeInTheDocument();
-    expect(screen.getByText("25:00")).toBeInTheDocument();
-    expect(screen.getByText("Live total")).toBeInTheDocument();
+    expect(screen.queryByText("PS5 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Live total")).not.toBeInTheDocument();
   });
 
-  it("shows only useful table summary counts", () => {
+  it("does not show summary status counts", () => {
     render(
       <LiveTablePage
         counterBills={[]}
@@ -175,12 +222,7 @@ describe("LiveTablePage", () => {
       />
     );
 
-    const counts = screen.getByLabelText("Table status counts");
-    expect(counts).toHaveTextContent("Available");
-    expect(counts).toHaveTextContent("Reserved");
-    expect(counts).toHaveTextContent("Occupied");
-    expect(counts).not.toHaveTextContent("Cleaning");
-    expect(counts).not.toHaveTextContent("Maintenance");
-    expect(counts).not.toHaveTextContent("Blocked");
+    expect(screen.queryByLabelText("Table status counts")).not.toBeInTheDocument();
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
   });
 });

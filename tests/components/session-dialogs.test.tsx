@@ -14,23 +14,39 @@ vi.mock("@/features/live-tables/actions", () => ({
 }));
 
 describe("StartWalkInDialog", () => {
-  it("shows validation feedback for missing required fields", async () => {
-    const user = userEvent.setup();
+  it("starts Pool sessions without asking for duration or repeating the station rate", () => {
+    render(
+      <StartWalkInDialog
+        tableId="pool_1"
+        tableNumber="Pool"
+        gameType="POOL"
+        open
+        onOpenChange={() => undefined}
+      />
+    );
 
-    render(<StartWalkInDialog tableId="table_1" tableNumber="P1" open onOpenChange={() => undefined} />);
-    await user.click(screen.getByRole("button", { name: "Start session" }));
-
-    expect(screen.getByText("Choose a duration.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Duration")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Rate:|₹180\.00/)).not.toBeInTheDocument();
   });
 
-  it("shows PS5 member choices and a rate preview", async () => {
+  it("does not ask for duration for snooker or PS5 sessions", () => {
+    const snooker = render(<StartWalkInDialog tableId="s1" tableNumber="Snooker 1" gameType="SNOOKER" open onOpenChange={() => undefined} />);
+    expect(screen.queryByLabelText("Duration")).not.toBeInTheDocument();
+    snooker.unmount();
+
+    render(<StartWalkInDialog tableId="ps5_1" tableNumber="PS5 1" gameType="PS5" open onOpenChange={() => undefined} />);
+    expect(screen.queryByLabelText("Duration")).not.toBeInTheDocument();
+  });
+
+  it("shows PS5 member choices without duplicating the rate shown on the station card", async () => {
     const user = userEvent.setup();
 
-    render(<StartWalkInDialog tableId="ps5_1" tableNumber="PS5 1" gameType="PS5" hourlyRate={100} open onOpenChange={() => undefined} />);
+    render(<StartWalkInDialog tableId="ps5_1" tableNumber="PS5 1" gameType="PS5" open onOpenChange={() => undefined} />);
 
     await user.selectOptions(screen.getByLabelText("Members"), "4");
 
-    expect(screen.getByText("PS5 rate: ₹250.00/hr")).toBeInTheDocument();
+    expect(screen.getByLabelText("Members")).toHaveValue("4");
+    expect(screen.queryByText(/rate:|₹250\.00/i)).not.toBeInTheDocument();
   });
 });
 

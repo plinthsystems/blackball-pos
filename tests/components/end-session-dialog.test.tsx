@@ -33,7 +33,7 @@ describe("EndSessionDialog", () => {
       />
     );
 
-    expect(screen.getByText("End session for P1")).toBeInTheDocument();
+    expect(screen.getByText("Stop session for P1")).toBeInTheDocument();
   });
 
   it("does not render the dialog when closed", () => {
@@ -46,10 +46,10 @@ describe("EndSessionDialog", () => {
       />
     );
 
-    expect(screen.queryByText("End session for P1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stop session for P1")).not.toBeInTheDocument();
   });
 
-  it("shows the info message about server-side calculation", () => {
+  it("explains that stopping also closes the bill and calculates actual play time", () => {
     render(
       <EndSessionDialog
         sessionId="session_1"
@@ -60,11 +60,11 @@ describe("EndSessionDialog", () => {
     );
 
     expect(
-      screen.getByText("Final duration and table charges are calculated on the server.")
+      screen.getByText("Stopping ends the session, closes the current bill, and charges actual play time plus items.")
     ).toBeInTheDocument();
   });
 
-  it("renders Cancel and End session buttons", () => {
+  it("renders Cancel and Stop & close bill buttons", () => {
     render(
       <EndSessionDialog
         sessionId="session_1"
@@ -75,7 +75,7 @@ describe("EndSessionDialog", () => {
     );
 
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "End session" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop & close bill" })).toBeInTheDocument();
   });
 
   it("calls onOpenChange(false) when Cancel is clicked", async () => {
@@ -110,7 +110,7 @@ describe("EndSessionDialog", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "End session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop & close bill" }));
 
     await waitFor(() => {
       expect(mockEndSessionAction).toHaveBeenCalledWith({ sessionId: "session_1" });
@@ -133,7 +133,7 @@ describe("EndSessionDialog", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "End session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop & close bill" }));
 
     await waitFor(() => {
       expect(onOpenChange).toHaveBeenCalledWith(false);
@@ -156,7 +156,7 @@ describe("EndSessionDialog", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "End session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop & close bill" }));
 
     await waitFor(() => {
       expect(onOpenChange).not.toHaveBeenCalled();
@@ -178,7 +178,7 @@ describe("EndSessionDialog", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "End session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop & close bill" }));
 
     await waitFor(() => {
       expect(screen.getByText("Session ended. Final total Rs.180.")).toBeInTheDocument();
@@ -200,7 +200,7 @@ describe("EndSessionDialog", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "End session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop & close bill" }));
 
     await waitFor(() => {
       expect(screen.getByText("Only an active or paused session can be ended.")).toBeInTheDocument();
@@ -225,7 +225,7 @@ describe("EndSessionDialog", () => {
       />
     );
 
-    const endButton = screen.getByRole("button", { name: "End session" });
+    const endButton = screen.getByRole("button", { name: "Stop & close bill" });
     fireEvent.click(endButton);
 
     expect(endButton).toBeDisabled();
@@ -248,7 +248,7 @@ describe("EndSessionDialog", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "End session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop & close bill" }));
 
     await waitFor(() => {
       expect(mockEndSessionAction).toHaveBeenCalledWith({ sessionId: "unique_session_id_123" });
@@ -265,7 +265,7 @@ describe("EndSessionDialog", () => {
       />
     );
 
-    expect(screen.getByText("End session for S1")).toBeInTheDocument();
+    expect(screen.getByText("Stop session for S1")).toBeInTheDocument();
   });
 
   it("shows correct table number in title for PS5 tables", () => {
@@ -278,6 +278,6 @@ describe("EndSessionDialog", () => {
       />
     );
 
-    expect(screen.getByText("End session for PS5 1")).toBeInTheDocument();
+    expect(screen.getByText("Stop session for PS5 1")).toBeInTheDocument();
   });
 });

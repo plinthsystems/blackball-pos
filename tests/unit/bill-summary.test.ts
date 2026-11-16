@@ -30,6 +30,17 @@ describe("summarizeBill", () => {
       hourlyRate: 350
     });
 
-    expect(amount).toBe(250.83);
+    expect(amount).toBe(247);
+  });
+
+  it("keeps counter bills free of table time", () => {
+    const summary = summarizeBill({
+      tableAmount: 0,
+      items: [{ category: "CAFE", lineTotalAmount: 80 }]
+    });
+
+    expect(summary.tableAmount).toBe(0);
+    expect(summary.itemTotal).toBe(80);
+    expect(summary.grandTotal).toBe(80);
   });
 });

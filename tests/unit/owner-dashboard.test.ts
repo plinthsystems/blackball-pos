@@ -85,4 +85,45 @@ describe("buildOwnerDashboardData", () => {
       { label: "PS5", hours: 2 }
     ]);
   });
+
+  it("builds a bounded daily revenue trend for the selected reporting window", () => {
+    const data = buildOwnerDashboardData({
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      bills: [],
+      sessions: [],
+      openBillCount: 0,
+      reportingWindow: "7d",
+      trendBills: [
+        {
+          id: "old",
+          kind: "COUNTER",
+          status: "CLOSED",
+          closedAt: new Date("2026-08-12T10:00:00.000Z"),
+          tableAmountSnapshot: 0,
+          itemTotalAmountSnapshot: 100,
+          totalAmountSnapshot: 100,
+          session: null,
+          items: []
+        },
+        {
+          id: "recent",
+          kind: "COUNTER",
+          status: "CLOSED",
+          closedAt: new Date("2026-08-16T10:00:00.000Z"),
+          tableAmountSnapshot: 0,
+          itemTotalAmountSnapshot: 250,
+          totalAmountSnapshot: 250,
+          session: null,
+          items: []
+        }
+      ]
+    });
+
+    expect(data.reportingWindow).toBe("7d");
+    expect(data.dailyTrend).toEqual([
+      { date: "2026-08-12", revenue: 100, closedBills: 1 },
+      { date: "2026-08-16", revenue: 250, closedBills: 1 }
+    ]);
+    expect(data.dailyTrend?.length).toBeLessThanOrEqual(7);
+  });
 });

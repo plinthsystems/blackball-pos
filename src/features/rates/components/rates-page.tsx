@@ -9,6 +9,7 @@ import { updateHourlyRateAction } from "../actions";
 import type { RateSetting } from "../types";
 
 export function RatesPage({ rates }: { rates: RateSetting[] }) {
+  const visibleRates = rates.filter((rate) => rate.gameType !== "PS5");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -30,7 +31,7 @@ export function RatesPage({ rates }: { rates: RateSetting[] }) {
           <span>Hourly rate</span>
           <span>Actions</span>
         </div>
-        {rates.map((rate) => (
+        {visibleRates.map((rate) => (
           <RateRow key={rate.id} rate={rate} disabled={isPending} onUpdate={updateRate} />
         ))}
       </div>

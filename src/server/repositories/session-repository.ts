@@ -66,7 +66,7 @@ export const prismaSessionRepository: SessionRepository = {
     const client = tx as typeof prisma;
     const session = await client.session.findFirst({
       where: { businessId, tableId, status: { in: ["ACTIVE", "PAUSED"] } },
-      select: { id: true, businessId: true, tableId: true, status: true, startedAt: true, plannedEndAt: true, ps5MemberCount: true, hourlyRateSnapshot: true }
+      select: { id: true, businessId: true, tableId: true, status: true, startedAt: true, plannedEndAt: true, pausedAt: true, ps5MemberCount: true, hourlyRateSnapshot: true }
     });
     return session ? mapSessionRecord(session) : null;
   },
@@ -75,7 +75,7 @@ export const prismaSessionRepository: SessionRepository = {
     const client = tx as typeof prisma;
     const session = await client.session.findFirst({
       where: { id: sessionId, businessId },
-      select: { id: true, businessId: true, tableId: true, status: true, startedAt: true, plannedEndAt: true, ps5MemberCount: true, hourlyRateSnapshot: true }
+      select: { id: true, businessId: true, tableId: true, status: true, startedAt: true, plannedEndAt: true, pausedAt: true, ps5MemberCount: true, hourlyRateSnapshot: true }
     });
     return session ? mapSessionRecord(session) : null;
   },
@@ -152,6 +152,7 @@ function mapSessionRecord(session: {
   status: SessionStatus;
   startedAt: Date;
   plannedEndAt: Date;
+  pausedAt: Date | null;
   ps5MemberCount: number | null;
   hourlyRateSnapshot: unknown;
 }): SessionRecord {

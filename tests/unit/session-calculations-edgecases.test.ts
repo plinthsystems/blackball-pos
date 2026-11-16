@@ -251,13 +251,13 @@ describe("session calculations - edge cases and boundary values", () => {
       expect(result).toBe(600);
     });
 
-    it("rounds up to next minute", () => {
+    it("prorates exact elapsed seconds and rounds the final charge up to whole rupees", () => {
       const result = calculateMinuteBasedTableCharge({
         billableSeconds: 61,
         hourlyRate: 600
       });
-      // 61 seconds = ceil(61/60) = 2 minutes = 2 * 600 / 60 = 20
-      expect(result).toBe(20);
+      // 61 seconds at ₹600/hour is ₹10.17, rounded up to ₹11.
+      expect(result).toBe(11);
     });
 
     it("handles negative billable seconds by clamping to 0", () => {
@@ -281,8 +281,8 @@ describe("session calculations - edge cases and boundary values", () => {
         billableSeconds: 45 * 60,
         hourlyRate: 350
       });
-      // 45 minutes * 350 / 60 = 262.5
-      expect(result).toBe(262.5);
+      // 45 minutes * ₹350/hour = ₹262.50, rounded up to ₹263.
+      expect(result).toBe(263);
     });
 
     it("handles rounding to 2 decimal places", () => {
@@ -290,8 +290,8 @@ describe("session calculations - edge cases and boundary values", () => {
         billableSeconds: 7 * 60,
         hourlyRate: 100
       });
-      // 7 * 100 / 60 = 11.666... -> rounded to 11.67
-      expect(result).toBe(11.67);
+      // 7 minutes at ₹100/hour is ₹11.67, rounded up to ₹12.
+      expect(result).toBe(12);
     });
 
     it("handles very large billable seconds", () => {
@@ -308,7 +308,7 @@ describe("session calculations - edge cases and boundary values", () => {
         billableSeconds: 60 * 60,
         hourlyRate: 333.33
       });
-      expect(result).toBe(333.33);
+      expect(result).toBe(334);
     });
   });
 });

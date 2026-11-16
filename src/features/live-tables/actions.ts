@@ -6,6 +6,7 @@ import { prisma } from "@/server/db/prisma";
 import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
 import { requirePermission } from "@/server/auth/permissions";
 import { calculateBillSegmentTableAmount } from "@/server/domain/bill-summary";
+import { calculateFoodMenuDiscount, foodMenuDiscountBillItem } from "@/server/domain/food-discount";
 import { DomainError } from "@/server/domain/errors";
 import { noopDomainEventPublisher } from "@/server/domain/events";
 import { prismaAuditLogRepository } from "@/server/repositories/audit-log-repository";
@@ -17,9 +18,11 @@ import {
   addBillItemSchema,
   closeCounterBillSchema,
   closeBillAndContinueSessionSchema,
+  recordBillPaymentSchema,
   endSessionSchema,
   extendSessionSchema,
   removeBillItemSchema,
+  updateBillItemQuantitySchema,
   startCounterBillSchema,
   startWalkInSessionSchema,
   tableStatusSchema
@@ -77,6 +80,36 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
       throw new DomainError("PRICING_NOT_FOUND", "Hourly rate was not found for this station.");
     }
 
+    let customerId: string | null = null;
+    if (parsed.customerName || parsed.customerPhone) {
+      const existingCustomer = parsed.customerPhone
+        ? await prisma.customer.findFirst({
+            where: { businessId: context.businessId, phone: parsed.customerPhone },
+            select: { id: true, name: true }
+          })
+        : null;
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+        if (parsed.customerName && parsed.customerName !== existingCustomer.name) {
+          await prisma.customer.update({
+            where: { id: existingCustomer.id, businessId: context.businessId },
+            data: { name: parsed.customerName }
+          });
+        }
+      } else {
+        const customer = await prisma.customer.create({
+          data: {
+            businessId: context.businessId,
+            name: parsed.customerName || "Walk-in customer",
+            phone: parsed.customerPhone || null
+          },
+          select: { id: true }
+        });
+        customerId = customer.id;
+      }
+    }
+
+    const sessionStartedAt = new Date();
     const session = await services().sessions.startWalkInSession({
       businessId: context.businessId,
       employeeId: context.employeeId,
@@ -84,8 +117,9 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
       durationMinutes: parsed.durationMinutes,
       ps5MemberCount,
       hourlyRateSnapshot: Number(pricing.priceAmount),
+      customerId,
       assignedEmployeeId: parsed.assignedEmployeeId ?? context.employeeId,
-      now: new Date()
+      now: sessionStartedAt
     });
 
     await prisma.bill.create({
@@ -94,7 +128,8 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
         sessionId: session.sessionId,
         kind: "SESSION",
         status: "OPEN",
-        label: "Bill 1"
+        label: "Bill 1",
+        openedAt: sessionStartedAt
       }
     });
 
@@ -164,7 +199,7 @@ export async function endSessionAction(input: unknown): Promise<ActionResult> {
       });
 
       const closedTotal = openBill
-        ? await closeBill(tx, openBill, Number(session.hourlyRateSnapshot), now)
+        ? await closeBill(tx, context.businessId, openBill, Number(session.hourlyRateSnapshot), now, session.startedAt, parsed.applyFoodDiscount)
         : 0;
       return closedTotal;
     });
@@ -199,7 +234,7 @@ export async function addBillItemAction(input: unknown): Promise<ActionResult> {
             businessId: context.businessId,
             active: true
           },
-          select: { id: true, name: true, category: true, priceAmount: true }
+          select: { id: true, name: true, category: true, priceAmount: true, trackInventory: true }
         })
       ]);
 
@@ -209,6 +244,17 @@ export async function addBillItemAction(input: unknown): Promise<ActionResult> {
 
       const unitPrice = Number(product.priceAmount);
       const lineTotal = Math.round(unitPrice * parsed.quantity * 100) / 100;
+      const trackInventory = product.trackInventory || product.category === "CIGARETTES" || product.category === "BEVERAGES";
+      if (trackInventory) {
+        const stockUpdate = await tx.product.updateMany({
+          where: { id: product.id, businessId: context.businessId, active: true, stockOnHand: { gte: parsed.quantity } },
+          data: { stockOnHand: { decrement: parsed.quantity } }
+        });
+        if (stockUpdate.count !== 1) {
+          throw new DomainError("INSUFFICIENT_STOCK", "Not enough stock available.");
+        }
+      }
+
       await tx.billItem.create({
         data: {
           businessId: context.businessId,
@@ -253,18 +299,91 @@ export async function removeBillItemAction(input: unknown): Promise<ActionResult
     const context = await getCurrentEmployeeContext();
     requirePermission(context, "bills.manage");
     const parsed = removeBillItemSchema.parse(input);
-    const item = await prisma.billItem.findFirst({
-      where: { id: parsed.billItemId, businessId: context.businessId, bill: { status: "OPEN" } },
-      select: { id: true, bill: { select: { kind: true } } }
-    });
-    if (!item) {
-      throw new DomainError("SESSION_NOT_ACTIVE", "Open bill item was not found.");
-    }
+    await prisma.$transaction(async (tx) => {
+      const item = await tx.billItem.findFirst({
+        where: { id: parsed.billItemId, businessId: context.businessId, bill: { status: "OPEN" } },
+        select: { id: true, productId: true, quantity: true, bill: { select: { kind: true } } }
+      });
+      if (!item) {
+        throw new DomainError("SESSION_NOT_ACTIVE", "Open bill item was not found.");
+      }
 
-    await prisma.billItem.delete({ where: { id: item.id } });
+      if (item.productId) {
+        const product = await tx.product.findFirst({
+          where: { id: item.productId, businessId: context.businessId },
+          select: { trackInventory: true, category: true }
+        });
+        if (product && (product.trackInventory || product.category === "CIGARETTES" || product.category === "BEVERAGES")) {
+          await tx.product.updateMany({
+            where: { id: item.productId, businessId: context.businessId },
+            data: { stockOnHand: { increment: item.quantity } }
+          });
+        }
+      }
+      await tx.billItem.delete({ where: { id: item.id } });
+    });
     revalidatePath("/live-tables");
     revalidatePath("/settings");
     return { ok: true, message: "Item removed from bill." };
+  } catch (error) {
+    return actionError(error);
+  }
+}
+
+export async function updateBillItemQuantityAction(input: unknown): Promise<ActionResult> {
+  try {
+    const context = await getCurrentEmployeeContext();
+    requirePermission(context, "bills.manage");
+    const parsed = updateBillItemQuantitySchema.parse(input);
+
+    await prisma.$transaction(async (tx) => {
+      const item = await tx.billItem.findFirst({
+        where: { id: parsed.billItemId, businessId: context.businessId, bill: { status: "OPEN" } },
+        select: { id: true, productId: true, quantity: true, unitPriceAmount: true }
+      });
+      if (!item) {
+        throw new DomainError("SESSION_NOT_ACTIVE", "Open bill item was not found.");
+      }
+
+      const quantityDifference = parsed.quantity - item.quantity;
+      if (item.productId) {
+        const product = await tx.product.findFirst({
+          where: { id: item.productId, businessId: context.businessId },
+          select: { trackInventory: true, category: true }
+        });
+        const trackInventory = Boolean(product && (product.trackInventory || product.category === "CIGARETTES" || product.category === "BEVERAGES"));
+        if (quantityDifference > 0 && trackInventory) {
+          const stockUpdate = await tx.product.updateMany({
+            where: {
+              id: item.productId,
+              businessId: context.businessId,
+              stockOnHand: { gte: quantityDifference }
+            },
+            data: { stockOnHand: { decrement: quantityDifference } }
+          });
+          if (stockUpdate.count !== 1) {
+            throw new DomainError("INSUFFICIENT_STOCK", "Not enough stock available.");
+          }
+        } else if (quantityDifference < 0 && trackInventory) {
+          await tx.product.updateMany({
+            where: { id: item.productId, businessId: context.businessId },
+            data: { stockOnHand: { increment: Math.abs(quantityDifference) } }
+          });
+        }
+      }
+
+      await tx.billItem.update({
+        where: { id: item.id },
+        data: {
+          quantity: parsed.quantity,
+          lineTotalAmount: Math.round(Number(item.unitPriceAmount) * parsed.quantity * 100) / 100
+        }
+      });
+    });
+
+    revalidatePath("/live-tables");
+    revalidatePath("/settings");
+    return { ok: true, message: "Bill item quantity updated." };
   } catch (error) {
     return actionError(error);
   }
@@ -287,7 +406,7 @@ export async function closeBillAndContinueSessionAction(input: unknown): Promise
         throw new DomainError("SESSION_NOT_ACTIVE", "Open session bill was not found.");
       }
 
-      await closeBill(tx, openBill, Number(session.hourlyRateSnapshot), now);
+      await closeBill(tx, context.businessId, openBill, Number(session.hourlyRateSnapshot), now, session.startedAt, parsed.applyFoodDiscount);
       const billCount = await tx.bill.count({ where: { businessId: context.businessId, sessionId: session.id } });
       await tx.bill.create({
         data: {
@@ -341,19 +460,64 @@ export async function closeCounterBillAction(input: unknown): Promise<ActionResu
       throw new DomainError("SESSION_NOT_ACTIVE", "Open counter bill was not found.");
     }
 
-    const itemTotal = roundMoney(bill.items.reduce((total, item) => total + Number(item.lineTotalAmount), 0));
-    await prisma.bill.update({
-      where: { id: bill.id },
-      data: {
-        status: "CLOSED",
-        closedAt: new Date(),
-        tableAmountSnapshot: 0,
-        itemTotalAmountSnapshot: itemTotal,
-        totalAmountSnapshot: itemTotal
+    const now = new Date();
+    const discount = parsed.applyFoodDiscount ? calculateFoodMenuDiscount(bill.items) : 0;
+    const grossItemTotal = roundMoney(bill.items.reduce((total, item) => total + Number(item.lineTotalAmount), 0));
+    const itemTotal = roundMoney(grossItemTotal - discount);
+    await prisma.$transaction(async (tx) => {
+      const claimed = await tx.bill.updateMany({ where: { id: bill.id, status: "OPEN" }, data: { status: "CLOSED", closedAt: now, paymentStatus: "UNPAID" } });
+      if (claimed.count !== 1) throw new DomainError("BILL_NOT_FOUND", "This bill has already been closed.");
+      if (discount > 0) {
+        await tx.billItem.create({ data: foodMenuDiscountBillItem(context.businessId, bill.id, discount) });
       }
+      await tx.bill.update({
+        where: { id: bill.id },
+        data: { tableAmountSnapshot: 0, itemTotalAmountSnapshot: itemTotal, totalAmountSnapshot: itemTotal }
+      });
     });
     revalidatePath("/live-tables");
     return { ok: true, message: `Counter bill closed. Total ${formatActionMoney(itemTotal)}.` };
+  } catch (error) {
+    return actionError(error);
+  }
+}
+
+export async function recordBillPaymentAction(input: unknown): Promise<ActionResult> {
+  try {
+    const context = await getCurrentEmployeeContext();
+    requirePermission(context, "bills.manage");
+    const parsed = recordBillPaymentSchema.parse(input);
+    const cashAmount = roundMoney(parsed.cashAmount);
+    const upiAmount = roundMoney(parsed.upiAmount);
+    const paymentAmount = roundMoney(cashAmount + upiAmount);
+    if (paymentAmount <= 0) throw new DomainError("INVALID_PAYMENT", "Enter a cash or UPI amount.");
+
+    const result = await prisma.$transaction(async (tx) => {
+      const bill = await tx.bill.findFirst({
+        where: { id: parsed.billId, businessId: context.businessId, status: "CLOSED", paymentStatus: { in: ["UNPAID", "PARTIAL"] } },
+        include: { payments: { select: { amount: true } } }
+      });
+      if (!bill) throw new DomainError("BILL_NOT_DUE", "This bill is not awaiting payment.");
+
+      const paidSoFar = roundMoney(bill.payments.reduce((sum, payment) => sum + Number(payment.amount), 0));
+      const balance = roundMoney(Number(bill.totalAmountSnapshot) - paidSoFar);
+      if (paymentAmount > balance + 0.001) {
+        throw new DomainError("PAYMENT_EXCEEDS_BALANCE", `Payment is greater than the remaining balance of ${formatActionMoney(balance)}.`);
+      }
+
+      const payments = [
+        ...(cashAmount > 0 ? [{ businessId: context.businessId, billId: bill.id, method: "CASH" as const, amount: cashAmount }] : []),
+        ...(upiAmount > 0 ? [{ businessId: context.businessId, billId: bill.id, method: "UPI" as const, amount: upiAmount }] : [])
+      ];
+      await tx.billPayment.createMany({ data: payments });
+      const isPaid = roundMoney(paidSoFar + paymentAmount) >= Number(bill.totalAmountSnapshot) - 0.001;
+      await tx.bill.update({ where: { id: bill.id }, data: { paymentStatus: isPaid ? "PAID" : "PARTIAL" } });
+      return { isPaid, balance: roundMoney(balance - paymentAmount) };
+    }, { isolationLevel: "Serializable" });
+
+    revalidatePath("/billing");
+    revalidatePath("/dashboard");
+    return { ok: true, message: result.isPaid ? "Payment recorded. Bill is paid." : `Payment recorded. ${formatActionMoney(result.balance)} remains due.` };
   } catch (error) {
     return actionError(error);
   }
@@ -374,26 +538,54 @@ export async function updateTableStatusAction(input: unknown): Promise<ActionRes
 
 async function closeBill(
   tx: Prisma.TransactionClient,
+  businessId: string,
   bill: {
     id: string;
+    label: string | null;
+    sessionId: string | null;
     kind: "SESSION" | "COUNTER";
     openedAt: Date;
-    items: Array<{ lineTotalAmount: unknown }>;
+    items: Array<{ nameSnapshot: string; category: "FOOD" | "CAFE" | "CIGARETTES" | "BEVERAGES"; lineTotalAmount: unknown }>;
   },
   hourlyRate: number,
-  closedAt: Date
+  closedAt: Date,
+  sessionStartedAt: Date,
+  applyFoodDiscount: boolean
 ) {
-  const itemTotal = roundMoney(bill.items.reduce((total, item) => total + Number(item.lineTotalAmount), 0));
+  const foodDiscount = applyFoodDiscount ? calculateFoodMenuDiscount(bill.items) : 0;
+  const discountLine = foodDiscount > 0 ? foodMenuDiscountBillItem(businessId, bill.id, foodDiscount) : null;
+  const pauses = bill.sessionId
+    ? await tx.sessionPause.findMany({ where: { sessionId: bill.sessionId }, select: { pausedAt: true, resumedAt: true } })
+    : [];
+  const hasOpenPause = pauses.some((pause) => !pause.resumedAt);
+  const sessionPause = bill.sessionId && !hasOpenPause
+    ? await tx.session.findUnique({ where: { id: bill.sessionId }, select: { pausedAt: true, status: true } })
+    : null;
+  const billPauses = [...pauses];
+  if (sessionPause?.status === "PAUSED" && sessionPause.pausedAt) {
+    billPauses.push({ pausedAt: sessionPause.pausedAt, resumedAt: null });
+  }
+  const itemTotal = roundMoney(bill.items.reduce((total, item) => total + Number(item.lineTotalAmount), 0) - foodDiscount);
   const tableAmount =
     bill.kind === "SESSION"
-      ? calculateBillSegmentTableAmount({ startedAt: bill.openedAt, endedAt: closedAt, hourlyRate })
+      ? calculateBillSegmentTableAmount({
+          startedAt: bill.label === "Bill 1" && bill.sessionId ? sessionStartedAt : bill.openedAt,
+          endedAt: closedAt,
+          hourlyRate,
+          pauses: billPauses
+        })
       : 0;
   const total = roundMoney(itemTotal + tableAmount);
+  const claimed = await tx.bill.updateMany({ where: { id: bill.id, status: "OPEN" }, data: { status: "CLOSED", closedAt, paymentStatus: "UNPAID" } });
+  if (claimed.count !== 1) {
+    throw new DomainError("BILL_NOT_FOUND", "This bill has already been closed.");
+  }
+  if (discountLine) {
+    await tx.billItem.create({ data: discountLine });
+  }
   await tx.bill.update({
     where: { id: bill.id },
     data: {
-      status: "CLOSED",
-      closedAt,
       tableAmountSnapshot: tableAmount,
       itemTotalAmountSnapshot: itemTotal,
       totalAmountSnapshot: total

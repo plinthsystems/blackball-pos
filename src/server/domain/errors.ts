@@ -8,7 +8,11 @@ export type DomainErrorCode =
   | "INVALID_STATUS_TRANSITION"
   | "UNAUTHORIZED"
   | "PASSWORD_CHANGE_REQUIRED"
-  | "BILL_NOT_FOUND";
+  | "BILL_NOT_FOUND"
+  | "BILL_NOT_DUE"
+  | "INVALID_PAYMENT"
+  | "PAYMENT_EXCEEDS_BALANCE"
+  | "INSUFFICIENT_STOCK";
 
 export class DomainError extends Error {
   constructor(

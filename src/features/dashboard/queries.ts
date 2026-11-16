@@ -1,5 +1,6 @@
 import { prisma } from "@/server/db/prisma";
-import type { OwnerDashboardData } from "./types";
+import { addDaysToDateKey, formatStoreDateKey, storeDateStart } from "@/lib/time";
+import type { DashboardWindow, OwnerDashboardData, DailyRevenueRow } from "./types";
 
 type DashboardBill = {
   id: string;
@@ -25,6 +26,8 @@ export type BuildOwnerDashboardInput = {
   bills: DashboardBill[];
   sessions: DashboardSession[];
   openBillCount: number;
+  reportingWindow?: DashboardWindow;
+  trendBills?: DashboardBill[];
 };
 
 export function buildOwnerDashboardData(input: BuildOwnerDashboardInput): OwnerDashboardData {
@@ -65,6 +68,8 @@ export function buildOwnerDashboardData(input: BuildOwnerDashboardInput): OwnerD
     busy.set(label, roundMoney((busy.get(label) ?? 0) + hours));
   }
 
+  const dailyTrend = input.trendBills ? buildDailyTrend(input.trendBills, input.reportingWindow ?? "today") : undefined;
+
   return {
     totalRevenue: roundMoney(revenue.stationTime + revenue.ps5Time + revenue.food + revenue.cigarettes + revenue.beverages),
     revenue,
@@ -75,29 +80,51 @@ export function buildOwnerDashboardData(input: BuildOwnerDashboardInput): OwnerD
       { label: "PS5", hours: busy.get("PS5") ?? 0 }
     ],
     closedBillCount: input.bills.length,
-    openBillCount: input.openBillCount
+    openBillCount: input.openBillCount,
+    ...(dailyTrend
+      ? { reportingWindow: input.reportingWindow ?? "today", dailyTrend }
+      : {})
   };
 }
 
-export async function getOwnerDashboardData(businessId: string, now = new Date()): Promise<OwnerDashboardData> {
-  const startOfDay = new Date(now);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(startOfDay);
-  endOfDay.setDate(endOfDay.getDate() + 1);
+export async function getOwnerDashboardData(
+  businessId: string,
+  now = new Date(),
+  reportingWindow: DashboardWindow = "today"
+): Promise<OwnerDashboardData> {
+  const today = formatStoreDateKey(now);
+  const startOfDay = storeDateStart(today);
+  const endOfDay = storeDateStart(addDaysToDateKey(today, 1));
+  const daysBack = reportingWindow === "30d" ? 29 : reportingWindow === "7d" ? 6 : 0;
+  const windowStart = storeDateStart(addDaysToDateKey(today, -daysBack));
 
   const [bills, sessions, openBillCount] = await Promise.all([
     prisma.bill.findMany({
-      where: { businessId, status: "CLOSED", closedAt: { gte: startOfDay, lt: endOfDay } },
+      where: { businessId, status: "CLOSED", closedAt: { gte: windowStart, lt: endOfDay } },
       include: { items: true, session: { include: { table: true } } }
     }),
     prisma.session.findMany({
-      where: { businessId, status: "COMPLETED", actualEndAt: { gte: startOfDay, lt: endOfDay } },
+      where: { businessId, status: "COMPLETED", actualEndAt: { gte: windowStart, lt: endOfDay } },
       include: { table: true }
     }),
     prisma.bill.count({ where: { businessId, status: "OPEN" } })
   ]);
 
-  return buildOwnerDashboardData({ now, bills, sessions, openBillCount });
+  return buildOwnerDashboardData({ now, bills, sessions, openBillCount, reportingWindow, trendBills: bills });
+}
+
+function buildDailyTrend(bills: DashboardBill[], reportingWindow: DashboardWindow): DailyRevenueRow[] {
+  const byDate = new Map<string, DailyRevenueRow>();
+  for (const bill of bills) {
+    if (!bill.closedAt) continue;
+    const date = formatStoreDateKey(bill.closedAt);
+    const current = byDate.get(date) ?? { date, revenue: 0, closedBills: 0 };
+    current.revenue = roundMoney(current.revenue + Number(bill.totalAmountSnapshot));
+    current.closedBills += 1;
+    byDate.set(date, current);
+  }
+  const maxDays = reportingWindow === "30d" ? 30 : reportingWindow === "7d" ? 7 : 1;
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date)).slice(-maxDays);
 }
 
 function stationGroupLabel(gameType: "POOL" | "SNOOKER" | "PS5", pricingGroup: string) {

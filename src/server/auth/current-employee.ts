@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/server/db/prisma";
 
 export type AccountType = "PLATFORM_ADMIN" | "HQ_ADMIN" | "STORE_OWNER" | "MANAGER" | "STORE_USER";
@@ -124,7 +125,7 @@ const defaultBranding = {
   accentColor: "#b98922"
 };
 
-export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContext> {
+export const getCurrentEmployeeContext = cache(async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContext> {
   const identity = await getRequestIdentity();
   if (!identity.email) {
     return buildDeniedContext();
@@ -134,33 +135,45 @@ export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContex
       email: identity.email,
       active: true
     },
-    include: {
+    select: {
+      id: true,
+      businessId: true,
+      organizationId: true,
+      franchiseeId: true,
+      name: true,
+      email: true,
+      accountType: true,
+      mustChangePassword: true,
       organization: {
-        include: {
-          businesses: { select: { id: true, name: true, slug: true, franchiseeId: true, settings: true } }
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          businesses: { select: businessAccessSelect }
         }
       },
       franchisee: {
-        include: {
-          businesses: { select: { id: true, name: true, slug: true, franchiseeId: true, settings: true } }
+        select: {
+          id: true,
+          name: true,
+          businesses: { select: businessAccessSelect }
         }
       },
       business: {
-        include: {
-          settings: true,
-          organization: {
-            include: {
-              businesses: { select: { id: true, name: true, slug: true, franchiseeId: true, settings: true } }
-            }
-          }
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          franchiseeId: true,
+          settings: { select: brandingSettingsSelect }
         }
       },
       roles: {
-        include: {
+        select: {
           role: {
-            include: {
+            select: {
               permissions: {
-                include: { permission: true }
+                select: { permission: { select: { key: true } } }
               }
             }
           }
@@ -179,8 +192,23 @@ export async function getCurrentEmployeeContext(): Promise<CurrentEmployeeContex
     return buildDeniedContext();
   }
 
-  return buildFallbackContext(identity.tenantSlug ?? "seed-business", identity.email ?? "owner@cueclub.example");
-}
+  return buildFallbackContext(identity.tenantSlug ?? "the-nine", identity.email ?? process.env.THE_NINE_ADMIN_EMAIL ?? "admin@thenine.local");
+});
+
+const brandingSettingsSelect = {
+  appName: true,
+  logoInitials: true,
+  brandColor: true,
+  accentColor: true
+} as const;
+
+const businessAccessSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  franchiseeId: true,
+  settings: { select: brandingSettingsSelect }
+} as const;
 
 export function buildCurrentEmployeeContext(
   employee: EmployeeWithTenantAccess,
@@ -342,8 +370,8 @@ async function getRequestIdentity() {
     const tenantSlug =
       process.env.BLACKBALL_TENANT_SLUG ??
       process.env.NEXT_PUBLIC_BLACKBALL_TENANT_SLUG ??
-      "seed-business";
-    const defaultEmail = process.env.BLACKBALL_USER_EMAIL ?? "owner@cueclub.example";
+      "the-nine";
+    const defaultEmail = process.env.BLACKBALL_USER_EMAIL ?? process.env.THE_NINE_ADMIN_EMAIL ?? "admin@thenine.local";
 
     return {
       tenantSlug: requestHeaders.get("x-tenant-slug") ?? cookieStoreSlug ?? urlStoreSlug ?? tenantSlug,
@@ -354,8 +382,8 @@ async function getRequestIdentity() {
       return { tenantSlug: null, email: null };
     }
     return {
-      tenantSlug: process.env.BLACKBALL_TENANT_SLUG ?? "seed-business",
-      email: process.env.BLACKBALL_USER_EMAIL ?? "owner@cueclub.example"
+      tenantSlug: process.env.BLACKBALL_TENANT_SLUG ?? "the-nine",
+      email: process.env.BLACKBALL_USER_EMAIL ?? process.env.THE_NINE_ADMIN_EMAIL ?? "admin@thenine.local"
     };
   }
 }

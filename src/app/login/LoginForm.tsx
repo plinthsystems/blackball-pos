@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -37,32 +36,47 @@ export function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-lime-500/10 border border-lime-500/30 text-lime-400 font-black text-2xl shadow-[0_0_30px_rgba(132,204,22,0.2)]">
-            BB
+    <div className="flex min-h-screen items-center justify-center bg-[#090d0b] p-3 text-white sm:p-6">
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-[24px] border border-lime-300/15 bg-slate-950 shadow-[0_24px_100px_rgba(0,0,0,0.45)] lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="relative isolate flex min-h-[230px] items-end overflow-hidden sm:min-h-[300px] lg:min-h-[620px]">
+          <img src="/the-nine/club-opening.webp" alt="The Nine club floor and snooker tables" className="absolute inset-0 z-0 h-full w-full object-cover object-center" />
+          <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#07100c]/95 via-[#07100c]/30 to-[#07100c]/5" />
+          <div className="relative z-20 p-5 sm:p-8 lg:p-10">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-lime-300/25 bg-black/35 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-lime-100 backdrop-blur sm:mb-5 sm:text-[11px]">
+              <span className="h-2 w-2 rounded-full bg-lime-300 shadow-[0_0_14px_rgba(190,242,100,0.75)]" />
+              The Nine · Cue Sports Club
+            </div>
+            <h2 className="max-w-lg text-2xl font-black leading-tight text-white sm:text-4xl">Run the floor. Know the numbers.</h2>
+            <p className="mt-2 max-w-md text-xs leading-5 text-lime-50/80 sm:mt-3 sm:text-sm sm:leading-6">
+              A focused workspace for live tables, billing, and the decisions that keep your club moving.
+            </p>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">BlackBall POS & SaaS</h1>
-          <p className="text-xs text-slate-400">Club Management & Multi-Outlet Enterprise POS</p>
-        </div>
+        </section>
 
-        {/* Login Card */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-7 shadow-2xl space-y-5">
-          <div className="border-b border-slate-800 pb-3">
-            <h2 className="text-base font-bold text-white">Sign In to Your Account</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Enter your store manager or staff credentials</p>
-          </div>
+        <section className="flex items-center p-5 sm:p-8 lg:p-12">
+          <div className="w-full space-y-6">
+            <div className="flex items-center gap-3">
+              <img src="/the-nine/the-nine-logo-white.png" alt="The Nine logo" className="h-16 w-16 rounded-xl bg-white p-1 object-contain shadow-[0_0_24px_rgba(212,145,64,0.12)]" />
+              <div className="space-y-1">
+                <h1 className="text-xl font-black tracking-tight text-white sm:text-2xl">The Nine Snooker & Cafe</h1>
+                <p className="text-xs text-slate-400">Store operations</p>
+              </div>
+            </div>
 
-          {error && (
-            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs font-bold text-rose-300 flex items-center gap-2">
+            <div className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl sm:p-7">
+              <div className="border-b border-slate-800 pb-3">
+                <h2 className="text-base font-bold text-white">Sign in</h2>
+                <p className="mt-0.5 text-xs text-slate-400">Use your Admin or Store login</p>
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs font-bold text-rose-300">
               <span className="material-symbols-outlined text-[16px]">error</span>
               {error}
-            </div>
-          )}
+                </div>
+              )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-300">Email Address</label>
               <input
@@ -70,7 +84,7 @@ export function LoginForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="owner@cueclub.example"
+                placeholder="admin@thenine.local"
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-lime-400 focus:outline-none"
               />
             </div>
@@ -95,8 +109,10 @@ export function LoginForm() {
               <span className="material-symbols-outlined text-[18px]">login</span>
               {loading ? "Signing in..." : "Sign In"}
             </button>
-          </form>
-        </div>
+              </form>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );

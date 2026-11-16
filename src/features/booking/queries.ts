@@ -226,7 +226,7 @@ export async function getUpcomingBookingBadges(businessId: string): Promise<Map<
   status: "PENDING" | "CONFIRMED" | "CHECKED_IN";
   customerName: string | null;
 }>> {
-  const settings = await ensureBookingSettingsFor(businessId);
+  const settings = await prisma.businessSettings.findUnique({ where: { businessId } });
   if (!settings) {
     return new Map();
   }

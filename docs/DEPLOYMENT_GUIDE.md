@@ -1,4 +1,4 @@
-# Deployment Guide — BlackBall POS
+# Deployment Guide — The Nine POS
 
 Step-by-step production deployment (Vercel + managed PostgreSQL). It
 includes the security requirements from `docs/SECURITY_AUDIT.md`.
@@ -24,8 +24,10 @@ npm run typecheck && npm run test && npm run build
    ```bash
    npx prisma migrate deploy
    ```
-4. **NEVER seed the production database.** `prisma/seed.ts` creates demo users
-   with `Password@123`. Skip seeding entirely in prod.
+4. **Do not run the local The Nine seed against production.**
+   `prisma/seed.ts` is for a fresh local/test database. In production, create
+   the schema with migrations and create real staff credentials through the
+   protected setup flow or an approved operational process.
 
 ## 3. Environment Variables (Vercel → Settings → Environment Variables)
 
@@ -46,6 +48,9 @@ npm run typecheck && npm run test && npm run build
 ### Never set in production
 `BLACKBALL_USER_EMAIL`, `BLACKBALL_TENANT_SLUG`, `MAGIC_LOGIN_ENABLED`,
 `DEV_ACCESS_KEY` (unless you intentionally enable key-gated magic login).
+
+The local-only The Nine seed variables (`THE_NINE_DEFAULT_PASSWORD`,
+`RESET_THE_NINE`) should not be enabled on a production deployment.
 
 ## 4. Security Checklist (mandatory)
 

@@ -5,7 +5,7 @@ import { getUpcomingBookingBadges } from "@/features/booking/queries";
 import type { BillLineItem, CounterBillData, LiveBillData, LiveTableCardData, ProductOption } from "./types";
 
 export async function getLiveTableBoard(businessId: string): Promise<LiveTableCardData[]> {
-  const [tables, pricingRules, bookingBadges] = await Promise.all([
+  const [tables, pricingRules, bookingBadges, recentBills] = await Promise.all([
     prisma.clubTable.findMany({
       where: { businessId, active: true },
       orderBy: [{ gameType: "asc" }, { number: "asc" }],
@@ -15,8 +15,9 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
           orderBy: { startedAt: "desc" },
           take: 1,
           include: {
-            customer: true,
-            assignedEmployee: true,
+            customer: { select: { name: true } },
+            assignedEmployee: { select: { name: true } },
+            pauses: { select: { pausedAt: true, resumedAt: true } },
             bills: {
               where: { status: "OPEN" },
               orderBy: { openedAt: "desc" },
@@ -28,19 +29,40 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
       }
     }),
     prisma.tablePricing.findMany({ where: { businessId, durationMinutes: 60 } }),
-    getUpcomingBookingBadges(businessId)
+    getUpcomingBookingBadges(businessId),
+    prisma.bill.findMany({
+      where: { businessId, status: "CLOSED", kind: "SESSION", sessionId: { not: null } },
+      orderBy: { closedAt: "desc" },
+      select: {
+        label: true,
+        openedAt: true,
+        closedAt: true,
+        tableAmountSnapshot: true,
+        itemTotalAmountSnapshot: true,
+        totalAmountSnapshot: true,
+        session: { select: { tableId: true } }
+      },
+      take: 25
+    })
   ]);
-  const recentBills = await prisma.bill.findMany({
-    where: { businessId, status: "CLOSED", kind: "SESSION", sessionId: { not: null } },
-    orderBy: { closedAt: "desc" },
-    include: { items: { orderBy: { createdAt: "asc" } }, session: { select: { tableId: true } } },
-    take: 25
-  });
   const recentBillByTableId = new Map<string, LiveBillData>();
   for (const bill of recentBills) {
     const tableId = bill.session?.tableId;
     if (tableId && !recentBillByTableId.has(tableId)) {
-      recentBillByTableId.set(tableId, mapClosedBill(bill));
+      recentBillByTableId.set(tableId, {
+        id: `recent-${tableId}`,
+        label: bill.label ?? "Bill",
+        openedAt: bill.openedAt.toISOString(),
+        closedAt: bill.closedAt?.toISOString() ?? null,
+        summary: {
+          tableAmount: Number(bill.tableAmountSnapshot),
+          categoryTotals: { FOOD: 0, CIGARETTES: 0, BEVERAGES: 0 },
+          discountAmount: 0,
+          itemTotal: Number(bill.itemTotalAmountSnapshot),
+          grandTotal: Number(bill.totalAmountSnapshot)
+        },
+        items: []
+      });
     }
   }
 
@@ -57,11 +79,22 @@ export async function getLiveTableBoard(businessId: string): Promise<LiveTableCa
 
   return tables.map((table) => {
     const session = table.sessions[0];
-    const elapsedSeconds = session ? calculateBillableSeconds({ startedAt: session.startedAt, endedAt: now, pauses: [] }) : 0;
+    const pauses = [...(session?.pauses ?? [])];
+    if (session?.status === "PAUSED" && session.pausedAt && !pauses.some((pause) => !pause.resumedAt)) {
+      pauses.push({ pausedAt: session.pausedAt, resumedAt: null });
+    }
+    const elapsedSeconds = session ? calculateBillableSeconds({ startedAt: session.startedAt, endedAt: now, pauses }) : 0;
     const baseHourlyRate = table.gameType === "PS5" ? ps5MemberRates[1] : hourlyRateByTableType.get(`${table.gameType}:${table.pricingGroup}`) ?? 0;
     const hourlyRate = session ? Number(session.hourlyRateSnapshot) || baseHourlyRate : baseHourlyRate;
     const currentCharge = calculateMinuteBasedTableCharge({ billableSeconds: elapsedSeconds, hourlyRate });
-    const currentBill = session?.bills[0] ? mapOpenBill(session.bills[0], currentBillTableAmount(session.bills[0].openedAt, now, hourlyRate)) : null;
+    const currentBill = session?.bills[0]
+      ? mapOpenBill(session.bills[0], currentBillTableAmount(
+          session.bills[0].label === "Bill 1" ? session.startedAt : session.bills[0].openedAt,
+          now,
+          hourlyRate,
+          pauses
+        ))
+      : null;
     const billSummary = currentBill?.summary ?? summarizeBill({ tableAmount: currentCharge, items: [] });
     return {
       id: table.id,
@@ -104,14 +137,28 @@ export async function getOpenCounterBills(businessId: string): Promise<CounterBi
 export async function getProductOptions(businessId: string): Promise<ProductOption[]> {
   const products = await prisma.product.findMany({
     where: { businessId, active: true },
-    orderBy: [{ category: "asc" }, { name: "asc" }]
+    orderBy: [{ category: "asc" }, { name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      category: true,
+      priceAmount: true,
+      trackInventory: true,
+      stockOnHand: true,
+      stockUnit: true,
+      unitsPerPack: true
+    }
   });
 
   return products.map((product) => ({
     id: product.id,
     name: product.name,
     category: product.category,
-    priceAmount: Number(product.priceAmount)
+    priceAmount: Number(product.priceAmount),
+    trackInventory: product.trackInventory || product.category === "CIGARETTES" || product.category === "BEVERAGES",
+    stockOnHand: product.stockOnHand,
+    stockUnit: product.stockUnit,
+    unitsPerPack: product.unitsPerPack
   }));
 }
 
@@ -135,34 +182,6 @@ function mapOpenBill(
   };
 }
 
-function mapClosedBill(bill: {
-  id: string;
-  label: string | null;
-  openedAt: Date;
-  closedAt: Date | null;
-  tableAmountSnapshot: unknown;
-  itemTotalAmountSnapshot: unknown;
-  totalAmountSnapshot: unknown;
-  items: Array<{ id: string; nameSnapshot: string; category: "FOOD" | "CAFE" | "CIGARETTES" | "BEVERAGES"; quantity: number; unitPriceAmount: unknown; lineTotalAmount: unknown }>;
-}): LiveBillData {
-  return {
-    id: bill.id,
-    label: bill.label ?? "Bill",
-    openedAt: bill.openedAt.toISOString(),
-    closedAt: bill.closedAt?.toISOString() ?? null,
-    summary: {
-      tableAmount: Number(bill.tableAmountSnapshot),
-      categoryTotals: summarizeBill({
-        tableAmount: 0,
-        items: bill.items.map((item) => ({ category: item.category, lineTotalAmount: Number(item.lineTotalAmount) }))
-      }).categoryTotals,
-      itemTotal: Number(bill.itemTotalAmountSnapshot),
-      grandTotal: Number(bill.totalAmountSnapshot)
-    },
-    items: mapBillItems(bill.items)
-  };
-}
-
 function mapBillItems(
   items: Array<{ id: string; nameSnapshot: string; category: "FOOD" | "CAFE" | "CIGARETTES" | "BEVERAGES"; quantity: number; unitPriceAmount: unknown; lineTotalAmount: unknown }>
 ): BillLineItem[] {
@@ -176,6 +195,6 @@ function mapBillItems(
   }));
 }
 
-function currentBillTableAmount(openedAt: Date, now: Date, hourlyRate: number) {
-  return calculateBillSegmentTableAmount({ startedAt: openedAt, endedAt: now, hourlyRate });
+function currentBillTableAmount(openedAt: Date, now: Date, hourlyRate: number, pauses: Array<{ pausedAt: Date; resumedAt: Date | null }>) {
+  return calculateBillSegmentTableAmount({ startedAt: openedAt, endedAt: now, hourlyRate, pauses });
 }
