@@ -198,7 +198,7 @@ export async function endSessionAction(input: unknown): Promise<ActionResult> {
       });
 
       const closedTotal = openBill
-        ? await closeBill(tx, context.businessId, openBill, Number(session.hourlyRateSnapshot), now, session.startedAt)
+        ? await closeBill(tx, context.businessId, openBill, Number(session.hourlyRateSnapshot), now, session.startedAt, parsed.applyFoodDiscount)
         : 0;
       return closedTotal;
     });
@@ -405,7 +405,7 @@ export async function closeBillAndContinueSessionAction(input: unknown): Promise
         throw new DomainError("SESSION_NOT_ACTIVE", "Open session bill was not found.");
       }
 
-      await closeBill(tx, context.businessId, openBill, Number(session.hourlyRateSnapshot), now, session.startedAt);
+      await closeBill(tx, context.businessId, openBill, Number(session.hourlyRateSnapshot), now, session.startedAt, parsed.applyFoodDiscount);
       const billCount = await tx.bill.count({ where: { businessId: context.businessId, sessionId: session.id } });
       await tx.bill.create({
         data: {
@@ -460,7 +460,7 @@ export async function closeCounterBillAction(input: unknown): Promise<ActionResu
     }
 
     const now = new Date();
-    const discount = calculateFoodMenuDiscount(bill.items);
+    const discount = parsed.applyFoodDiscount ? calculateFoodMenuDiscount(bill.items) : 0;
     const grossItemTotal = roundMoney(bill.items.reduce((total, item) => total + Number(item.lineTotalAmount), 0));
     const itemTotal = roundMoney(grossItemTotal - discount);
     await prisma.$transaction(async (tx) => {
@@ -507,9 +507,10 @@ async function closeBill(
   },
   hourlyRate: number,
   closedAt: Date,
-  sessionStartedAt: Date
+  sessionStartedAt: Date,
+  applyFoodDiscount: boolean
 ) {
-  const foodDiscount = calculateFoodMenuDiscount(bill.items);
+  const foodDiscount = applyFoodDiscount ? calculateFoodMenuDiscount(bill.items) : 0;
   const discountLine = foodDiscount > 0 ? foodMenuDiscountBillItem(businessId, bill.id, foodDiscount) : null;
   const pauses = bill.sessionId
     ? await tx.sessionPause.findMany({ where: { sessionId: bill.sessionId }, select: { pausedAt: true, resumedAt: true } })

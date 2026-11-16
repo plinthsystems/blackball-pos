@@ -1,7 +1,6 @@
 import { prisma } from "@/server/db/prisma";
 import { calculateBillSegmentTableAmount, summarizeBill } from "@/server/domain/bill-summary";
 import { calculateBillableSeconds, calculateMinuteBasedTableCharge } from "@/server/domain/session-calculations";
-import { calculateFoodMenuDiscount } from "@/server/domain/food-discount";
 import { getUpcomingBookingBadges } from "@/features/booking/queries";
 import type { BillLineItem, CounterBillData, LiveBillData, LiveTableCardData, ProductOption } from "./types";
 
@@ -163,25 +162,12 @@ function mapOpenBill(
   tableAmount: number
 ): LiveBillData {
   const items = mapBillItems(bill.items);
-  const foodDiscount = calculateFoodMenuDiscount(items.map((item) => ({
-    nameSnapshot: item.name,
-    category: item.category,
-    lineTotalAmount: item.lineTotalAmount
-  })));
   return {
     id: bill.id,
     label: bill.label ?? "Bill",
     openedAt: bill.openedAt.toISOString(),
     closedAt: null,
-    summary: summarizeBill({
-      tableAmount,
-      items: [
-        ...items.map((item) => ({ category: item.category, lineTotalAmount: item.lineTotalAmount })),
-        ...(foodDiscount > 0
-          ? [{ category: "FOOD" as const, lineTotalAmount: -foodDiscount }]
-          : [])
-      ]
-    }),
+    summary: summarizeBill({ tableAmount, items: items.map((item) => ({ category: item.category, lineTotalAmount: item.lineTotalAmount })) }),
     items
   };
 }

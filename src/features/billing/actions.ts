@@ -6,7 +6,6 @@ import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
 import { requirePermission } from "@/server/auth/permissions";
 import { DomainError } from "@/server/domain/errors";
 import { calculateBillSegmentTableAmount } from "@/server/domain/bill-summary";
-import { calculateFoodMenuDiscount, foodMenuDiscountBillItem } from "@/server/domain/food-discount";
 
 type ActionResult = { ok: true; message: string } | { ok: false; message: string };
 
@@ -24,8 +23,7 @@ export async function closeBillAction(input: { billId: string }): Promise<Action
       });
       if (!bill) throw new DomainError("BILL_NOT_FOUND", "Open bill not found.");
 
-      const foodDiscount = calculateFoodMenuDiscount(bill.items);
-      const itemTotal = Math.round((bill.items.reduce((sum, item) => sum + Number(item.lineTotalAmount), 0) - foodDiscount) * 100) / 100;
+      const itemTotal = Math.round(bill.items.reduce((sum, item) => sum + Number(item.lineTotalAmount), 0) * 100) / 100;
       const pauses = bill.session
         ? await tx.sessionPause.findMany({ where: { sessionId: bill.session.id }, select: { pausedAt: true, resumedAt: true } })
         : [];
@@ -44,9 +42,6 @@ export async function closeBillAction(input: { billId: string }): Promise<Action
       const total = Math.round((itemTotal + tableAmount) * 100) / 100;
       const claimed = await tx.bill.updateMany({ where: { id: bill.id, status: "OPEN" }, data: { status: "CLOSED", closedAt: now } });
       if (claimed.count !== 1) throw new DomainError("BILL_NOT_FOUND", "This bill has already been closed.");
-      if (foodDiscount > 0) {
-        await tx.billItem.create({ data: foodMenuDiscountBillItem(context.businessId, bill.id, foodDiscount) });
-      }
       await tx.bill.update({
         where: { id: bill.id },
         data: { tableAmountSnapshot: tableAmount, itemTotalAmountSnapshot: itemTotal, totalAmountSnapshot: total }

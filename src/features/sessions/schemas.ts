@@ -18,7 +18,8 @@ export const extendSessionSchema = z.object({
 });
 
 export const endSessionSchema = z.object({
-  sessionId: z.string().min(1)
+  sessionId: z.string().min(1),
+  applyFoodDiscount: z.boolean().optional().default(false)
 });
 
 export const addBillItemSchema = z.object({
@@ -37,11 +38,13 @@ export const updateBillItemQuantitySchema = z.object({
 });
 
 export const closeCounterBillSchema = z.object({
-  billId: z.string().min(1)
+  billId: z.string().min(1),
+  applyFoodDiscount: z.boolean().optional().default(false)
 });
 
 export const closeBillAndContinueSessionSchema = z.object({
-  sessionId: z.string().min(1)
+  sessionId: z.string().min(1),
+  applyFoodDiscount: z.boolean().optional().default(false)
 });
 
 export const startCounterBillSchema = z.object({

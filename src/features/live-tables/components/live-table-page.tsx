@@ -87,6 +87,7 @@ function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData;
   const router = useRouter();
   const [itemsOpen, setItemsOpen] = useState(false);
   const [editItemsOpen, setEditItemsOpen] = useState(false);
+  const [applyFoodDiscount, setApplyFoodDiscount] = useState(false);
 
   return (
     <div className="rounded-material border border-slate-700 bg-slate-900/80 p-3 text-slate-100">
@@ -104,8 +105,11 @@ function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData;
           ))}
         </div>
       ) : <p className="mt-2 text-sm text-slate-400">No items yet</p>}
-      {(bill.summary.discountAmount ?? 0) > 0 ? (
-        <p className="mt-2 text-xs font-semibold text-emerald-300">Food menu discount (20%): −{formatMoney(bill.summary.discountAmount ?? 0)}</p>
+      {bill.items.some((item) => item.category === "FOOD" || item.category === "CAFE") ? (
+        <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-slate-300">
+          <input type="checkbox" checked={applyFoodDiscount} onChange={(event) => setApplyFoodDiscount(event.target.checked)} className="mt-0.5 h-4 w-4 accent-lime-400" />
+          <span>Apply 20% food menu discount <span className="text-slate-500">(food/cafe only)</span></span>
+        </label>
       ) : null}
       {!isHqAdmin ? (
         <div className="mt-3 flex gap-2">
@@ -116,7 +120,8 @@ function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData;
             variant="primary"
             className="h-9 px-3"
             onClick={async () => {
-              await closeCounterBillAction({ billId: bill.id });
+              const result = await closeCounterBillAction({ billId: bill.id, applyFoodDiscount });
+              if (result.ok) setApplyFoodDiscount(false);
               router.refresh();
             }}
           >
