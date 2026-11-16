@@ -104,6 +104,9 @@ function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData;
           ))}
         </div>
       ) : <p className="mt-2 text-sm text-slate-400">No items yet</p>}
+      {(bill.summary.discountAmount ?? 0) > 0 ? (
+        <p className="mt-2 text-xs font-semibold text-emerald-300">Food menu discount (20%): −{formatMoney(bill.summary.discountAmount ?? 0)}</p>
+      ) : null}
       {!isHqAdmin ? (
         <div className="mt-3 flex gap-2">
           <Button type="button" className="h-9 px-3" onClick={() => setItemsOpen(true)}>Add items</Button>

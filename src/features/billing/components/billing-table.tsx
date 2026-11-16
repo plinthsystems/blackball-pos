@@ -64,7 +64,7 @@ export function BillingTable({ records, expandedId, onToggle }: { records: Billi
                   </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-800 pt-3 sm:grid-cols-3">
-                  <ReceiptMetric label="Table time" value={record.tableDurationMinutes ? `${record.tableDurationMinutes} min @ ${formatMoney(record.tableHourlyRate)}/hr` : "—"} />
+                  <ReceiptMetric label="Table time" value={record.tableDurationMinutes ? `${formatDuration(record.tableDurationSeconds ?? record.tableDurationMinutes * 60)} @ ${formatMoney(record.tableHourlyRate)}/hr` : "—"} />
                   <ReceiptMetric label="Table charge" value={formatMoney(record.tableAmount)} />
                   <ReceiptMetric label="Items" value={`${record.items.length} ${record.items.length === 1 ? "item" : "items"} · ${formatMoney(record.itemTotal)}`} />
                 </div>
@@ -119,7 +119,7 @@ function BillDetails({ record }: { record: BillingRecord }) {
             <div className="flex justify-between text-slate-400">
               <span>Table time</span>
               <span className="text-right text-white font-bold">
-                {record.tableDurationMinutes ? `${record.tableDurationMinutes} min · ${formatMoney(record.tableHourlyRate)}/hr` : "No table time"}
+                {record.tableDurationMinutes ? `${formatDuration(record.tableDurationSeconds ?? record.tableDurationMinutes * 60)} · ${formatMoney(record.tableHourlyRate)}/hr` : "No table time"}
               </span>
             </div>
             <div className="flex justify-between text-slate-400">
@@ -127,9 +127,21 @@ function BillDetails({ record }: { record: BillingRecord }) {
               <span className="text-white font-bold">{formatMoney(record.tableAmount)}</span>
             </div>
             <div className="flex justify-between text-slate-400">
-              <span>Items ({totalItems})</span>
-              <span className="text-white font-bold">{formatMoney(record.itemTotal)}</span>
+              <span>Items subtotal ({totalItems})</span>
+              <span className="text-white font-bold">{formatMoney(record.itemSubtotal ?? record.itemTotal)}</span>
             </div>
+            {(record.discountAmount ?? 0) > 0 ? (
+              <div className="flex justify-between text-emerald-300">
+                <span>Food menu discount (20%)</span>
+                <span className="font-bold">−{formatMoney(record.discountAmount ?? 0)}</span>
+              </div>
+            ) : null}
+            {record.discountAmount ? (
+              <div className="flex justify-between text-slate-400">
+                <span>Items after discount</span>
+                <span className="text-white font-bold">{formatMoney(record.itemTotal)}</span>
+              </div>
+            ) : null}
             <div className="mt-2 border-t border-slate-700 pt-2 flex justify-between">
               <span className="text-sm font-black text-white">Grand total</span>
               <strong className="text-lg font-black text-lime-300">{formatMoney(record.totalAmount)}</strong>
@@ -182,5 +194,14 @@ function BillDetails({ record }: { record: BillingRecord }) {
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
-  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return date.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" });
+}
+
+function formatDuration(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+  if (minutes > 0) return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+  return `${seconds}s`;
 }

@@ -17,6 +17,8 @@ export type ProductOption = {
 export type LiveBillSummary = {
   tableAmount: number;
   categoryTotals: Record<"FOOD" | "CIGARETTES" | "BEVERAGES", number>;
+  discountAmount?: number;
+  itemSubtotal?: number;
   itemTotal: number;
   grandTotal: number;
 };

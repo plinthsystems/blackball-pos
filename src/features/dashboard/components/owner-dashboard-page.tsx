@@ -107,7 +107,7 @@ export function OwnerDashboardPage({ data }: { data: OwnerDashboardData }) {
 }
 
 function formatTrendDate(date: string) {
-  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`));
+  return new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00Z`));
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {

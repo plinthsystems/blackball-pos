@@ -160,7 +160,7 @@ function InventoryRow({ product }: { product: InventoryProduct }) {
   const [isRestocking, startRestock] = useTransition();
   const [isAdjusting, startAdjust] = useTransition();
   const isPending = isSaving || isRestocking || isAdjusting;
-  const lastStocked = product.stockUpdatedAt ? `Stock added ${new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(product.stockUpdatedAt))}` : "Not recorded";
+  const lastStocked = product.stockUpdatedAt ? `Stock added ${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }).format(new Date(product.stockUpdatedAt))}` : "Not recorded";
   const fullPacks = unitsPerPack > 1 ? ` · ${Math.floor(product.stockOnHand / unitsPerPack)} full packs` : "";
   const lowStock = product.stockOnHand <= unitsPerPack;
 

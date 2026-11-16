@@ -3,6 +3,7 @@
 import { useTransition, type FormEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { textInputProps } from "@/components/ui/field";
+import { addDaysToDateKey, formatStoreDateKey } from "@/lib/time";
 
 const DATE_RANGES = [
   { value: "today", label: "Today" },
@@ -21,10 +22,7 @@ type DateRange = (typeof DATE_RANGES)[number]["value"];
 type BillKind = (typeof BILL_KINDS)[number]["value"];
 
 function formatDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return formatStoreDateKey(date);
 }
 
 function getDateRange(search: URLSearchParams): DateRange | null {
@@ -34,9 +32,8 @@ function getDateRange(search: URLSearchParams): DateRange | null {
   const todayString = formatDate(today);
   if (from === todayString && to === todayString) return "today";
   for (const [value, days] of [["7d", 7], ["30d", 30]] as const) {
-    const start = new Date(today);
-    start.setDate(start.getDate() - days + 1);
-    if (from === formatDate(start) && to === todayString) return value;
+    const start = addDaysToDateKey(todayString, -days + 1);
+    if (from === start && to === todayString) return value;
   }
   return from || to ? null : "all";
 }
@@ -65,11 +62,9 @@ export function BillingFilters({ total: _total }: {
         updated.delete("dateTo");
       } else {
         const days = next.range === "today" ? 1 : next.range === "7d" ? 7 : 30;
-        const end = new Date();
-        const start = new Date(end);
-        start.setDate(start.getDate() - days + 1);
-        updated.set("dateFrom", formatDate(start));
-        updated.set("dateTo", formatDate(end));
+        const end = formatDate(new Date());
+        updated.set("dateFrom", addDaysToDateKey(end, -days + 1));
+        updated.set("dateTo", end);
       }
     }
     if (next.kind) {

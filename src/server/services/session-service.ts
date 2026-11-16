@@ -135,6 +135,7 @@ export class SessionService {
       if (!session || session.status !== "ACTIVE") {
         throw new DomainError("SESSION_NOT_ACTIVE", "Only an active session can be paused.");
       }
+      await tx.sessionPause.create({ data: { sessionId: input.sessionId, pausedAt: input.now } });
       await this.sessions.updateStatus({ businessId: input.businessId, sessionId: input.sessionId, status: "PAUSED", pausedAt: input.now, tx });
       await this.events.publish({ name: "session.paused", businessId: input.businessId, entityId: input.sessionId, payload: {} });
     });
@@ -145,6 +146,15 @@ export class SessionService {
       const session = await this.sessions.findByIdForUpdate({ businessId: input.businessId, sessionId: input.sessionId, tx });
       if (!session || session.status !== "PAUSED") {
         throw new DomainError("SESSION_NOT_PAUSED", "Only a paused session can be resumed.");
+      }
+      const openPause = await tx.sessionPause.findFirst({
+        where: { sessionId: input.sessionId, resumedAt: null },
+        orderBy: { pausedAt: "desc" }
+      });
+      if (openPause) {
+        await tx.sessionPause.update({ where: { id: openPause.id }, data: { resumedAt: input.now } });
+      } else if (session.pausedAt) {
+        await tx.sessionPause.create({ data: { sessionId: input.sessionId, pausedAt: session.pausedAt, resumedAt: input.now } });
       }
       await this.sessions.updateStatus({ businessId: input.businessId, sessionId: input.sessionId, status: "ACTIVE", pausedAt: null, tx });
       await this.events.publish({ name: "session.resumed", businessId: input.businessId, entityId: input.sessionId, payload: {} });
@@ -158,10 +168,22 @@ export class SessionService {
         throw new DomainError("SESSION_NOT_ACTIVE", "Only an active or paused session can be ended.");
       }
 
+      const pauses = await tx.sessionPause.findMany({
+        where: { sessionId: input.sessionId },
+        select: { pausedAt: true, resumedAt: true }
+      });
+      const sessionPauses = [...pauses];
+      if (session.status === "PAUSED" && session.pausedAt && !sessionPauses.some((pause) => !pause.resumedAt)) {
+        sessionPauses.push({ pausedAt: session.pausedAt, resumedAt: null });
+      }
       const billableSeconds = calculateBillableSeconds({
         startedAt: session.startedAt,
         endedAt: input.now,
-        pauses: []
+        pauses: sessionPauses
+      });
+      await tx.sessionPause.updateMany({
+        where: { sessionId: input.sessionId, resumedAt: null },
+        data: { resumedAt: input.now }
       });
       await this.sessions.end({ businessId: input.businessId, sessionId: input.sessionId, actualEndAt: input.now, billableSeconds, tx });
       await this.tables.updateStatus({ businessId: input.businessId, tableId: session.tableId, status: "AVAILABLE", tx });

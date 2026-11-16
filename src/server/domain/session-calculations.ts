@@ -1,4 +1,4 @@
-type PauseInterval = {
+export type PauseInterval = {
   pausedAt: Date;
   resumedAt: Date | null;
 };
@@ -10,11 +10,9 @@ export function calculateBillableSeconds(input: {
 }) {
   const totalSeconds = Math.max(0, Math.floor((input.endedAt.getTime() - input.startedAt.getTime()) / 1000));
   const pausedSeconds = input.pauses.reduce((sum, pause) => {
-    if (!pause.resumedAt) {
-      return sum;
-    }
-
-    return sum + Math.max(0, Math.floor((pause.resumedAt.getTime() - pause.pausedAt.getTime()) / 1000));
+    const pauseStart = Math.max(input.startedAt.getTime(), pause.pausedAt.getTime());
+    const pauseEnd = Math.min(input.endedAt.getTime(), (pause.resumedAt ?? input.endedAt).getTime());
+    return sum + Math.max(0, Math.floor((pauseEnd - pauseStart) / 1000));
   }, 0);
 
   return Math.max(0, totalSeconds - pausedSeconds);

@@ -19,6 +19,7 @@ export type SessionRecord = {
   status: SessionStatus;
   startedAt: Date;
   plannedEndAt: Date;
+  pausedAt?: Date | null;
   ps5MemberCount: number | null;
   hourlyRateSnapshot: number;
 };

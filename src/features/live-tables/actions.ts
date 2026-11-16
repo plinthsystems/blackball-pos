@@ -6,6 +6,7 @@ import { prisma } from "@/server/db/prisma";
 import { getCurrentEmployeeContext } from "@/server/auth/current-employee";
 import { requirePermission } from "@/server/auth/permissions";
 import { calculateBillSegmentTableAmount } from "@/server/domain/bill-summary";
+import { calculateFoodMenuDiscount, foodMenuDiscountBillItem } from "@/server/domain/food-discount";
 import { DomainError } from "@/server/domain/errors";
 import { noopDomainEventPublisher } from "@/server/domain/events";
 import { prismaAuditLogRepository } from "@/server/repositories/audit-log-repository";
@@ -107,6 +108,7 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
       }
     }
 
+    const sessionStartedAt = new Date();
     const session = await services().sessions.startWalkInSession({
       businessId: context.businessId,
       employeeId: context.employeeId,
@@ -116,7 +118,7 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
       hourlyRateSnapshot: Number(pricing.priceAmount),
       customerId,
       assignedEmployeeId: parsed.assignedEmployeeId ?? context.employeeId,
-      now: new Date()
+      now: sessionStartedAt
     });
 
     await prisma.bill.create({
@@ -125,7 +127,8 @@ export async function startWalkInSessionAction(input: unknown): Promise<ActionRe
         sessionId: session.sessionId,
         kind: "SESSION",
         status: "OPEN",
-        label: "Bill 1"
+        label: "Bill 1",
+        openedAt: sessionStartedAt
       }
     });
 
@@ -195,7 +198,7 @@ export async function endSessionAction(input: unknown): Promise<ActionResult> {
       });
 
       const closedTotal = openBill
-        ? await closeBill(tx, openBill, Number(session.hourlyRateSnapshot), now)
+        ? await closeBill(tx, context.businessId, openBill, Number(session.hourlyRateSnapshot), now, session.startedAt)
         : 0;
       return closedTotal;
     });
@@ -402,7 +405,7 @@ export async function closeBillAndContinueSessionAction(input: unknown): Promise
         throw new DomainError("SESSION_NOT_ACTIVE", "Open session bill was not found.");
       }
 
-      await closeBill(tx, openBill, Number(session.hourlyRateSnapshot), now);
+      await closeBill(tx, context.businessId, openBill, Number(session.hourlyRateSnapshot), now, session.startedAt);
       const billCount = await tx.bill.count({ where: { businessId: context.businessId, sessionId: session.id } });
       await tx.bill.create({
         data: {
@@ -456,16 +459,20 @@ export async function closeCounterBillAction(input: unknown): Promise<ActionResu
       throw new DomainError("SESSION_NOT_ACTIVE", "Open counter bill was not found.");
     }
 
-    const itemTotal = roundMoney(bill.items.reduce((total, item) => total + Number(item.lineTotalAmount), 0));
-    await prisma.bill.update({
-      where: { id: bill.id },
-      data: {
-        status: "CLOSED",
-        closedAt: new Date(),
-        tableAmountSnapshot: 0,
-        itemTotalAmountSnapshot: itemTotal,
-        totalAmountSnapshot: itemTotal
+    const now = new Date();
+    const discount = calculateFoodMenuDiscount(bill.items);
+    const grossItemTotal = roundMoney(bill.items.reduce((total, item) => total + Number(item.lineTotalAmount), 0));
+    const itemTotal = roundMoney(grossItemTotal - discount);
+    await prisma.$transaction(async (tx) => {
+      const claimed = await tx.bill.updateMany({ where: { id: bill.id, status: "OPEN" }, data: { status: "CLOSED", closedAt: now } });
+      if (claimed.count !== 1) throw new DomainError("BILL_NOT_FOUND", "This bill has already been closed.");
+      if (discount > 0) {
+        await tx.billItem.create({ data: foodMenuDiscountBillItem(context.businessId, bill.id, discount) });
       }
+      await tx.bill.update({
+        where: { id: bill.id },
+        data: { tableAmountSnapshot: 0, itemTotalAmountSnapshot: itemTotal, totalAmountSnapshot: itemTotal }
+      });
     });
     revalidatePath("/live-tables");
     return { ok: true, message: `Counter bill closed. Total ${formatActionMoney(itemTotal)}.` };
@@ -489,26 +496,53 @@ export async function updateTableStatusAction(input: unknown): Promise<ActionRes
 
 async function closeBill(
   tx: Prisma.TransactionClient,
+  businessId: string,
   bill: {
     id: string;
+    label: string | null;
+    sessionId: string | null;
     kind: "SESSION" | "COUNTER";
     openedAt: Date;
-    items: Array<{ lineTotalAmount: unknown }>;
+    items: Array<{ nameSnapshot: string; category: "FOOD" | "CAFE" | "CIGARETTES" | "BEVERAGES"; lineTotalAmount: unknown }>;
   },
   hourlyRate: number,
-  closedAt: Date
+  closedAt: Date,
+  sessionStartedAt: Date
 ) {
-  const itemTotal = roundMoney(bill.items.reduce((total, item) => total + Number(item.lineTotalAmount), 0));
+  const foodDiscount = calculateFoodMenuDiscount(bill.items);
+  const discountLine = foodDiscount > 0 ? foodMenuDiscountBillItem(businessId, bill.id, foodDiscount) : null;
+  const pauses = bill.sessionId
+    ? await tx.sessionPause.findMany({ where: { sessionId: bill.sessionId }, select: { pausedAt: true, resumedAt: true } })
+    : [];
+  const hasOpenPause = pauses.some((pause) => !pause.resumedAt);
+  const sessionPause = bill.sessionId && !hasOpenPause
+    ? await tx.session.findUnique({ where: { id: bill.sessionId }, select: { pausedAt: true, status: true } })
+    : null;
+  const billPauses = [...pauses];
+  if (sessionPause?.status === "PAUSED" && sessionPause.pausedAt) {
+    billPauses.push({ pausedAt: sessionPause.pausedAt, resumedAt: null });
+  }
+  const itemTotal = roundMoney(bill.items.reduce((total, item) => total + Number(item.lineTotalAmount), 0) - foodDiscount);
   const tableAmount =
     bill.kind === "SESSION"
-      ? calculateBillSegmentTableAmount({ startedAt: bill.openedAt, endedAt: closedAt, hourlyRate })
+      ? calculateBillSegmentTableAmount({
+          startedAt: bill.label === "Bill 1" && bill.sessionId ? sessionStartedAt : bill.openedAt,
+          endedAt: closedAt,
+          hourlyRate,
+          pauses: billPauses
+        })
       : 0;
   const total = roundMoney(itemTotal + tableAmount);
+  const claimed = await tx.bill.updateMany({ where: { id: bill.id, status: "OPEN" }, data: { status: "CLOSED", closedAt } });
+  if (claimed.count !== 1) {
+    throw new DomainError("BILL_NOT_FOUND", "This bill has already been closed.");
+  }
+  if (discountLine) {
+    await tx.billItem.create({ data: discountLine });
+  }
   await tx.bill.update({
     where: { id: bill.id },
     data: {
-      status: "CLOSED",
-      closedAt,
       tableAmountSnapshot: tableAmount,
       itemTotalAmountSnapshot: itemTotal,
       totalAmountSnapshot: total

@@ -28,8 +28,11 @@ export type BillingRecord = {
   totalAmount: number;
   tableAmount: number;
   tableDurationMinutes: number;
+  tableDurationSeconds?: number;
   tableHourlyRate: number;
   itemTotal: number;
+  itemSubtotal?: number;
+  discountAmount?: number;
   items: BillItemRow[];
   categorySummaries: CategorySummary[];
   assignedStaffName: string | null;

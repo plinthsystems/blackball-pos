@@ -1,4 +1,5 @@
 import { prisma } from "@/server/db/prisma";
+import { addDaysToDateKey, formatStoreDateKey, storeDateStart } from "@/lib/time";
 import type { DashboardWindow, OwnerDashboardData, DailyRevenueRow } from "./types";
 
 type DashboardBill = {
@@ -91,12 +92,11 @@ export async function getOwnerDashboardData(
   now = new Date(),
   reportingWindow: DashboardWindow = "today"
 ): Promise<OwnerDashboardData> {
-  const startOfDay = new Date(now);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(startOfDay);
-  endOfDay.setDate(endOfDay.getDate() + 1);
-  const windowStart = new Date(startOfDay);
-  windowStart.setDate(windowStart.getDate() - (reportingWindow === "30d" ? 29 : reportingWindow === "7d" ? 6 : 0));
+  const today = formatStoreDateKey(now);
+  const startOfDay = storeDateStart(today);
+  const endOfDay = storeDateStart(addDaysToDateKey(today, 1));
+  const daysBack = reportingWindow === "30d" ? 29 : reportingWindow === "7d" ? 6 : 0;
+  const windowStart = storeDateStart(addDaysToDateKey(today, -daysBack));
 
   const [bills, sessions, openBillCount] = await Promise.all([
     prisma.bill.findMany({
@@ -117,7 +117,7 @@ function buildDailyTrend(bills: DashboardBill[], reportingWindow: DashboardWindo
   const byDate = new Map<string, DailyRevenueRow>();
   for (const bill of bills) {
     if (!bill.closedAt) continue;
-    const date = bill.closedAt.toISOString().slice(0, 10);
+    const date = formatStoreDateKey(bill.closedAt);
     const current = byDate.get(date) ?? { date, revenue: 0, closedBills: 0 };
     current.revenue = roundMoney(current.revenue + Number(bill.totalAmountSnapshot));
     current.closedBills += 1;

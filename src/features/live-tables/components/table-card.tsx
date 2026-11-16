@@ -109,8 +109,11 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-700/70 pt-2 text-xs text-slate-400">
                 <span>Table time <strong className="text-slate-200">{formatMoney(session.billSummary.tableAmount)}</strong></span>
-                <span>Items <strong className="text-slate-200">{formatMoney(session.billSummary.itemTotal)}</strong></span>
+                    <span>Items <strong className="text-slate-200">{formatMoney(session.billSummary.itemSubtotal ?? session.billSummary.itemTotal)}</strong></span>
               </div>
+                  {(session.billSummary.discountAmount ?? 0) > 0 ? (
+                    <p className="mt-1 text-xs font-semibold text-emerald-300">Food menu discount (20%): −{formatMoney(session.billSummary.discountAmount ?? 0)}</p>
+                  ) : null}
               <button
                 type="button"
                 className="mt-3 text-xs font-semibold text-cyan-200 transition hover:text-white"
@@ -127,6 +130,9 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
                       <BillMetric key={category} label={billCategoryLabels[category]} amount={session.billSummary.categoryTotals[category]} />
                     ))}
                   </div>
+                  {(session.billSummary.discountAmount ?? 0) > 0 ? (
+                    <p className="text-xs font-semibold text-emerald-300">Food menu discount (20%): −{formatMoney(session.billSummary.discountAmount ?? 0)}</p>
+                  ) : null}
                   {bill?.items.length ? (
                     <div className="space-y-1 rounded-material border border-slate-700 bg-slate-950/70 p-3">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Ordered items</p>
