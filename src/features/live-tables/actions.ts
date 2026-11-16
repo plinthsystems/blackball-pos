@@ -18,6 +18,7 @@ import {
   addBillItemSchema,
   closeCounterBillSchema,
   closeBillAndContinueSessionSchema,
+  recordBillPaymentSchema,
   endSessionSchema,
   extendSessionSchema,
   removeBillItemSchema,
@@ -464,7 +465,7 @@ export async function closeCounterBillAction(input: unknown): Promise<ActionResu
     const grossItemTotal = roundMoney(bill.items.reduce((total, item) => total + Number(item.lineTotalAmount), 0));
     const itemTotal = roundMoney(grossItemTotal - discount);
     await prisma.$transaction(async (tx) => {
-      const claimed = await tx.bill.updateMany({ where: { id: bill.id, status: "OPEN" }, data: { status: "CLOSED", closedAt: now } });
+      const claimed = await tx.bill.updateMany({ where: { id: bill.id, status: "OPEN" }, data: { status: "CLOSED", closedAt: now, paymentStatus: "UNPAID" } });
       if (claimed.count !== 1) throw new DomainError("BILL_NOT_FOUND", "This bill has already been closed.");
       if (discount > 0) {
         await tx.billItem.create({ data: foodMenuDiscountBillItem(context.businessId, bill.id, discount) });
@@ -476,6 +477,47 @@ export async function closeCounterBillAction(input: unknown): Promise<ActionResu
     });
     revalidatePath("/live-tables");
     return { ok: true, message: `Counter bill closed. Total ${formatActionMoney(itemTotal)}.` };
+  } catch (error) {
+    return actionError(error);
+  }
+}
+
+export async function recordBillPaymentAction(input: unknown): Promise<ActionResult> {
+  try {
+    const context = await getCurrentEmployeeContext();
+    requirePermission(context, "bills.manage");
+    const parsed = recordBillPaymentSchema.parse(input);
+    const cashAmount = roundMoney(parsed.cashAmount);
+    const upiAmount = roundMoney(parsed.upiAmount);
+    const paymentAmount = roundMoney(cashAmount + upiAmount);
+    if (paymentAmount <= 0) throw new DomainError("INVALID_PAYMENT", "Enter a cash or UPI amount.");
+
+    const result = await prisma.$transaction(async (tx) => {
+      const bill = await tx.bill.findFirst({
+        where: { id: parsed.billId, businessId: context.businessId, status: "CLOSED", paymentStatus: { in: ["UNPAID", "PARTIAL"] } },
+        include: { payments: { select: { amount: true } } }
+      });
+      if (!bill) throw new DomainError("BILL_NOT_DUE", "This bill is not awaiting payment.");
+
+      const paidSoFar = roundMoney(bill.payments.reduce((sum, payment) => sum + Number(payment.amount), 0));
+      const balance = roundMoney(Number(bill.totalAmountSnapshot) - paidSoFar);
+      if (paymentAmount > balance + 0.001) {
+        throw new DomainError("PAYMENT_EXCEEDS_BALANCE", `Payment is greater than the remaining balance of ${formatActionMoney(balance)}.`);
+      }
+
+      const payments = [
+        ...(cashAmount > 0 ? [{ businessId: context.businessId, billId: bill.id, method: "CASH" as const, amount: cashAmount }] : []),
+        ...(upiAmount > 0 ? [{ businessId: context.businessId, billId: bill.id, method: "UPI" as const, amount: upiAmount }] : [])
+      ];
+      await tx.billPayment.createMany({ data: payments });
+      const isPaid = roundMoney(paidSoFar + paymentAmount) >= Number(bill.totalAmountSnapshot) - 0.001;
+      await tx.bill.update({ where: { id: bill.id }, data: { paymentStatus: isPaid ? "PAID" : "PARTIAL" } });
+      return { isPaid, balance: roundMoney(balance - paymentAmount) };
+    }, { isolationLevel: "Serializable" });
+
+    revalidatePath("/billing");
+    revalidatePath("/dashboard");
+    return { ok: true, message: result.isPaid ? "Payment recorded. Bill is paid." : `Payment recorded. ${formatActionMoney(result.balance)} remains due.` };
   } catch (error) {
     return actionError(error);
   }
@@ -534,7 +576,7 @@ async function closeBill(
         })
       : 0;
   const total = roundMoney(itemTotal + tableAmount);
-  const claimed = await tx.bill.updateMany({ where: { id: bill.id, status: "OPEN" }, data: { status: "CLOSED", closedAt } });
+  const claimed = await tx.bill.updateMany({ where: { id: bill.id, status: "OPEN" }, data: { status: "CLOSED", closedAt, paymentStatus: "UNPAID" } });
   if (claimed.count !== 1) {
     throw new DomainError("BILL_NOT_FOUND", "This bill has already been closed.");
   }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatMoney } from "@/lib/money";
 import type { BillingRecord } from "../types";
+import { BillPaymentPanel } from "./bill-payment-panel";
 
 const kindLabel: Record<string, string> = {
   SESSION: "Table session",
@@ -20,7 +21,7 @@ export function BillingTable({ records, expandedId, onToggle }: { records: Billi
     return (
       <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-12 text-center">
         <span className="material-symbols-outlined text-3xl text-slate-500" aria-hidden="true">receipt_long</span>
-        <p className="mt-3 text-sm font-bold text-slate-200">No closed bills found</p>
+        <p className="mt-3 text-sm font-bold text-slate-200">No bills found</p>
         <p className="mt-1 text-xs text-slate-500">Try a different date range or bill type.</p>
       </div>
     );
@@ -29,7 +30,7 @@ export function BillingTable({ records, expandedId, onToggle }: { records: Billi
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-base font-bold text-white">Closed bills</h2>
+        <h2 className="text-base font-bold text-white">Bills</h2>
         <span className="text-xs text-slate-500">{records.length} shown · select a receipt for details</span>
       </div>
       <div className="space-y-3">
@@ -51,6 +52,9 @@ export function BillingTable({ records, expandedId, onToggle }: { records: Billi
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <p className="text-base font-bold text-white">{record.tableNumber ?? "Counter sale"}</p>
                         {record.kind === "SESSION" ? <span className="text-xs text-slate-500">{kindLabel[record.kind]}</span> : null}
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${record.status === "OPEN" ? "bg-cyan-400/15 text-cyan-300" : record.status === "CANCELLED" ? "bg-slate-700 text-slate-300" : record.paymentStatus === "PAID" || !record.paymentStatus ? "bg-emerald-400/15 text-emerald-300" : record.paymentStatus === "PARTIAL" ? "bg-amber-400/15 text-amber-300" : "bg-rose-400/15 text-rose-300"}`}>
+                          {record.status === "OPEN" ? "In progress" : record.status === "CANCELLED" ? "Cancelled" : record.paymentStatus === "PAID" || !record.paymentStatus ? "Paid" : record.paymentStatus === "PARTIAL" ? "Partially paid" : "Due"}
+                        </span>
                       </div>
                       <p className="mt-1 text-xs text-slate-400">
                         {formatDate(record.openedAt)}{record.sessionLabel ? ` · ${record.sessionLabel}` : ""}
@@ -188,6 +192,8 @@ function BillDetails({ record }: { record: BillingRecord }) {
           </div>
         </div>
       )}
+
+      {record.status === "CLOSED" ? <BillPaymentPanel record={record} /> : null}
     </div>
   );
 }

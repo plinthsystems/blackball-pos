@@ -40,7 +40,7 @@ export async function closeBillAction(input: { billId: string }): Promise<Action
           })
         : 0;
       const total = Math.round((itemTotal + tableAmount) * 100) / 100;
-      const claimed = await tx.bill.updateMany({ where: { id: bill.id, status: "OPEN" }, data: { status: "CLOSED", closedAt: now } });
+      const claimed = await tx.bill.updateMany({ where: { id: bill.id, status: "OPEN" }, data: { status: "CLOSED", closedAt: now, paymentStatus: "UNPAID" } });
       if (claimed.count !== 1) throw new DomainError("BILL_NOT_FOUND", "This bill has already been closed.");
       await tx.bill.update({
         where: { id: bill.id },

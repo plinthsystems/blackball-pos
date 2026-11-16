@@ -27,7 +27,7 @@ export function BillingPage({ data }: { data: BillingPageData }) {
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-800 pb-4">
         <div>
           <h1 className="mt-1 text-3xl font-black tracking-tight text-white">Billing</h1>
-          <p className="mt-1 text-sm text-slate-400">Closed receipts with table time and item totals.</p>
+          <p className="mt-1 text-sm text-slate-400">Ended sessions stay due until the full payment is recorded.</p>
         </div>
       </div>
       <BillingFilters />

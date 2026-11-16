@@ -42,6 +42,12 @@ export const closeCounterBillSchema = z.object({
   applyFoodDiscount: z.boolean().optional().default(false)
 });
 
+export const recordBillPaymentSchema = z.object({
+  billId: z.string().min(1),
+  cashAmount: z.coerce.number().min(0).max(999999),
+  upiAmount: z.coerce.number().min(0).max(999999)
+});
+
 export const closeBillAndContinueSessionSchema = z.object({
   sessionId: z.string().min(1),
   applyFoodDiscount: z.boolean().optional().default(false)

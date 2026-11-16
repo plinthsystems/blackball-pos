@@ -44,6 +44,10 @@ export async function getBillingPageData(
             lineTotalAmount: true
           }
         },
+        payments: {
+          orderBy: { createdAt: "asc" },
+          select: { id: true, method: true, amount: true, createdAt: true }
+        },
         session: {
           select: {
             table: { select: { number: true } },
@@ -153,6 +157,7 @@ function mapBillToRecord(bill: {
   label: string | null;
   kind: BillingKind;
   status: BillingStatus;
+  paymentStatus: "UNPAID" | "PARTIAL" | "PAID";
   openedAt: Date;
   closedAt: Date | null;
   tableAmountSnapshot: unknown;
@@ -166,6 +171,7 @@ function mapBillToRecord(bill: {
     unitPriceAmount: unknown;
     lineTotalAmount: unknown;
   }>;
+  payments: Array<{ id: string; method: "CASH" | "CARD" | "UPI" | "SPLIT"; amount: unknown; createdAt: Date }>;
   session: {
     table: { number: string } | null;
     customer: { name: string | null; phone: string | null } | null;
@@ -222,12 +228,21 @@ function mapBillToRecord(bill: {
   const totalAmount = bill.status === "OPEN" ? roundMoney(tableAmount + itemTotal) : Number(bill.totalAmountSnapshot);
   const discountAmount = getRecordedFoodMenuDiscount(bill.items);
   const itemSubtotal = roundMoney(itemTotal + discountAmount);
+  const payments = bill.payments.map((payment) => ({
+    id: payment.id,
+    method: payment.method === "CASH" ? "CASH" as const : "UPI" as const,
+    amount: Number(payment.amount),
+    createdAt: payment.createdAt.toISOString()
+  }));
+  const recordedPaidAmount = roundMoney(payments.reduce((sum, payment) => sum + payment.amount, 0));
+  const paidAmount = bill.paymentStatus === "PAID" && payments.length === 0 ? totalAmount : recordedPaidAmount;
 
   return {
     id: bill.id,
     label: bill.label ?? "Bill",
     kind: bill.kind,
     status: bill.status,
+    paymentStatus: bill.paymentStatus,
     tableNumber,
     sessionLabel: bill.session ? formatSessionLabel(billStartedAt, bill.closedAt ?? bill.session.actualEndAt ?? bill.session.plannedEndAt) : null,
     openedAt: billStartedAt.toISOString(),
@@ -240,6 +255,9 @@ function mapBillToRecord(bill: {
     itemTotal,
     itemSubtotal,
     discountAmount,
+    paidAmount,
+    remainingAmount: roundMoney(Math.max(0, totalAmount - paidAmount)),
+    payments,
     items: bill.items.filter((item) => !isFoodMenuDiscountItem({ name: item.nameSnapshot })).map((item) => ({
       id: item.id,
       name: item.nameSnapshot,
