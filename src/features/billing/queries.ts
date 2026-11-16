@@ -89,13 +89,13 @@ async function buildWhereClause(
 
   // Role-based restriction
   if (accountType === "STORE_USER") {
-    // Store users can only see closed bills they were assigned to
+    // Store users see their own session bills and all counter bills for this store.
+    // Counter bills have no session, so a session-only scope hides them.
     where.status = "CLOSED" as BillingStatus;
-    where.session = {
-      is: {
-        assignedEmployeeId: employeeId
-      }
-    };
+    where.OR = [
+      { kind: "COUNTER" },
+      { session: { is: { assignedEmployeeId: employeeId } } }
+    ];
   } else {
     // Managers and above see bills based on filter
     if (filters.status && filters.status !== "ALL") {
@@ -139,14 +139,16 @@ async function buildWhereClause(
       where: { businessId, name: contains },
       select: { id: true }
     });
-    where.OR = [
-      { label: contains },
-      ...(matchingCustomers.length > 0
-        ? [{ session: { is: { customerId: { in: matchingCustomers.map((customer) => customer.id) } } } }]
-        : []),
-      { session: { is: { table: { is: { number: contains } } } } },
-      { items: { some: { nameSnapshot: contains } } }
-    ];
+    where.AND = [{
+      OR: [
+        { label: contains },
+        ...(matchingCustomers.length > 0
+          ? [{ session: { is: { customerId: { in: matchingCustomers.map((customer) => customer.id) } } } }]
+          : []),
+        { session: { is: { table: { is: { number: contains } } } } },
+        { items: { some: { nameSnapshot: contains } } }
+      ]
+    }];
   }
 
   return where;

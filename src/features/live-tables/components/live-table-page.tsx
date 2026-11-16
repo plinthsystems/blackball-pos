@@ -27,6 +27,7 @@ export function LiveTablePage({
   canManageItems?: boolean;
   businessName?: string;
 }) {
+  const [itemsTarget, setItemsTarget] = useState<{ billId: string; label: string } | null>(null);
   const tableStations = tables.filter((table) => table.gameType !== "PS5");
   const emptyInventory = tables.length === 0;
 
@@ -57,35 +58,44 @@ export function LiveTablePage({
         <TableBoardToolbar />
         {!isHqAdmin && <StartCounterBillDialog />}
       </div>
-      <StationSection title="The Nine Tables" tables={tableStations} products={products} isHqAdmin={isHqAdmin} />
       {counterBills.length > 0 ? (
         <section className="rounded-material border border-lime-300/15 bg-slate-950/80 p-4 shadow-material">
-          <h2 className="text-lg font-semibold">Counter bills</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Counter bills</h2>
+            <span className="rounded-full bg-lime-300/10 px-2.5 py-1 text-xs font-bold text-lime-100">{counterBills.length} open</span>
+          </div>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {counterBills.map((bill) => (
-              <CounterBillCard key={bill.id} bill={bill} products={products} isHqAdmin={isHqAdmin} />
+              <CounterBillCard key={bill.id} bill={bill} isHqAdmin={isHqAdmin} onAddItems={(label) => setItemsTarget({ billId: bill.id, label })} />
             ))}
           </div>
         </section>
       ) : null}
+      <StationSection title="The Nine Tables" tables={tableStations} onAddItems={(billId, label) => setItemsTarget({ billId, label })} isHqAdmin={isHqAdmin} />
+      <AddSessionItemDialog
+        billId={itemsTarget?.billId ?? ""}
+        tableNumber={itemsTarget?.label ?? ""}
+        products={products}
+        open={Boolean(itemsTarget)}
+        onOpenChange={(open) => { if (!open) setItemsTarget(null); }}
+      />
     </div>
   );
 }
 
-function StationSection({ title, tables, products, isHqAdmin }: { title: string; tables: LiveTableCardData[]; products: ProductOption[]; isHqAdmin?: boolean }) {
+function StationSection({ title, tables, onAddItems, isHqAdmin }: { title: string; tables: LiveTableCardData[]; onAddItems: (billId: string, label: string) => void; isHqAdmin?: boolean }) {
   return (
     <section className="overflow-hidden rounded-material border border-lime-300/15 bg-slate-950/70 shadow-material">
       <div className="border-b border-lime-300/15 px-4 py-3">
         <h2 className="text-lg font-black uppercase tracking-normal text-white">{title}</h2>
       </div>
-      <TableGrid tables={tables} products={products} isHqAdmin={isHqAdmin} />
+      <TableGrid tables={tables} onAddItems={onAddItems} isHqAdmin={isHqAdmin} />
     </section>
   );
 }
 
-function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData; products: ProductOption[]; isHqAdmin?: boolean }) {
+function CounterBillCard({ bill, isHqAdmin, onAddItems }: { bill: CounterBillData; isHqAdmin?: boolean; onAddItems: (label: string) => void }) {
   const router = useRouter();
-  const [itemsOpen, setItemsOpen] = useState(false);
   const [editItemsOpen, setEditItemsOpen] = useState(false);
   const [applyFoodDiscount, setApplyFoodDiscount] = useState(false);
 
@@ -113,7 +123,7 @@ function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData;
       ) : null}
       {!isHqAdmin ? (
         <div className="mt-3 flex gap-2">
-          <Button type="button" className="h-9 px-3" onClick={() => setItemsOpen(true)}>Add items</Button>
+          <Button type="button" className="h-9 px-3" onClick={() => onAddItems(bill.label)}>Add items</Button>
           {bill.items.length ? <Button type="button" className="h-9 px-3" onClick={() => setEditItemsOpen(true)}>Edit items</Button> : null}
           <Button
             type="button"
@@ -131,7 +141,6 @@ function CounterBillCard({ bill, products, isHqAdmin }: { bill: CounterBillData;
       ) : (
         <p className="mt-3 text-xs text-amber-300 font-semibold">Read-Only HQ Oversight Mode</p>
       )}
-      <AddSessionItemDialog billId={bill.id} tableNumber={bill.label} products={products} open={itemsOpen} onOpenChange={setItemsOpen} />
       <EditBillItemsDialog billLabel={bill.label} items={bill.items} open={editItemsOpen} onOpenChange={setEditItemsOpen} />
     </div>
   );

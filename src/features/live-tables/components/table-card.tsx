@@ -6,12 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 import { formatClockTime } from "@/lib/time";
-import type { LiveTableCardData, LiveTableGameType, LiveTableStatus, ProductCategory, ProductOption } from "../types";
+import type { LiveTableCardData, LiveTableGameType, LiveTableStatus, ProductCategory } from "../types";
 import { TableStatusMenu } from "./table-status-menu";
 import { BookingCountdown } from "./booking-countdown";
 import { StartWalkInDialog } from "@/features/sessions/components/start-walk-in-dialog";
 import { EndSessionDialog } from "@/features/sessions/components/end-session-dialog";
-import { AddSessionItemDialog } from "@/features/sessions/components/add-session-item-dialog";
 import { EditBillItemsDialog } from "@/features/sessions/components/edit-bill-items-dialog";
 import { LiveClock } from "./live-clock";
 
@@ -48,10 +47,9 @@ const gameTypeLabel: Record<LiveTableGameType, string> = {
   PS5: "PS5"
 };
 
-export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCardData; products: ProductOption[]; isHqAdmin?: boolean }) {
+export function TableCard({ table, onAddItems, isHqAdmin }: { table: LiveTableCardData; onAddItems: (billId: string, label: string) => void; isHqAdmin?: boolean }) {
   const router = useRouter();
   const [startOpen, setStartOpen] = useState(false);
-  const [itemsOpen, setItemsOpen] = useState(false);
   const [editItemsOpen, setEditItemsOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   const [billDetailsOpen, setBillDetailsOpen] = useState(false);
@@ -152,7 +150,7 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
         <div className="mt-4 flex flex-wrap gap-2">
           {session ? (
             <>
-              <Button className="h-9 px-3" aria-label={`Add items for station ${table.number}`} onClick={() => setItemsOpen(true)}>
+              <Button className="h-9 px-3" aria-label={`Add items for station ${table.number}`} onClick={() => { if (bill) onAddItems(bill.id, table.number); }}>
                 Add items
               </Button>
               {bill?.items.length ? (
@@ -186,13 +184,6 @@ export function TableCard({ table, products, isHqAdmin }: { table: LiveTableCard
       />
       {session ? (
         <>
-          <AddSessionItemDialog
-            billId={session.currentBill?.id ?? ""}
-            tableNumber={table.number}
-            products={products}
-            open={itemsOpen}
-            onOpenChange={setItemsOpen}
-          />
           {bill ? (
             <EditBillItemsDialog
               billLabel={table.number}

@@ -137,7 +137,17 @@ export async function getOpenCounterBills(businessId: string): Promise<CounterBi
 export async function getProductOptions(businessId: string): Promise<ProductOption[]> {
   const products = await prisma.product.findMany({
     where: { businessId, active: true },
-    orderBy: [{ category: "asc" }, { name: "asc" }]
+    orderBy: [{ category: "asc" }, { name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      category: true,
+      priceAmount: true,
+      trackInventory: true,
+      stockOnHand: true,
+      stockUnit: true,
+      unitsPerPack: true
+    }
   });
 
   return products.map((product) => ({
