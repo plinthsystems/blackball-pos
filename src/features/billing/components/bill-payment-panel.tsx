@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 import { recordBillPaymentAction } from "@/features/live-tables/actions";
 import type { BillingRecord } from "../types";
 
 export function BillPaymentPanel({ record }: { record: BillingRecord }) {
-  const router = useRouter();
   const [cashAmount, setCashAmount] = useState("");
   const [upiAmount, setUpiAmount] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -32,7 +30,6 @@ export function BillPaymentPanel({ record }: { record: BillingRecord }) {
       if (result.ok) {
         setCashAmount("");
         setUpiAmount("");
-        router.refresh();
       }
     });
   }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { extendSessionAction } from "@/features/live-tables/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -18,7 +17,6 @@ export function ExtendSessionDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -28,7 +26,6 @@ export function ExtendSessionDialog({
       setMessage(result.message);
       if (result.ok) {
         onOpenChange(false);
-        router.refresh();
       }
     });
   }

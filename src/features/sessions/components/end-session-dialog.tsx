@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { endSessionAction } from "@/features/live-tables/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -18,7 +17,6 @@ export function EndSessionDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [applyFoodDiscount, setApplyFoodDiscount] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -30,7 +28,6 @@ export function EndSessionDialog({
       if (result.ok) {
         setApplyFoodDiscount(false);
         onOpenChange(false);
-        router.refresh();
       }
     });
   }

@@ -47,7 +47,6 @@ export function EditBillItemsDialog({
           setVisibleItems((current) => current.map((currentItem) => currentItem.id === item.id
             ? { ...currentItem, quantity, lineTotalAmount: currentItem.unitPriceAmount * quantity }
             : currentItem));
-          router.refresh();
         }
       } catch {
         setMessage("We couldn't confirm the change. Refresh the bill before trying again.");
@@ -76,7 +75,6 @@ export function EditBillItemsDialog({
             delete next[item.id];
             return next;
           });
-          router.refresh();
         }
       } catch {
         setMessage("We couldn't confirm removal. Refresh the bill before trying again.");

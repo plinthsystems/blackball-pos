@@ -157,7 +157,6 @@ function ExpenseRow({ expense }: { expense: ExpenseRecord }) {
 type DraftLine = { id: number; description: string; amount: string; productId: string; packs: string };
 
 function ExpenseFormDialog({ open, onOpenChange, products }: { open: boolean; onOpenChange: (open: boolean) => void; products: ExpenseProductOption[] }) {
-  const router = useRouter();
   const [category, setCategory] = useState<ExpenseCategory>("GROCERIES");
   const [vendorName, setVendorName] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "UPI">("CASH");
@@ -199,7 +198,6 @@ function ExpenseFormDialog({ open, onOpenChange, products }: { open: boolean; on
       setMessage({ text: result.message, ok: result.ok });
       if (result.ok) {
         onOpenChange(false);
-        router.refresh();
       }
     });
   }

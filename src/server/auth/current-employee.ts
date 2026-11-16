@@ -135,33 +135,45 @@ export const getCurrentEmployeeContext = cache(async function getCurrentEmployee
       email: identity.email,
       active: true
     },
-    include: {
+    select: {
+      id: true,
+      businessId: true,
+      organizationId: true,
+      franchiseeId: true,
+      name: true,
+      email: true,
+      accountType: true,
+      mustChangePassword: true,
       organization: {
-        include: {
-          businesses: { select: { id: true, name: true, slug: true, franchiseeId: true, settings: true } }
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          businesses: { select: businessAccessSelect }
         }
       },
       franchisee: {
-        include: {
-          businesses: { select: { id: true, name: true, slug: true, franchiseeId: true, settings: true } }
+        select: {
+          id: true,
+          name: true,
+          businesses: { select: businessAccessSelect }
         }
       },
       business: {
-        include: {
-          settings: true,
-          organization: {
-            include: {
-              businesses: { select: { id: true, name: true, slug: true, franchiseeId: true, settings: true } }
-            }
-          }
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          franchiseeId: true,
+          settings: { select: brandingSettingsSelect }
         }
       },
       roles: {
-        include: {
+        select: {
           role: {
-            include: {
+            select: {
               permissions: {
-                include: { permission: true }
+                select: { permission: { select: { key: true } } }
               }
             }
           }
@@ -182,6 +194,21 @@ export const getCurrentEmployeeContext = cache(async function getCurrentEmployee
 
   return buildFallbackContext(identity.tenantSlug ?? "the-nine", identity.email ?? process.env.THE_NINE_ADMIN_EMAIL ?? "admin@thenine.local");
 });
+
+const brandingSettingsSelect = {
+  appName: true,
+  logoInitials: true,
+  brandColor: true,
+  accentColor: true
+} as const;
+
+const businessAccessSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  franchiseeId: true,
+  settings: { select: brandingSettingsSelect }
+} as const;
 
 export function buildCurrentEmployeeContext(
   employee: EmployeeWithTenantAccess,

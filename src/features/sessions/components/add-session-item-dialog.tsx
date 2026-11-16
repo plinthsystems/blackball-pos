@@ -55,7 +55,6 @@ export function AddSessionItemDialog({
         if (result.ok) {
           onOpenChange(false);
           setQuantity(1);
-          router.refresh();
         }
       } catch {
         setMessage("We couldn't confirm the item was added. Refresh the bill before retrying to avoid a duplicate.");

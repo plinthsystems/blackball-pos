@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, textInputProps } from "@/components/ui/field";
@@ -148,7 +147,6 @@ export function InventoryPage({ products }: { products: InventoryProduct[] }) {
 }
 
 function InventoryRow({ product }: { product: InventoryProduct }) {
-  const router = useRouter();
   const [stockUnit, setStockUnit] = useState(product.stockUnit);
   const [unitsPerPack, setUnitsPerPack] = useState(product.unitsPerPack);
   const [packs, setPacks] = useState(1);
@@ -168,7 +166,6 @@ function InventoryRow({ product }: { product: InventoryProduct }) {
     startRestock(async () => {
       const result = await restockProductAction({ id: product.id, packs });
       setMessage({ text: result.message, ok: result.ok });
-      if (result.ok) router.refresh();
     });
   }
 
@@ -176,7 +173,6 @@ function InventoryRow({ product }: { product: InventoryProduct }) {
     startSaving(async () => {
       const result = await updateInventoryProductAction({ id: product.id, stockUnit, unitsPerPack });
       setMessage({ text: result.message, ok: result.ok });
-      if (result.ok) router.refresh();
     });
   }
 
@@ -188,7 +184,6 @@ function InventoryRow({ product }: { product: InventoryProduct }) {
         setMessage({ text: result.message, ok: result.ok });
         if (result.ok) {
           setAdjustOpen(false);
-          router.refresh();
         }
       } catch {
         setAdjustMessage({ text: "Stock could not be updated. Please try again.", ok: false });

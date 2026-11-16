@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/money";
 import type { CounterBillData, LiveTableCardData, ProductOption } from "../types";
 import { TableBoardToolbar } from "./table-board-toolbar";
@@ -95,9 +94,10 @@ function StationSection({ title, tables, onAddItems, isHqAdmin }: { title: strin
 }
 
 function CounterBillCard({ bill, isHqAdmin, onAddItems }: { bill: CounterBillData; isHqAdmin?: boolean; onAddItems: (label: string) => void }) {
-  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [editItemsOpen, setEditItemsOpen] = useState(false);
   const [applyFoodDiscount, setApplyFoodDiscount] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   return (
     <div className="rounded-material border border-slate-700 bg-slate-900/80 p-3 text-slate-100">
@@ -129,18 +129,20 @@ function CounterBillCard({ bill, isHqAdmin, onAddItems }: { bill: CounterBillDat
             type="button"
             variant="primary"
             className="h-9 px-3"
-            onClick={async () => {
+            disabled={isPending}
+            onClick={() => startTransition(async () => {
               const result = await closeCounterBillAction({ billId: bill.id, applyFoodDiscount });
               if (result.ok) setApplyFoodDiscount(false);
-              router.refresh();
-            }}
+              else setMessage(result.message);
+            })}
           >
-            Close bill
+            {isPending ? "Closing…" : "Close bill"}
           </Button>
         </div>
       ) : (
         <p className="mt-3 text-xs text-amber-300 font-semibold">Read-Only HQ Oversight Mode</p>
       )}
+      {message ? <p role="status" className="mt-2 text-xs text-rose-300">{message}</p> : null}
       <EditBillItemsDialog billLabel={bill.label} items={bill.items} open={editItemsOpen} onOpenChange={setEditItemsOpen} />
     </div>
   );

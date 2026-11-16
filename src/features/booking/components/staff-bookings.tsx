@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { cancelBookingAction, confirmBookingAction, markBookingPaidAction } from "../actions";
 
@@ -35,7 +34,6 @@ const gameTypeLabels: Record<string, string> = {
 };
 
 export function StaffBookingsPanel({ bookings }: { bookings: StaffBooking[] }) {
-  const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -46,9 +44,6 @@ export function StaffBookingsPanel({ bookings }: { bookings: StaffBooking[] }) {
     startTransition(async () => {
       const result = await action({ bookingId });
       setMessage(result.message);
-      if (result.ok) {
-        router.refresh();
-      }
     });
   }
 
