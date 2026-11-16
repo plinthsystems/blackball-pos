@@ -85,6 +85,15 @@ enum BillPaymentStatus {
   PAID
 }
 
+enum ExpenseCategory {
+  INVENTORY_PURCHASE
+  GROCERIES
+  UTILITIES
+  RENT
+  MAINTENANCE
+  OTHER
+}
+
 enum AccountType {
   PLATFORM_ADMIN
   HQ_ADMIN
@@ -204,6 +213,8 @@ model Business {
   bills          Bill[]
   billPayments   BillPayment[]
   billItems      BillItem[]
+  expenses       Expense[]
+  expenseItems   ExpenseItem[]
   subscriptions  Subscription[]
 
   @@index([organizationId])
@@ -406,6 +417,7 @@ model Product {
   business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   sessionItems   SessionItem[]
   billItems      BillItem[]
+  expenseItems   ExpenseItem[]
 
   @@index([businessId, category, active])
 }
@@ -463,6 +475,43 @@ model BillItem {
   product         Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([businessId, billId, category])
+}
+
+model Expense {
+  id            String          @id @default(cuid())
+  businessId    String
+  category      ExpenseCategory
+  vendorName    String?
+  paymentMethod PaymentMethod
+  amount        Decimal         @db.Decimal(12, 2)
+  spentAt       DateTime
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items         ExpenseItem[]
+
+  @@index([businessId, spentAt])
+  @@index([businessId, category, spentAt])
+}
+
+model ExpenseItem {
+  id              String   @id @default(cuid())
+  businessId      String
+  expenseId       String
+  productId       String?
+  nameSnapshot    String
+  amount          Decimal  @db.Decimal(12, 2)
+  packs           Int?
+  stockUnit       String?
+  stockUnitsAdded Int      @default(0)
+  createdAt       DateTime @default(now())
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  expense         Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, expenseId])
+  @@index([businessId, productId])
 }
 
 model SessionItem {

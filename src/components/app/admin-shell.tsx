@@ -21,6 +21,7 @@ const theNineAdminNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: "monitoring" },
   { href: "/live-tables", label: "Live Floor", icon: "grid_view" },
   { href: "/billing", label: "Billing", icon: "receipt_long" },
+  { href: "/expenses", label: "Expenses", icon: "payments" },
   { href: "/settings", label: "Menu", icon: "restaurant" },
   { href: "/inventory", label: "Inventory", icon: "inventory_2" }
 ] as const;
